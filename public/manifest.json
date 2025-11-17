@@ -1,0 +1,21 @@
+{
+  "name": "NeuroQuiet – Tinnitus Neuromodulation Prototype",
+  "short_name": "NeuroQuiet",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f8fb",
+  "theme_color": "#087a93",
+  "description": "Experimental tinnitus neuromodulation prototype using Notch Therapy and Coordinated Reset (CR).",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
