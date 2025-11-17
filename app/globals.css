@@ -1,0 +1,324 @@
+/* /app/globals.css */
+
+/* --- Base & Fonts --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background: #f4f8fb;
+  color: #0f1b2b;
+}
+
+body {
+  min-height: 100vh;
+}
+
+/* --- Layout Shell --- */
+.main-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 3rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brand-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #4bc4c8, #087a93);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.brand-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.brand-subtitle {
+  font-size: 0.9rem;
+  color: #50627b;
+}
+
+.badge {
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: #e2f5f7;
+  color: #0b8293;
+  border: 1px solid #c7e8ec;
+  flex-shrink: 0;
+}
+
+.grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: 2fr 1.6fr;
+  }
+}
+
+/* --- Cards --- */
+.card {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem 1.6rem;
+  box-shadow: 0 12px 30px rgba(4, 32, 60, 0.06);
+  border: 1px solid #dde6f0;
+}
+
+.card h2 {
+  margin: 0 0 0.5rem;
+}
+
+.card p {
+  margin: 0.25rem 0 0.7rem;
+  color: #50627b;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+hr {
+  margin: 1.25rem 0;
+  border: 0;
+  border-top: 1px solid #dde6f0;
+}
+
+/* --- Tabs --- */
+.tab-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.tab-button {
+  border: 1px solid #c7e8ec;
+  background: #f2f6fc;
+  color: #425674;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-button:hover {
+  background: #e2f5f7;
+}
+
+.tab-button.active {
+  background: #087a93;
+  color: white;
+  border-color: #087a93;
+}
+
+/* --- Therapy Type Selector --- */
+.therapy-selector {
+  display: flex;
+  border: 1px solid #dde6f0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.therapy-button {
+  flex: 1;
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  background: #f8fafc;
+  color: #425674;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.therapy-button:first-child {
+  border-right: 1px solid #dde6f0;
+}
+
+.therapy-button.active {
+  background: linear-gradient(135deg, #0b8293, #46c0c7);
+  color: white;
+}
+
+/* --- Controls & Buttons --- */
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+  color: #4b6077;
+  font-weight: 500;
+}
+
+.slider {
+  width: 100%;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.btn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.55rem 1.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #087a93, #46c0c7);
+  color: white;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background: #ecf2fa;
+  color: #1a3352;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+}
+
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Status & Notes --- */
+.small-note {
+  font-size: 0.8rem;
+  color: #6b7d94;
+  margin-top: 0.75rem;
+}
+
+.small-note strong {
+  color: #1a3352;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: #f2f6fc;
+  color: #425674;
+}
+
+.status-pill-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #b0b8c3; /* Grey for Idle */
+}
+
+.status-pill.testing .status-pill-dot {
+  background: #f59e0b; /* Amber for Testing */
+}
+
+.status-pill.running .status-pill-dot {
+  background: #22c55e; /* Green for Running */
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.safety-list {
+  font-size: 0.85rem;
+  color: #425674;
+  padding-left: 1.2rem;
+  line-height: 1.5;
+}
+
+/* --- History Tab --- */
+.history-log {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.history-item {
+  background: #f8fafc;
+  border: 1px solid #dde6f0;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.history-item-title {
+  font-weight: 600;
+  color: #0f1b2b;
+  font-size: 0.95rem;
+  margin: 0 0 0.25rem;
+}
+
+.history-item-details {
+  font-size: 0.85rem;
+  color: #50627b;
+  margin: 0;
+}
+
+/* --- Footer --- */
+.footer {
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #7a8ca2;
+}
