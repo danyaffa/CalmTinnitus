@@ -12,7 +12,7 @@ type MediaSessionOptions = {
 };
 
 export function useMediaSession({
-  title = "NeuroQuiet Session",
+  title = "NeuroQuiet – Tinnitus Session",
   artist = "NeuroQuiet",
   album = "Tinnitus Sound Training",
   onPlay,
@@ -23,14 +23,12 @@ export function useMediaSession({
     if (!("mediaSession" in navigator)) return;
 
     try {
-      // Set metadata
       navigator.mediaSession.metadata = new MediaMetadata({
         title,
         artist,
         album,
       });
 
-      // Set handlers
       if (onPlay) {
         navigator.mediaSession.setActionHandler("play", () => {
           onPlay();
@@ -46,12 +44,10 @@ export function useMediaSession({
       } else {
         navigator.mediaSession.setActionHandler("pause", null);
       }
-    } catch (err) {
-      // Fail silently – some browsers may not fully support this
-      console.warn("MediaSession not available:", err);
+    } catch {
+      // ignore if browser doesn't fully support it
     }
 
-    // Cleanup when component unmounts or callbacks change
     return () => {
       if (typeof navigator === "undefined") return;
       if (!("mediaSession" in navigator)) return;
