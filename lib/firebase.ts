@@ -46,6 +46,7 @@ export {
   Timestamp,
 };
 
+// ✅ Type-only re-export – this fixes the "isolatedModules" error
 export type { User };
 
 // Small helper functions used in app/page.tsx
