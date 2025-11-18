@@ -10,12 +10,14 @@ import React, {
   SetStateAction,
 } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { SoundLibraryMenu, SoundProfile } from "../components/SoundLibraryMenu";
 import {
   firebaseGoogleSignIn,
   firebaseSignOut,
 } from "../lib/firebase";
 import { useAuthCtx, SessionLog, TherapyMode, TherapyType } from "./AuthProvider";
+import { useMediaSession } from "../hooks/useMediaSession";
 
 // --- LOCAL STORAGE HOOK ---
 function usePersistentState<T>(
@@ -29,36 +31,31 @@ function usePersistentState<T>(
     try {
       const item = window.localStorage.getItem(key);
       return item ? (JSON.parse(item) as T) : initialValue;
-    } catch (error) {
-      console.error("Error reading from localStorage", error);
+    } catch {
       return initialValue;
     }
   });
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        window.localStorage.setItem(key, JSON.stringify(state));
-      } catch (error) {
-        console.error("Error writing to localStorage", error);
-      }
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(key, JSON.stringify(state));
+    } catch {
+      // ignore
     }
   }, [key, state]);
 
   return [state, setState];
 }
 
-// --- AUDIO CONSTANTS ---
-const SAFE_TEST_GAIN = 0.05;
-const NOTCH_THERAPY_GAIN = 0.12;
-const CR_THERAPY_GAIN = 0.1;
-const SLEEP_MODE_GAIN_MODIFIER = 0.6;
+// --- MAIN PAGE COMPONENT ---
+const NeuroQuietPage: React.FC = () => {
+  const { user, loading, sessionHistory, setSessionHistory, saveSessionToCloud } =
+    useAuthCtx();
 
-export default function Home() {
-  const { user, loading, sessionHistory, saveSessionToCloud } = useAuthCtx();
-
-  const [activeTab, setActiveTab] =
-    useState<"therapy" | "history" | "progress" | "info">("therapy");
+  const [activeTab, setActiveTab] = useState<"therapy" | "history" | "progress" | "info">(
+    "therapy"
+  );
 
   const [tinnitusPitch, setTinnitusPitch] = usePersistentState<number | null>(
     "neuroquiet_pitch",
@@ -79,25 +76,27 @@ export default function Home() {
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const mainGainRef = useRef<GainNode | null>(null);
-
-  const sessionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   const testToneOscRef = useRef<OscillatorNode | null>(null);
   const noiseSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const notchFilterRef = useRef<BiquadFilterNode | null>(null);
   const crOscRef = useRef<OscillatorNode | null>(null);
-  const crTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const crGainRef = useRef<GainNode | null>(null);
+  const crTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [selectedSound, setSelectedSound] = useState<SoundProfile | null>(null);
+  const [isSoundLibraryOpen, setIsSoundLibraryOpen] = useState(false);
+
+  const NOTCH_THERAPY_GAIN = 0.12;
+  const SLEEP_MODE_GAIN_MODIFIER = 0.7;
+  const CR_THERAPY_GAIN = 0.08;
+
+  // --- AUDIO CONTEXT ---
   const ensureAudioContext = useCallback(() => {
-    if (typeof window === "undefined") return null;
     if (!audioCtxRef.current) {
-      const Ctor =
+      const AC =
         window.AudioContext || (window as any).webkitAudioContext;
-      if (!Ctor) {
-        console.error("Web Audio API not supported");
-        return null;
-      }
-      audioCtxRef.current = new Ctor();
+      audioCtxRef.current = new AC();
       mainGainRef.current = audioCtxRef.current.createGain();
       mainGainRef.current.connect(audioCtxRef.current.destination);
     }
@@ -130,6 +129,10 @@ export default function Home() {
       crOscRef.current.disconnect();
       crOscRef.current = null;
     }
+    if (crGainRef.current) {
+      crGainRef.current.disconnect();
+      crGainRef.current = null;
+    }
     if (crTimerRef.current) {
       clearInterval(crTimerRef.current);
       crTimerRef.current = null;
@@ -139,11 +142,11 @@ export default function Home() {
       sessionTimerRef.current = null;
     }
     if (mainGainRef.current) {
-      mainGainRef.current.gain.value = 1.0;
+      mainGainRef.current.gain.value = 0;
     }
+    setStatus("idle");
     setMinutesLeft(null);
     setCurrentMode(null);
-    setStatus("idle");
   }, []);
 
   const generatePinkNoiseBuffer = (ctx: AudioContext, durationSeconds = 60) => {
@@ -167,34 +170,52 @@ export default function Home() {
       b3 = 0.8665 * b3 + white * 0.3104856;
       b4 = 0.55 * b4 + white * 0.5329522;
       b5 = -0.7616 * b5 - white * 0.016898;
-      data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-      data[i] *= 0.11;
+      const pink =
+        b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
       b6 = white * 0.115926;
+      data[i] = pink * 0.11;
     }
+
     return buffer;
   };
 
-  const startTestTone = () => {
-    const ctx = ensureAudioContext();
-    if (!ctx || !mainGainRef.current) return;
+  // --- TEST TONE ---
+  const playTestTone = useCallback(
+    (freq: number) => {
+      stopEverything();
+      const ctx = ensureAudioContext();
+      if (!ctx || !mainGainRef.current) return;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.value = 0.05;
+
+      osc.connect(gain);
+      gain.connect(mainGainRef.current);
+
+      osc.start();
+      testToneOscRef.current = osc;
+      setStatus("tone-testing");
+    },
+    [ensureAudioContext, stopEverything]
+  );
+
+  const saveTinnitusPitch = () => {
+    setTinnitusPitch(frequency);
     stopEverything();
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.value = frequency;
-    mainGainRef.current.gain.value = SAFE_TEST_GAIN;
-    osc.connect(mainGainRef.current);
-    osc.start();
-    testToneOscRef.current = osc;
-    setStatus("tone-testing");
   };
 
+  // --- NOTCH THERAPY ---
   const startNotchTherapy = (mode: TherapyMode, pitch: number) => {
+    stopEverything();
     const ctx = ensureAudioContext();
     if (!ctx || !mainGainRef.current) return;
-    stopEverything();
-    const buffer = generatePinkNoiseBuffer(ctx, 60);
+
+    const noiseBuffer = generatePinkNoiseBuffer(ctx, 60 * 10);
     const src = ctx.createBufferSource();
-    src.buffer = buffer;
+    src.buffer = noiseBuffer;
     src.loop = true;
 
     const notch = ctx.createBiquadFilter();
@@ -215,40 +236,51 @@ export default function Home() {
     notchFilterRef.current = notch;
   };
 
+  // --- CR THERAPY ---
   const startCRTherapy = (mode: TherapyMode, pitch: number) => {
+    stopEverything();
     const ctx = ensureAudioContext();
     if (!ctx || !mainGainRef.current) return;
-    stopEverything();
 
-    const tones = [pitch * 0.9, pitch * 1.1, pitch * 0.8, pitch * 1.2].sort(
-      () => Math.random() - 0.5
-    );
-
+    const gainNode = ctx.createGain();
     let gainLevel = CR_THERAPY_GAIN;
     if (mode === "sleep") gainLevel *= SLEEP_MODE_GAIN_MODIFIER;
-    mainGainRef.current.gain.value = gainLevel;
+    gainNode.gain.value = gainLevel;
+    gainNode.connect(mainGainRef.current);
+    crGainRef.current = gainNode;
 
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.connect(mainGainRef.current);
-    osc.start();
-    crOscRef.current = osc;
+    const freqs = [
+      pitch * 0.9,
+      pitch * 0.95,
+      pitch,
+      pitch * 1.05,
+      pitch * 1.1,
+    ];
 
-    let toneIndex = 0;
+    const tones = freqs.map((f) => ({ freq: f, phase: 0 }));
+
     const playNextTone = () => {
-      if (!crOscRef.current || !mainGainRef.current || !ctx) return;
-      const freq = tones[toneIndex % tones.length];
-      const now = ctx.currentTime;
-      crOscRef.current.frequency.setValueAtTime(freq, now);
-      mainGainRef.current.gain.setTargetAtTime(gainLevel, now, 0.01);
-      mainGainRef.current.gain.setTargetAtTime(0, now + 0.1, 0.01);
-      toneIndex++;
-      if (toneIndex % tones.length === 0) tones.sort(() => Math.random() - 0.5);
+      if (!crGainRef.current || !audioCtxRef.current) return;
+      const osc = audioCtxRef.current.createOscillator();
+      osc.type = "sine";
+      const { freq } = tones[Math.floor(Math.random() * tones.length)];
+      osc.frequency.value = freq;
+      osc.connect(crGainRef.current);
+      osc.start();
+      setTimeout(() => {
+        try {
+          osc.stop();
+        } catch {}
+        osc.disconnect();
+      }, 150);
+      crOscRef.current = osc;
     };
+
     playNextTone();
     crTimerRef.current = setInterval(playNextTone, 500);
   };
 
+  // --- SESSION LOGIC ---
   const logSessionLocal = (
     mode: TherapyMode,
     type: TherapyType,
@@ -277,7 +309,7 @@ export default function Home() {
         window.localStorage.getItem(localKey) || "[]"
       ) as SessionLog[];
       const newLocal: SessionLog = {
-        id: `${Date.now()}-${Math.random()}`,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         ...baseLog,
       };
       const updated = [newLocal, ...current];
@@ -295,8 +327,12 @@ export default function Home() {
     if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
     sessionTimerRef.current = setInterval(() => {
       setMinutesLeft((prev) => {
-        if (prev === null) return null;
+        if (prev === null) return prev;
         if (prev <= 1) {
+          if (sessionTimerRef.current) {
+            clearInterval(sessionTimerRef.current);
+            sessionTimerRef.current = null;
+          }
           stopEverything();
           logSessionLocal(mode, type, pitch);
           return null;
@@ -324,6 +360,22 @@ export default function Home() {
     setCurrentMode(mode);
     startSessionTimer(totalMinutes, mode, therapyType, tinnitusPitch);
   };
+  useMediaSession({
+    title: "NeuroQuiet – Tinnitus Session",
+    artist: "NeuroQuiet",
+    album: "Tinnitus Sound Training",
+    onPlay: () => {
+      if (status !== "running" && tinnitusPitch) {
+        const modeToUse: TherapyMode = currentMode ?? "standard";
+        handleStartTherapy(modeToUse);
+      }
+    },
+    onPause: () => {
+      if (status === "running") {
+        stopEverything();
+      }
+    },
+  });
 
   useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
@@ -359,11 +411,17 @@ export default function Home() {
     <main className="main-shell">
       <header className="header">
         <div className="brand-block">
-          <div className="brand-icon">NQ</div>
+          <Image
+            src="/icons/icon-192x192.png"
+            alt="NeuroQuiet logo"
+            width={32}
+            height={32}
+            className="logo-image"
+          />
           <div>
             <div className="brand-title">NeuroQuiet</div>
             <div className="brand-subtitle">
-              Silence Starts Now. Prototype neuromodulation tool.
+              Silence Starts Now. Tinnitus neuromodulation tool.
             </div>
           </div>
         </div>
@@ -377,11 +435,11 @@ export default function Home() {
           </nav>
           <div className="auth-chip">
             {loading ? (
-              <span>Loading…</span>
+              <span>Loading...</span>
             ) : user ? (
               <>
-                <span className="auth-email">
-                  {user.email || user.displayName}
+                <span className="user-email">
+                  {user.email || "Signed in"}
                 </span>
                 <button
                   className="btn btn-secondary btn-xs"
@@ -400,9 +458,9 @@ export default function Home() {
                 </Link>
                 <button
                   className="btn btn-secondary btn-xs"
-                  onClick={() => firebaseGoogleSignIn().catch(() => {})}
+                  onClick={() => firebaseGoogleSignIn()}
                 >
-                  Sign with Google
+                  Sign in with Google
                 </button>
               </>
             )}
@@ -440,7 +498,7 @@ export default function Home() {
           className={`tab-button ${activeTab === "info" ? "active" : ""}`}
           onClick={() => setActiveTab("info")}
         >
-          Info & Safety
+          Info &amp; Safety
         </button>
       </div>
 
@@ -458,49 +516,28 @@ export default function Home() {
               <span>{frequency.toLocaleString()} Hz</span>
             </div>
             <input
-              className="slider"
               type="range"
               min={4000}
-              max={16000}
-              step={50}
+              max={12000}
               value={frequency}
               onChange={(e) => setFrequency(Number(e.target.value))}
-              disabled={status === "running"}
+              className="slider"
             />
 
             <div className="button-row">
-              {status !== "tone-testing" ? (
-                <button
-                  className="btn btn-secondary"
-                  onClick={startTestTone}
-                  disabled={status === "running"}
-                >
-                  Test Tone
-                </button>
-              ) : (
-                <button className="btn btn-secondary" onClick={stopEverything}>
-                  Stop Tone
-                </button>
-              )}
+              <button
+                className="btn btn-secondary"
+                onClick={() => playTestTone(frequency)}
+              >
+                Test Tone
+              </button>
               <button
                 className="btn btn-primary"
-                onClick={() => {
-                  setTinnitusPitch(frequency);
-                  stopEverything();
-                }}
-                disabled={status === "running"}
+                onClick={saveTinnitusPitch}
               >
                 Save as My Tinnitus Pitch
               </button>
             </div>
-
-            {tinnitusPitch && (
-              <p className="small-note">
-                Saved tinnitus pitch:{" "}
-                <strong>{tinnitusPitch.toLocaleString()} Hz</strong>. Stored
-                locally on this device.
-              </p>
-            )}
 
             <hr />
             <h2>2. Select Therapy Type</h2>
@@ -515,7 +552,6 @@ export default function Home() {
                   therapyType === "notch" ? "active" : ""
                 }`}
                 onClick={() => setTherapyType("notch")}
-                disabled={status === "running"}
               >
                 Notch Therapy
               </button>
@@ -524,17 +560,30 @@ export default function Home() {
                   therapyType === "cr" ? "active" : ""
                 }`}
                 onClick={() => setTherapyType("cr")}
-                disabled={status === "running"}
               >
                 Coordinated Reset (CR)
               </button>
             </div>
 
+            <div className="sound-library-row">
+              <button
+                className="btn btn-outline"
+                onClick={() => setIsSoundLibraryOpen(true)}
+              >
+                Open Sound Library
+              </button>
+              {selectedSound && (
+                <span className="sound-selected-label">
+                  Background: {selectedSound.label}
+                </span>
+              )}
+            </div>
+
             <hr />
             <h2>3. Start Therapy Session</h2>
             <p>
-              Keep your device volume low and comfortable. You should be able to
-              hear the sound, but it must never feel loud or painful.
+              Keep your device volume low and comfortable. You should be able
+              to hear the sound, but it must never feel loud or painful.
             </p>
 
             <div className="label-row">
@@ -542,14 +591,13 @@ export default function Home() {
               <span>{sessionMinutes} min</span>
             </div>
             <input
-              className="slider"
               type="range"
               min={5}
-              max={45}
+              max={30}
               step={5}
               value={sessionMinutes}
               onChange={(e) => setSessionMinutes(Number(e.target.value))}
-              disabled={status === "running"}
+              className="slider"
             />
 
             <div className="button-row">
@@ -583,26 +631,53 @@ export default function Home() {
               </button>
             </div>
 
-            {minutesLeft !== null && status === "running" && (
-              <p className="small-note">
-                {currentMode === "sleep" ? "Sleep mode" : "Session"} running.
-                Time left: <strong>{minutesLeft} min</strong>.
+            {minutesLeft !== null && (
+              <p className="session-timer">
+                Session time remaining: {minutesLeft} min
               </p>
             )}
           </div>
         )}
 
-        {activeTab === "history" && (
-          <div className="card">
-            <h2>Session History</h2>
-            <p>
-              Completed sessions stored in the cloud for your account (and
-              locally for offline use).
-            </p>
+        {/* RIGHT COLUMN – STATUS / OTHER TABS */}
+        <div className="card status-card">
+          {activeTab === "therapy" && (
+            <>
+              <h2>Status &amp; Safety</h2>
+              <p>Shows what the engine is doing right now.</p>
 
-            <div className="history-log">
-              {sessionHistory.length === 0 && (
-                <p>No completed sessions yet. Start a therapy to log it.</p>
+              <div className={`status-pill ${statusClass}`}>
+                <span className="dot" />
+                <span>{statusLabel}</span>
+              </div>
+
+              <ul className="safety-list">
+                <li>Use in a quiet environment so you can keep volume low.</li>
+                <li>Take breaks. Do not run back-to-back long sessions.</li>
+                <li>
+                  If your tinnitus becomes more intrusive, stop and rest for
+                  the day.
+                </li>
+                <li>
+                  For medical concerns or sudden changes in hearing, seek
+                  urgent professional care.
+                </li>
+              </ul>
+            </>
+          )}
+
+          {activeTab === "history" && (
+            <>
+              <h2>Session History</h2>
+              {loading && <p>Loading your sessions…</p>}
+              {!loading && sessionHistory.length === 0 && (
+                <p>No sessions logged yet. Your future sessions will appear here.</p>
+              )}
+              {sessionHistory.length > 0 && (
+                <p className="history-note">
+                  Most recent sessions shown first. Stored securely and also
+                  locally on this device.
+                </p>
               )}
               {sessionHistory.map((log) => (
                 <div key={log.id} className="history-item">
@@ -618,180 +693,57 @@ export default function Home() {
                   </p>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
+            </>
+          )}
 
-        {activeTab === "progress" && (
-          <div className="card">
-            <h2>Progress – Minutes per Week</h2>
-            <p>
-              Simple overview of how many minutes of therapy you completed each
-              week. Use this to stay consistent.
-            </p>
-            <ProgressChart logs={sessionHistory} />
-          </div>
-        )}
+          {activeTab === "progress" && (
+            <>
+              <h2>Progress (coming soon)</h2>
+              <p>
+                Over time, NeuroQuiet will help you track how often you use
+                each mode, your average tinnitus pitch, and trends in your
+                tinnitus intrusiveness.
+              </p>
+              <p>
+                This section will show charts and summaries so you and your
+                clinician (if you share it) can see the bigger picture.
+              </p>
+            </>
+          )}
 
-        {activeTab === "info" && (
-          <div className="card">
-            <h2>Information & Safety</h2>
-            <p>
-              NeuroQuiet is an experimental prototype only. It does not
-              diagnose, treat, cure, or prevent any disease. Use it only as a
-              support tool alongside professional care.
-            </p>
-            <ul className="safety-list">
-              <li>
-                Always listen at <strong>low, comfortable volume</strong>. If in
-                doubt, turn it down.
-              </li>
-              <li>
-                Start with one or two <strong>10–15 minute</strong> sessions per
-                day.
-              </li>
-              <li>
-                Sleep mode should be used at very low background level and only
-                if it feels comfortable.
-              </li>
-              <li>
-                Stop immediately if you feel discomfort, dizziness, headache, or
-                worsening tinnitus.
-              </li>
-              <li>
-                Talk to an ENT specialist or audiologist before making big
-                changes to your tinnitus management.
-              </li>
-            </ul>
-            <p className="small-note">
-              Current build: <strong>NeuroQuiet v3 – Cloud Sync + Progress</strong>.
-            </p>
-          </div>
-        )}
-
-        <div className="card">
-          <h2>Status & Safety</h2>
-          <p>Shows what the engine is doing right now.</p>
-
-          <div className={`status-pill ${statusClass}`}>
-            <span className="status-pill-dot" />
-            <span>{statusLabel}</span>
-          </div>
-
-          <ul className="safety-list">
-            <li>Use in a quiet environment so you can keep volume low.</li>
-            <li>Take breaks. Do not run back-to-back long sessions.</li>
-            <li>
-              If your tinnitus becomes more intrusive, stop and rest for the
-              day.
-            </li>
-            <li>This is a prototype research tool, not a regulated device.</li>
-          </ul>
-
-          <p className="small-note">
-            For medical concerns or sudden changes in hearing, seek urgent
-            professional care.
-          </p>
+          {activeTab === "info" && (
+            <>
+              <h2>Info &amp; Safety</h2>
+              <p>
+                Learn how Notch Therapy and Coordinated Reset (CR) use sound
+                patterns to gently train your brain away from your tinnitus
+                tone, plus important safety notes.
+              </p>
+              <p>
+                For full details, visit the{" "}
+                <Link href="/info" className="inline-link">
+                  Information &amp; Safety page
+                </Link>
+                .
+              </p>
+            </>
+          )}
         </div>
       </section>
 
+      <SoundLibraryMenu
+        isOpen={isSoundLibraryOpen}
+        onClose={() => setIsSoundLibraryOpen(false)}
+        selectedSound={selectedSound}
+        onSelectSound={setSelectedSound}
+      />
+
       <footer className="footer">
-        © {new Date().getFullYear()} Leffler International Investments Pty Ltd –
-        NeuroQuiet. Prototype neuromodulation tool. All rights reserved.
+        © {new Date().getFullYear()} Leffler International Investments Pty Ltd
+        — NeuroQuiet. All rights reserved.
       </footer>
     </main>
   );
-}
+};
 
-// --- PROGRESS CHART COMPONENT (SVG BARS) ---
-function ProgressChart({ logs }: { logs: SessionLog[] }) {
-  if (!logs.length) return <p>No data yet. Finish a few sessions first.</p>;
-
-  // group minutes by ISO week (YYYY-WW)
-  const byWeek = new Map<string, number>();
-  for (const log of logs) {
-    const d = new Date(log.date);
-    const year = d.getFullYear();
-    const week = getWeekNumber(d); // 1..53
-    const key = `${year}-W${week}`;
-    byWeek.set(key, (byWeek.get(key) || 0) + log.duration);
-  }
-
-  const entries = Array.from(byWeek.entries())
-    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-    .slice(-6); // last 6 weeks
-
-  const maxMinutes = Math.max(...entries.map(([, v]) => v));
-
-  const width = 320;
-  const height = 160;
-  const barGap = 12;
-  const barWidth =
-    entries.length > 0
-      ? (width - barGap * (entries.length + 1)) / entries.length
-      : 0;
-
-  return (
-    <div className="progress-chart">
-      <svg width={width} height={height}>
-        {/* axis */}
-        <line
-          x1={0}
-          y1={height - 20}
-          x2={width}
-          y2={height - 20}
-          stroke="#cbd5e1"
-          strokeWidth={1}
-        />
-        {entries.map(([label, minutes], i) => {
-          const x = barGap + i * (barWidth + barGap);
-          const barHeight =
-            maxMinutes === 0 ? 0 : ((height - 40) * minutes) / maxMinutes;
-          const y = height - 20 - barHeight;
-          return (
-            <g key={label}>
-              <rect
-                x={x}
-                y={y}
-                width={barWidth}
-                height={barHeight}
-                rx={4}
-                ry={4}
-                fill="#0b8293"
-              />
-              <text
-                x={x + barWidth / 2}
-                y={height - 6}
-                fontSize="10"
-                textAnchor="middle"
-                fill="#64748b"
-              >
-                {label.replace(/^.*W/, "W")}
-              </text>
-              <text
-                x={x + barWidth / 2}
-                y={y - 4}
-                fontSize="10"
-                textAnchor="middle"
-                fill="#0f172a"
-              >
-                {minutes}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-      <p className="small-note">
-        Bars show total therapy minutes per week (last 6 weeks).
-      </p>
-    </div>
-  );
-}
-
-function getWeekNumber(d: Date): number {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-}
+export default NeuroQuietPage;
