@@ -1,26 +1,27 @@
 // /app/therapy/page.tsx
 "use client";
-
 import React, {
   useState,
   useRef,
+  useEffect,
   useCallback,
   Dispatch,
   SetStateAction,
 } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   SoundLibraryMenu,
   SoundProfile,
-} from "../components/SoundLibraryMenu";
-import { firebaseGoogleSignIn, firebaseSignOut } from "../lib/firebase";
+} from "../../components/SoundLibraryMenu";
+import { firebaseGoogleSignIn, firebaseSignOut } from "../../lib/firebase";
 import {
   useAuthCtx,
   SessionLog,
   TherapyMode,
   TherapyType,
 } from "../AuthProvider";
-import { useMediaSession } from "../hooks/useMediaSession";
+import { useMediaSession } from "../../hooks/useMediaSession";
 
 //
 // LOCAL STORAGE HOOK
@@ -29,7 +30,9 @@ function usePersistentState<T>(
   initialValue: T
 ): [T, Dispatch<SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
-    if (typeof window === "undefined") return initialValue;
+    if (typeof window === "undefined") {
+      return initialValue;
+    }
     try {
       const item = window.localStorage.getItem(key);
       return item ? (JSON.parse(item) as T) : initialValue;
@@ -38,7 +41,7 @@ function usePersistentState<T>(
     }
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       window.localStorage.setItem(key, JSON.stringify(state));
@@ -55,6 +58,7 @@ function usePersistentState<T>(
 const NeuroQuietPage: React.FC = () => {
   const {
     user,
+    loading,
     sessionHistory,
     setSessionHistory,
     saveSessionToCloud,
@@ -86,7 +90,7 @@ const NeuroQuietPage: React.FC = () => {
   const testToneOscRef = useRef<OscillatorNode | null>(null);
   const noiseSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const notchFilterRef = useRef<BiquadFilterNode | null>(null);
-  const crOscRef = useRef<OscillatorNode | null>(null);
+  const croscRef = useRef<OscillatorNode | null>(null);
   const crGainRef = useRef<GainNode | null>(null);
   const crTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -132,12 +136,12 @@ const NeuroQuietPage: React.FC = () => {
       notchFilterRef.current.disconnect();
       notchFilterRef.current = null;
     }
-    if (crOscRef.current) {
+    if (croscRef.current) {
       try {
-        crOscRef.current.stop();
+        croscRef.current.stop();
       } catch {}
-      crOscRef.current.disconnect();
-      crOscRef.current = null;
+      croscRef.current.disconnect();
+      croscRef.current = null;
     }
     if (crGainRef.current) {
       crGainRef.current.disconnect();
@@ -161,7 +165,7 @@ const NeuroQuietPage: React.FC = () => {
   }, []);
 
   //
-  // PINK NOISE GENERATOR  (FIXED – plain JS, no $ or θ)
+  // PINK NOISE GENERATOR (fixed)
   const generatePinkNoiseBuffer = (
     ctx: AudioContext,
     durationSeconds = 600
@@ -247,6 +251,7 @@ const NeuroQuietPage: React.FC = () => {
     mainGainRef.current.gain.value = gainLevel;
 
     notch.connect(mainGainRef.current);
+
     src.start();
 
     noiseSourceRef.current = src;
@@ -278,9 +283,8 @@ const NeuroQuietPage: React.FC = () => {
 
     const playNextTone = () => {
       if (!crGainRef.current || !audioCtxRef.current) return;
-      const ctxInner = audioCtxRef.current;
 
-      const osc = ctxInner.createOscillator();
+      const osc = audioCtxRef.current.createOscillator();
       osc.type = "sine";
       const { freq } = tones[Math.floor(Math.random() * tones.length)];
       osc.frequency.value = freq;
@@ -295,7 +299,7 @@ const NeuroQuietPage: React.FC = () => {
         osc.disconnect();
       }, 150);
 
-      crOscRef.current = osc;
+      croscRef.current = osc;
     };
 
     playNextTone();
@@ -303,7 +307,7 @@ const NeuroQuietPage: React.FC = () => {
   };
 
   //
-  // SAVE SESSION
+  // START SESSION + SAVE
   const saveSession = () => {
     const baseLog: Omit<SessionLog, "id"> = {
       date: new Date().toISOString(),
@@ -335,8 +339,6 @@ const NeuroQuietPage: React.FC = () => {
     }
   };
 
-  //
-  // START SESSION
   const startSession = (mode: TherapyMode) => {
     if (!tinnitusPitch) {
       alert("Please match and save your tinnitus pitch first.");
@@ -538,6 +540,7 @@ const NeuroQuietPage: React.FC = () => {
             <button onClick={() => setIsSoundLibraryOpen(!isSoundLibraryOpen)}>
               {isSoundLibraryOpen ? "Close Sound Library" : "Open Sound Library"}
             </button>
+
             {isSoundLibraryOpen && (
               <SoundLibraryMenu
                 onSelectSound={applySelectedSound}
@@ -616,16 +619,19 @@ const NeuroQuietPage: React.FC = () => {
           margin: 0 auto;
           padding: 2rem 1.25rem 3rem;
         }
+
         .top-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
           margin-bottom: 2rem;
         }
+
         .app-title {
           font-size: 1.7rem;
           font-weight: 600;
         }
+
         .nav-tabs button {
           background: none;
           border: none;
@@ -635,28 +641,34 @@ const NeuroQuietPage: React.FC = () => {
           cursor: pointer;
           opacity: 0.6;
         }
+
         .nav-tabs button.active {
           opacity: 1;
           font-weight: bold;
           border-bottom: 2px solid #087a93;
         }
+
         .therapy-section,
         .history-section,
         .progress-section,
         .info-section {
           margin-top: 1.5rem;
         }
+
         .therapy-controls {
           margin-bottom: 1.5rem;
         }
+
         .slider-row {
           display: flex;
           align-items: center;
           gap: 1rem;
         }
+
         input[type="range"] {
           width: 100%;
         }
+
         .btn-test-tone,
         .btn-save-pitch {
           background: #087a93;
@@ -667,9 +679,11 @@ const NeuroQuietPage: React.FC = () => {
           border-radius: 6px;
           cursor: pointer;
         }
+
         .therapy-type-select {
           margin-top: 2rem;
         }
+
         .type-buttons button {
           margin-right: 1rem;
           padding: 0.5rem 1rem;
@@ -678,14 +692,17 @@ const NeuroQuietPage: React.FC = () => {
           cursor: pointer;
           background: #f3f3f3;
         }
+
         .type-buttons button.active {
           background: #087a93;
           color: white;
           border-color: #087a93;
         }
+
         .session-controls {
           margin-top: 2rem;
         }
+
         .start-buttons button {
           margin-right: 1rem;
           padding: 0.7rem 1.4rem;
@@ -695,28 +712,34 @@ const NeuroQuietPage: React.FC = () => {
           border-radius: 8px;
           cursor: pointer;
         }
+
         .session-status {
           margin-top: 1.5rem;
           padding: 1rem;
           background: #f0f8ff;
           border-left: 4px solid #087a93;
         }
+
         .sound-library {
           margin-top: 2rem;
         }
+
         .history-list {
           list-style: none;
           padding: 0;
         }
+
         .history-item {
           padding: 1rem;
           border-bottom: 1px solid #eee;
         }
+
         .progress-placeholder {
           padding: 2rem;
           background: #fafafa;
           border: 1px dashed #bbb;
         }
+
         .info-link {
           display: inline-block;
           margin-top: 1rem;
@@ -725,10 +748,12 @@ const NeuroQuietPage: React.FC = () => {
           color: white;
           border-radius: 6px;
         }
+
         .footer {
           margin-top: 2rem;
           text-align: center;
         }
+
         .google-login,
         .google-logout {
           padding: 0.7rem 1.2rem;
