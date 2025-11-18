@@ -6,7 +6,6 @@ import {
   auth,
   db,
   onAuthStateChanged,
-  User,
   collection,
   addDoc,
   query,
@@ -15,6 +14,7 @@ import {
   getDocs,
   Timestamp,
 } from "../lib/firebase";
+import type { User } from "../lib/firebase";
 
 export type TherapyMode = "standard" | "sleep" | "relief";
 export type TherapyType = "notch" | "cr";
@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const v = d.data() as any;
       return {
         id: d.id,
-        date: v.date.toMillis ? v.date.toMillis() : v.date,
+        date: v.date?.toMillis ? v.date.toMillis() : v.date,
         therapyType: v.therapyType,
         mode: v.mode,
         duration: v.duration,
