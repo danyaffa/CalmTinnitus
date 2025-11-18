@@ -106,6 +106,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuthCtx = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuthCtx must be used within AuthProvider");
+  if (!ctx) {
+    return {
+      user: null,
+      loading: true,
+      sessionHistory: [],
+      setSessionHistory: () => {},
+      saveSessionToCloud: async () => {},
+      refreshCloudSessions: async () => {},
+    };
+  }
   return ctx;
 };
