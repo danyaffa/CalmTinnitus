@@ -1,18 +1,18 @@
-// /components/RegisterForm.tsx
+// /app/register/page.tsx
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
-import { useRouter } from "next/navigation";
-import { auth, googleProvider } from "../lib/firebase";
+import { auth, googleProvider } from "../../lib/firebase";
 
 const STRIPE_LINK =
-  "https://buy.stripe.com/4gM5kD6cC0PK2YP39i4F20b"; // your payment link
+  "https://buy.stripe.com/4gM5kD6cC0PK2YP39i4F20b"; // your live payment link
 
-const RegisterForm: React.FC = () => {
+const RegisterPage: React.FC = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,8 +56,8 @@ const RegisterForm: React.FC = () => {
       <div className="auth-card">
         <h1>Create your NeuroQuiet account</h1>
         <p className="auth-sub">
-          We&apos;ll keep your tinnitus profiles and session history in sync
-          across your devices.
+          We&apos;ll keep your tinnitus profiles and history synced across
+          devices.
         </p>
 
         <form className="auth-form" onSubmit={handleEmailRegister}>
@@ -128,4 +128,4 @@ const RegisterForm: React.FC = () => {
   );
 };
 
-export default RegisterForm;
+export default RegisterPage;
