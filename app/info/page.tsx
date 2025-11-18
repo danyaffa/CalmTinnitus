@@ -1,21 +1,19 @@
+// /app/info/page.tsx
 "use client";
 
 import React from "react";
 
-const InfoPage: React.FC = () => {
+const InfoSafetyPage: React.FC = () => {
   return (
     <main className="page">
       <section className="card">
-        <h1 className="page-title">Therapy Information</h1>
+        <h1 className="page-title">Information &amp; Safety</h1>
         <p className="page-subtitle">
-          How Notch Therapy and Coordinated Reset (CR) work, and how to choose
-          your sound.
+          How NeuroQuiet&apos;s sound patterns work, and how to use them safely.
         </p>
 
         <div className="info-block">
-          <h2>✅ Explanation For The User</h2>
-
-          <h3>1. What does “a narrow hole at your tinnitus pitch” mean?</h3>
+          <h2>1. What does “a narrow hole at your tinnitus pitch” mean?</h2>
           <p>
             Your tinnitus has a specific frequency (pitch). Notch Therapy plays
             continuous sound (usually pink noise), but{" "}
@@ -40,22 +38,21 @@ const InfoPage: React.FC = () => {
           </ul>
           <p>
             👉 <strong>The hole</strong> = the missing frequency band centered
-            on your tinnitus tone. This is scientifically used to weaken the
-            tinnitus signal by reducing abnormal neural firing.
+            on your tinnitus tone. This is used to help weaken the tinnitus
+            signal by reducing abnormal neural firing around that pitch.
           </p>
 
-          <h3>2. What does CR (Coordinated Reset) mean?</h3>
+          <h2>2. What does CR (Coordinated Reset) mean?</h2>
           <p>
             <strong>CR Therapy (Coordinated Reset)</strong> does not remove
             sound. Instead, it uses <strong>short tone pulses</strong>,
-            delivered at several frequencies <strong>near your tinnitus pitch</strong>{" "}
-            (slightly below and slightly above).
+            delivered at several frequencies{" "}
+            <strong>near your tinnitus pitch</strong> (slightly below and
+            slightly above).
           </p>
           <p>The goal:</p>
           <ul>
-            <li>
-              Stimulate the auditory cortex with quick, precisely timed pulses
-            </li>
+            <li>Stimulate the auditory cortex with quick pulses</li>
             <li>
               “Scramble” the over-synchronized firing pattern of tinnitus
               neurons
@@ -71,28 +68,40 @@ const InfoPage: React.FC = () => {
             from different angles to reset the abnormal pattern.
           </p>
 
-          <h3>
-            3. Changing the sound: white noise, ocean, wind, music and more
-          </h3>
+          <h2>3. Choosing your sound from the Sound Library</h2>
           <p>
-            You can run therapy on top of different background sounds. In this
-            prototype you can:
+            You can change the background sound to{" "}
+            <strong>white noise, ocean, wind, rain, or soft music</strong>. Just
+            open the <strong>Sound Library</strong> inside the app and choose
+            your preferred sound.
           </p>
+          <p>
+            The therapy (Notch or CR) continues to target your tinnitus pitch in
+            the same way. The background sound simply lets you pick what feels
+            most comfortable and relaxing while the session runs.
+          </p>
+
+          <h2>Safety notes</h2>
           <ul>
+            <li>Always keep the volume at a comfortable, safe level.</li>
             <li>
-              Open the <strong>Sound Library</strong> on the Therapy page.
+              You should clearly hear the sound, but it must never feel loud,
+              sharp, or painful.
             </li>
             <li>
-              Choose your preferred background such as{" "}
-              <strong>white noise, pink noise, ocean, wind, rain,</strong> or{" "}
-              <strong>soft music</strong>.
+              Take breaks between sessions. If your tinnitus feels worse or you
+              feel unwell, stop and rest.
+            </li>
+            <li>
+              NeuroQuiet is a self-help sound tool. It does not diagnose or
+              treat any medical condition and does not replace professional
+              medical care.
+            </li>
+            <li>
+              For sudden hearing loss, strong vertigo, or rapid changes in your
+              tinnitus, please seek urgent medical attention.
             </li>
           </ul>
-          <p>
-            The therapy (Notch or CR) still targets your tinnitus pitch in the
-            same way — the background sound just lets you choose what feels most
-            comfortable and relaxing while the neuromodulation runs.
-          </p>
         </div>
       </section>
 
@@ -123,11 +132,6 @@ const InfoPage: React.FC = () => {
         }
 
         .info-block h2 {
-          font-size: 1.1rem;
-          margin-bottom: 1rem;
-        }
-
-        .info-block h3 {
           font-size: 1rem;
           margin-top: 1.2rem;
           margin-bottom: 0.35rem;
@@ -154,4 +158,4 @@ const InfoPage: React.FC = () => {
   );
 };
 
-export default InfoPage;
+export default InfoSafetyPage;
