@@ -1,12 +1,11 @@
 {
-  "name": "NeuroQuiet",
+  "name": "NeuroQuiet – Tinnitus Neuromodulation Tool",
   "short_name": "NeuroQuiet",
-  "description": "A calm, at-home sound tool to help train your brain toward quieter days with tinnitus.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#0ea5e9",
-  "orientation": "portrait",
+  "background_color": "#f4f8fb",
+  "theme_color": "#087a93",
+  "description": "Home-based tinnitus neuromodulation tool using Notch Therapy and Coordinated Reset (CR) sound patterns.",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
