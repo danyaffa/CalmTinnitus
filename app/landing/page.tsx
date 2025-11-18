@@ -10,7 +10,7 @@ export default function LandingPage() {
       {/* HERO */}
       <section className="nq-hero">
         <div className="nq-hero-text">
-          <p className="nq-badge">Tinnitus neuromodulation sound tool</p>
+          <p className="nq-badge">Based on tinnitus neuromodulation research</p>
           <h1>Train your brain toward quieter days.</h1>
           <p className="nq-hero-sub">
             NeuroQuiet is a calm, at-home sound tool created by someone who has
@@ -19,10 +19,12 @@ export default function LandingPage() {
             experience quieter moments, better focus, and more peace.
           </p>
           <div className="nq-hero-actions">
-            <Link href="/" className="nq-btn nq-btn-primary">
+            <Link href="/register" className="nq-btn nq-btn-primary">
               Start now
             </Link>
-            <span className="nq-price-note">A$7 / month – cancel anytime</span>
+            <span className="nq-price-note">
+              A$7 / month – cancel anytime
+            </span>
           </div>
           <p className="nq-hero-footnote">
             One simple plan. No free trials, no hidden upgrades. Just an
@@ -80,40 +82,51 @@ export default function LandingPage() {
         </p>
       </section>
 
-      {/* HOW IT WORKS */}
+      {/* HOW IT WORKS – 4 STEPS */}
       <section className="nq-section nq-how">
         <div className="nq-section-title">
           <h2>How it works</h2>
-          <p>Three simple steps you repeat gently over time.</p>
+          <p>Four simple steps you repeat gently over time.</p>
         </div>
 
         <div className="nq-how-grid">
           <div className="nq-how-step">
             <div className="nq-step-number">1</div>
-            <h3>Match your tinnitus pitch</h3>
+            <h3>Assess your tinnitus pitch</h3>
             <p>
               Use the frequency slider in the app until the tone resembles the
               sound you hear. Saving this as your tinnitus pitch personalises
               the sound training for your ears.
             </p>
           </div>
+
           <div className="nq-how-step">
             <div className="nq-step-number">2</div>
-            <h3>Choose therapy &amp; sound</h3>
+            <h3>Select therapy type</h3>
             <p>
-              Select Notch Therapy or Coordinated Reset (CR). Then pick the
-              background you like best — pink noise, white noise, ocean, rain,
-              wind, or soft music.
+              Choose between Notch Therapy (a narrow “hole” at your tinnitus
+              pitch) or Coordinated Reset (CR), which uses brief tone pulses
+              around your pitch to disturb the tinnitus pattern.
             </p>
           </div>
+
           <div className="nq-how-step">
             <div className="nq-step-number">3</div>
-            <h3>Train your brain gradually</h3>
+            <h3>Start therapy session</h3>
             <p>
-              Run short, comfortable sessions each day at a safe volume. Over
-              weeks and months, many people find their tinnitus feels less loud
-              and less intrusive. Results are not guaranteed, but steady routine
-              can help.
+              Run short, comfortable sessions each day at a safe volume. You
+              should always hear the sound clearly, but it must never feel loud
+              or painful.
+            </p>
+          </div>
+
+          <div className="nq-how-step">
+            <div className="nq-step-number">4</div>
+            <h3>Measure your progress</h3>
+            <p>
+              Your session history and (coming soon) progress charts help you
+              see how often you train and which modes you use most, so you and
+              your clinician can track long-term patterns.
             </p>
           </div>
         </div>
@@ -129,8 +142,8 @@ export default function LandingPage() {
         <div className="nq-section-title">
           <h2>Works on computer and phone</h2>
           <p>
-            Use NeuroQuiet on your laptop at home or on your phone beside you in
-            bed. Your sessions stay with your account.
+            Use NeuroQuiet on your laptop at home or with your phone lying beside
+            you in bed. Your sessions stay in sync with your account.
           </p>
         </div>
 
@@ -176,7 +189,7 @@ export default function LandingPage() {
             <li>No free trials to abuse, no hidden upgrades</li>
             <li>Cancel any month inside the app</li>
           </ul>
-          <Link href="/" className="nq-btn nq-btn-primary nq-btn-wide">
+          <Link href="/register" className="nq-btn nq-btn-primary nq-btn-wide">
             Start NeuroQuiet
           </Link>
           <p className="nq-note">
@@ -412,7 +425,7 @@ export default function LandingPage() {
           max-width: 440px;
           margin: 0 auto;
           background: #0f172a;
-          color: #e5e7eb;
+          color: #e57e7eb;
           border-radius: 1.1rem;
           padding: 1.8rem 1.7rem 1.7rem;
           box-shadow: 0 20px 45px rgba(15, 23, 42, 0.6);
