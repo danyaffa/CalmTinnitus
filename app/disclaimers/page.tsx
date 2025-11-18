@@ -10,20 +10,16 @@ export default function DisclaimersPage() {
         <h1>Disclaimers</h1>
         <ul>
           <li>
-            NeuroQuiet is a <strong>research prototype</strong> and is provided
-            for informational and wellness-support purposes only.
+            NeuroQuiet is a <strong>self-help sound tool for tinnitus sufferers</strong> and is provided for informational and wellness-support purposes only. It does not diagnose, treat, cure, or prevent any disease and does not replace professional medical care.
           </li>
           <li>
-            No outcome, relief, or benefit is promised or implied. Results vary
-            between individuals and some users may feel no change.
+            No outcome, relief, or benefit is promised or implied. Results vary between individuals.
           </li>
           <li>
-            If you notice any worsening of symptoms, stop using the app and
-            consult a qualified health professional.
+            If symptoms worsen, stop using the app and consult a qualified health professional.
           </li>
           <li>
-            Sound exposure at high volume can damage hearing. Always keep your
-            volume low and comfortable.
+            High volume can damage hearing — always keep volume low and comfortable.
           </li>
         </ul>
         <p>
