@@ -1,4 +1,4 @@
-// /components/LoginForm.tsx
+// /app/login/page.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -7,9 +7,9 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
-import { auth, googleProvider } from "../lib/firebase";
+import { auth, googleProvider } from "../../lib/firebase";
 
-const LoginForm: React.FC = () => {
+const LoginPage: React.FC = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,7 +49,7 @@ const LoginForm: React.FC = () => {
       <div className="auth-card">
         <h1>Log in to NeuroQuiet</h1>
         <p className="auth-sub">
-          Access your saved sessions and tinnitus progress from any device.
+          Access your saved tinnitus sessions and progress from any device.
         </p>
 
         <form className="auth-form" onSubmit={handleEmailLogin}>
@@ -120,4 +120,4 @@ const LoginForm: React.FC = () => {
   );
 };
 
-export default LoginForm;
+export default LoginPage;
