@@ -11,20 +11,17 @@ import React, {
 } from "react";
 import Link from "next/link";
 import Image from "next/image";
+
+// Components & Hooks
+import { SoundLibraryMenu, SoundProfile } from "../components/SoundLibraryMenu";
 import {
-  SoundLibraryMenu,
-  SoundProfile,
-} from "../components/SoundLibraryMenu";
-import { firebaseGoogleSignIn, firebaseSignOut } from "../lib/firebase";
-import {
-  useAuthCtx,
-  SessionLog,
-  TherapyMode,
-  TherapyType,
-} from "./AuthProvider";
+  firebaseGoogleSignIn,
+  firebaseSignOut,
+} from "../lib/firebase";
+import { useAuthCtx, SessionLog, TherapyMode, TherapyType } from "./AuthProvider";
 import { useMediaSession } from "../hooks/useMediaSession";
 
-// --- LOCAL STORAGE HOOK ---
+// --- HELPER: PERSISTENT STATE ---
 function usePersistentState<T>(
   key: string,
   initialValue: T
@@ -53,19 +50,197 @@ function usePersistentState<T>(
   return [state, setState];
 }
 
-// --- MAIN PAGE COMPONENT ---
-const NeuroQuietPage: React.FC = () => {
-  const {
-    user,
-    loading,
-    sessionHistory,
-    setSessionHistory,
-    saveSessionToCloud,
-  } = useAuthCtx();
+// =========================================================
+// 1. PUBLIC LANDING PAGE (Seen by visitors)
+// =========================================================
+const PublicLandingPage = () => {
+  return (
+    <main className="nq-landing-page">
+      {/* HERO */}
+      <section className="nq-hero">
+        <div className="nq-hero-text">
+          <p className="nq-badge">Tinnitus neuromodulation research tool</p>
+          <h1>Train your brain toward quieter days.</h1>
+          <p className="nq-hero-sub">
+            NeuroQuiet is a calm, at-home sound tool created by someone who has
+            lived with persistent tinnitus for over <strong>50 years</strong>.
+            There is no miracle cure — but with steady training, many people
+            experience quieter moments, better focus, and more peace.
+          </p>
+          <div className="nq-hero-actions">
+            <Link href="/register" className="nq-btn nq-btn-primary">
+              Start now
+            </Link>
+            <span className="nq-price-note">A$7 / month – cancel anytime</span>
+          </div>
+          <p className="nq-hero-footnote">
+            One simple plan. No free trials, no hidden upgrades. Just an
+            affordable tool you can use daily.
+          </p>
+        </div>
 
-  const [activeTab, setActiveTab] = useState<
-    "therapy" | "history" | "progress" | "info"
-  >("therapy");
+        <div className="nq-hero-device">
+          <div className="nq-hero-device-card">
+            <Image
+              src="/icons/LapTop.png"
+              alt="NeuroQuiet running on a laptop"
+              width={480}
+              height={320}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* WHY */}
+      <section className="nq-section">
+        <div className="nq-section-title">
+          <h2>Why NeuroQuiet?</h2>
+          <p>Honest, gentle support for people who live with tinnitus every day.</p>
+        </div>
+        <div className="nq-card-grid">
+          <div className="nq-card">
+            <h3>Created by a long-term tinnitus sufferer</h3>
+            <p>
+              Over five decades of living with constant ringing shaped
+              NeuroQuiet. Every part of the tool comes from real experience, not
+              theory alone.
+            </p>
+          </div>
+          <div className="nq-card">
+            <h3>Use at home, anytime</h3>
+            <p>
+              All you need is headphones and a quiet place. Match your tinnitus
+              pitch, choose your sound, and start short, calm sessions whenever
+              you have a moment.
+            </p>
+          </div>
+          <div className="nq-card">
+            <h3>Inspired by published research*</h3>
+            <p>
+              NeuroQuiet combines ideas explored in tinnitus research — notched
+              sound, pink noise, and Coordinated Reset patterns. It is a
+              self-help sound tool, not a medical device.
+            </p>
+          </div>
+        </div>
+        <p className="nq-footnote">
+          *Research from independent academic groups, not associated with
+          NeuroQuiet. Individual results vary.
+        </p>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section className="nq-section nq-how">
+        <div className="nq-section-title">
+          <h2>How it works</h2>
+          <p>Three simple steps you repeat gently over time.</p>
+        </div>
+
+        <div className="nq-how-grid">
+          <div className="nq-how-step">
+            <div className="nq-step-number">1</div>
+            <h3>Match your tinnitus pitch</h3>
+            <p>
+              Use the frequency slider in the app until the tone resembles the
+              sound you hear. Saving this as your tinnitus pitch personalises
+              the sound training for your ears.
+            </p>
+          </div>
+          <div className="nq-how-step">
+            <div className="nq-step-number">2</div>
+            <h3>Choose therapy &amp; sound</h3>
+            <p>
+              Select Notch Therapy or Coordinated Reset (CR). Then pick the
+              background you like best — pink noise, white noise, ocean, rain,
+              wind, or soft music.
+            </p>
+          </div>
+          <div className="nq-how-step">
+            <div className="nq-step-number">3</div>
+            <h3>Train your brain gradually</h3>
+            <p>
+              Run short, comfortable sessions each day at a safe volume. Over
+              weeks and months, many people find their tinnitus feels less loud
+              and less intrusive.
+            </p>
+          </div>
+        </div>
+
+        <p className="nq-note">
+          Tinnitus improvement usually takes time. Think of NeuroQuiet as a
+          long-term habit, not a quick fix.
+        </p>
+      </section>
+
+      {/* DEVICE SHOWCASE – MOBILE + LAPTOP MOCKUPS */}
+      <section className="nq-section nq-devices">
+        <div className="nq-section-title">
+          <h2>Works on computer and phone</h2>
+          <p>
+            Use NeuroQuiet on your laptop at home or on your phone beside you in
+            bed. Your sessions stay with your account.
+          </p>
+        </div>
+
+        <div className="nq-device-grid">
+          <div className="nq-device-card">
+            <div className="nq-device-label">Desktop / Laptop</div>
+            <Image
+              src="/icons/LapTop.png"
+              alt="NeuroQuiet on laptop"
+              width={520}
+              height={340}
+              className="nq-device-image"
+            />
+          </div>
+          <div className="nq-device-card nq-device-card-mobile">
+            <div className="nq-device-label">Mobile</div>
+            <Image
+              src="/icons/Mobile.png"
+              alt="NeuroQuiet on mobile"
+              width={260}
+              height={480}
+              className="nq-device-image"
+            />
+          </div>
+        </div>
+
+        <p className="nq-note">
+          On supported devices, audio can continue while your screen is dimmed.
+        </p>
+      </section>
+
+      {/* PRICING */}
+      <section className="nq-section nq-pricing">
+        <div className="nq-pricing-card">
+          <h2>Simple pricing</h2>
+          <p className="nq-price">
+            <span className="nq-price-amount">A$7</span>{" "}
+            <span className="nq-price-period">/ month</span>
+          </p>
+          <ul className="nq-price-list">
+            <li>Unlimited sessions</li>
+            <li>No free trials</li>
+            <li>Cancel any month</li>
+          </ul>
+          <Link href="/register" className="nq-btn nq-btn-primary nq-btn-wide">
+            Start NeuroQuiet
+          </Link>
+        </div>
+      </section>
+    </main>
+  );
+};
+
+// =========================================================
+// 2. AUTHENTICATED DASHBOARD (The App)
+// =========================================================
+const AuthenticatedDashboard = () => {
+  const { user, loading, sessionHistory, saveSessionToCloud } = useAuthCtx();
+
+  const [activeTab, setActiveTab] = useState<"therapy" | "history" | "progress" | "info">(
+    "therapy"
+  );
 
   const [tinnitusPitch, setTinnitusPitch] = usePersistentState<number | null>(
     "neuroquiet_pitch",
@@ -94,9 +269,7 @@ const NeuroQuietPage: React.FC = () => {
   const crTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [selectedSound, setSelectedSound] = useState<SoundProfile | null>(
-    null
-  );
+  const [selectedSound, setSelectedSound] = useState<SoundProfile | null>(null);
   const [isSoundLibraryOpen, setIsSoundLibraryOpen] = useState(false);
 
   const NOTCH_THERAPY_GAIN = 0.12;
@@ -106,8 +279,7 @@ const NeuroQuietPage: React.FC = () => {
   // --- AUDIO CONTEXT ---
   const ensureAudioContext = useCallback(() => {
     if (!audioCtxRef.current) {
-      const AC =
-        window.AudioContext || (window as any).webkitAudioContext;
+      const AC = window.AudioContext || (window as any).webkitAudioContext;
       audioCtxRef.current = new AC();
       mainGainRef.current = audioCtxRef.current.createGain();
       mainGainRef.current.connect(audioCtxRef.current.destination);
@@ -166,13 +338,7 @@ const NeuroQuietPage: React.FC = () => {
     const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
     const data = buffer.getChannelData(0);
 
-    let b0 = 0,
-      b1 = 0,
-      b2 = 0,
-      b3 = 0,
-      b4 = 0,
-      b5 = 0,
-      b6 = 0;
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
 
     for (let i = 0; i < length; i++) {
       const white = Math.random() * 2 - 1;
@@ -182,8 +348,7 @@ const NeuroQuietPage: React.FC = () => {
       b3 = 0.8665 * b3 + white * 0.3104856;
       b4 = 0.55 * b4 + white * 0.5329522;
       b5 = -0.7616 * b5 - white * 0.016898;
-      const pink =
-        b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+      const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
       b6 = white * 0.115926;
       data[i] = pink * 0.11;
     }
@@ -261,13 +426,7 @@ const NeuroQuietPage: React.FC = () => {
     gainNode.connect(mainGainRef.current);
     crGainRef.current = gainNode;
 
-    const freqs = [
-      pitch * 0.9,
-      pitch * 0.95,
-      pitch,
-      pitch * 1.05,
-      pitch * 1.1,
-    ];
+    const freqs = [pitch * 0.9, pitch * 0.95, pitch, pitch * 1.05, pitch * 1.1];
 
     const tones = freqs.map((f) => ({ freq: f, phase: 0 }));
 
@@ -293,11 +452,7 @@ const NeuroQuietPage: React.FC = () => {
   };
 
   // --- SESSION LOGIC ---
-  const logSessionLocal = (
-    mode: TherapyMode,
-    type: TherapyType,
-    pitch: number
-  ) => {
+  const logSessionLocal = (mode: TherapyMode, type: TherapyType, pitch: number) => {
     let duration = 0;
     if (mode === "relief") duration = 5;
     else if (mode === "sleep") duration = 45;
@@ -311,13 +466,13 @@ const NeuroQuietPage: React.FC = () => {
       tinnitusPitch: pitch,
     };
 
+    // Save to cloud if logged in
     saveSessionToCloud(baseLog).catch(() => {});
 
+    // Local storage history (for offline)
     const localKey = "neuroquiet_sessionHistory";
     try {
-      const current = JSON.parse(
-        window.localStorage.getItem(localKey) || "[]"
-      ) as SessionLog[];
+      const current = JSON.parse(window.localStorage.getItem(localKey) || "[]") as SessionLog[];
       const newLocal: SessionLog = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         ...baseLog,
@@ -327,12 +482,7 @@ const NeuroQuietPage: React.FC = () => {
     } catch {}
   };
 
-  const startSessionTimer = (
-    totalMinutes: number,
-    mode: TherapyMode,
-    type: TherapyType,
-    pitch: number
-  ) => {
+  const startSessionTimer = (totalMinutes: number, mode: TherapyMode, type: TherapyType, pitch: number) => {
     setMinutesLeft(totalMinutes);
     if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
     sessionTimerRef.current = setInterval(() => {
@@ -419,14 +569,14 @@ const NeuroQuietPage: React.FC = () => {
       : "running";
 
   return (
-    <main className="main-shell">
+    <div className="main-shell">
       <header className="header">
         <div className="brand-block">
           <Image
             src="/icons/icon-192x192.png"
             alt="NeuroQuiet logo"
-            width={60}
-            height={60}
+            width={32}
+            height={32}
             className="logo-image"
           />
           <div>
@@ -449,9 +599,7 @@ const NeuroQuietPage: React.FC = () => {
               <span>Loading...</span>
             ) : user ? (
               <>
-                <span className="user-email">
-                  {user.email || "Signed in"}
-                </span>
+                <span className="user-email">{user.email || "Signed in"}</span>
                 <button
                   className="btn btn-secondary btn-xs"
                   onClick={() => firebaseSignOut()}
@@ -482,25 +630,19 @@ const NeuroQuietPage: React.FC = () => {
       {/* Tabs */}
       <div className="tab-container">
         <button
-          className={`tab-button ${
-            activeTab === "therapy" ? "active" : ""
-          }`}
+          className={`tab-button ${activeTab === "therapy" ? "active" : ""}`}
           onClick={() => setActiveTab("therapy")}
         >
           Therapy
         </button>
         <button
-          className={`tab-button ${
-            activeTab === "history" ? "active" : ""
-          }`}
+          className={`tab-button ${activeTab === "history" ? "active" : ""}`}
           onClick={() => setActiveTab("history")}
         >
           Session History ({sessionHistory.length})
         </button>
         <button
-          className={`tab-button ${
-            activeTab === "progress" ? "active" : ""
-          }`}
+          className={`tab-button ${activeTab === "progress" ? "active" : ""}`}
           onClick={() => setActiveTab("progress")}
         >
           Progress
@@ -542,10 +684,7 @@ const NeuroQuietPage: React.FC = () => {
               >
                 Test Tone
               </button>
-              <button
-                className="btn btn-primary"
-                onClick={saveTinnitusPitch}
-              >
+              <button className="btn btn-primary" onClick={saveTinnitusPitch}>
                 Save as My Tinnitus Pitch
               </button>
             </div>
@@ -585,7 +724,7 @@ const NeuroQuietPage: React.FC = () => {
               </button>
               {selectedSound && (
                 <span className="sound-selected-label">
-                  Background: {selectedSound.label}
+                  Background: {selectedSound}
                 </span>
               )}
             </div>
@@ -593,8 +732,8 @@ const NeuroQuietPage: React.FC = () => {
             <hr />
             <h2>3. Start Therapy Session</h2>
             <p>
-              Keep your device volume low and comfortable. You should be able
-              to hear the sound, but it must never feel loud or painful.
+              Keep your device volume low and comfortable. You should be able to
+              hear the sound, but it must never feel loud or painful.
             </p>
 
             <div className="label-row">
@@ -650,7 +789,7 @@ const NeuroQuietPage: React.FC = () => {
           </div>
         )}
 
-        {/* RIGHT COLUMN */}
+        {/* RIGHT COLUMN – STATUS / OTHER TABS */}
         <div className="card status-card">
           {activeTab === "therapy" && (
             <>
@@ -666,8 +805,8 @@ const NeuroQuietPage: React.FC = () => {
                 <li>Use in a quiet environment so you can keep volume low.</li>
                 <li>Take breaks. Do not run back-to-back long sessions.</li>
                 <li>
-                  If your tinnitus becomes more intrusive, stop and rest for
-                  the day.
+                  If your tinnitus becomes more intrusive, stop and rest for the
+                  day.
                 </li>
                 <li>
                   For medical concerns or sudden changes in hearing, seek urgent
@@ -729,8 +868,8 @@ const NeuroQuietPage: React.FC = () => {
               <h2>Info &amp; Safety</h2>
               <p>
                 Learn how Notch Therapy and Coordinated Reset (CR) use sound
-                patterns to gently train your brain away from your tinnitus
-                tone, plus important safety notes.
+                patterns to gently train your brain away from your tinnitus tone,
+                plus important safety notes.
               </p>
               <p>
                 For full details, visit the{" "}
@@ -755,8 +894,29 @@ const NeuroQuietPage: React.FC = () => {
         © {new Date().getFullYear()} Leffler International Investments Pty Ltd —
         NeuroQuiet. All rights reserved.
       </footer>
-    </main>
+    </div>
   );
 };
 
-export default NeuroQuietPage;
+// =========================================================
+// 3. MAIN PAGE EXPORT
+// =========================================================
+export default function Page() {
+  const { user, loading } = useAuthCtx();
+
+  if (loading) {
+    return (
+      <div style={{ padding: "2rem", textAlign: "center" }}>
+        Loading NeuroQuiet...
+      </div>
+    );
+  }
+
+  // If user is logged in -> Show the App (Dashboard)
+  if (user) {
+    return <AuthenticatedDashboard />;
+  }
+
+  // If user is NOT logged in -> Show the Landing Page
+  return <PublicLandingPage />;
+}
