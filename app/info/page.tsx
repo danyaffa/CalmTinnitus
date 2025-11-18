@@ -1,4 +1,5 @@
 // /app/info/page.tsx
+"use client";
 
 import Link from "next/link";
 
@@ -100,8 +101,8 @@ export default function InfoSafetyPage() {
         <h2>5. Important note</h2>
         <p>
           NeuroQuiet is a self-help sound tool based on tinnitus neuromodulation
-          research. It is <strong>not</strong> a medical device and does not
-          replace diagnosis or treatment from your doctor or audiologist.
+          research. It does not diagnose, treat, cure, or prevent any disease
+          and does not replace professional medical advice or care.
         </p>
       </section>
 
