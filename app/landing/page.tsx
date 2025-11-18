@@ -10,14 +10,13 @@ export default function LandingPage() {
       {/* HERO */}
       <section className="nq-hero">
         <div className="nq-hero-text">
-          <p className="nq-badge">Prototype neuromodulation tool</p>
+          <p className="nq-badge">Tinnitus neuromodulation sound tool</p>
           <h1>Train your brain toward quieter days.</h1>
           <p className="nq-hero-sub">
             NeuroQuiet is a calm, at-home sound tool created by someone who has
-            lived with persistent tinnitus for over{" "}
-            <strong>50 years</strong>. There is no miracle cure — but with
-            steady training, many people experience quieter moments, better
-            focus, and more peace.
+            lived with persistent tinnitus for over <strong>50 years</strong>.
+            There is no miracle cure — but with steady training, many people
+            experience quieter moments, better focus, and more peace.
           </p>
           <div className="nq-hero-actions">
             <Link href="/" className="nq-btn nq-btn-primary">
@@ -34,8 +33,8 @@ export default function LandingPage() {
         <div className="nq-hero-device">
           <div className="nq-hero-device-card">
             <Image
-              src="/mockups/neuroquiet-desktop.png"
-              alt="NeuroQuiet therapy screen on a desktop"
+              src="/icons/LapTop.png"
+              alt="NeuroQuiet running on a laptop"
               width={480}
               height={320}
             />
@@ -43,14 +42,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* THREE CARDS */}
+      {/* WHY */}
       <section className="nq-section">
         <div className="nq-section-title">
           <h2>Why NeuroQuiet?</h2>
-          <p>
-            Honest, gentle support for people who live with tinnitus day after
-            day.
-          </p>
+          <p>Honest, gentle support for people who live with tinnitus every day.</p>
         </div>
         <div className="nq-card-grid">
           <div className="nq-card">
@@ -62,7 +58,7 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="nq-card">
-            <h3>Use at home, any time</h3>
+            <h3>Use at home, anytime</h3>
             <p>
               All you need is headphones and a quiet place. Match your tinnitus
               pitch, choose your sound, and start short, calm sessions whenever
@@ -73,8 +69,8 @@ export default function LandingPage() {
             <h3>Inspired by published research*</h3>
             <p>
               NeuroQuiet combines ideas explored in tinnitus research — notched
-              sound, pink noise, and Coordinated Reset patterns. It is an
-              at-home self-help tool, not a medical device.
+              sound, pink noise, and Coordinated Reset patterns. It is a
+              self-help sound tool, not a medical device.
             </p>
           </div>
         </div>
@@ -87,7 +83,7 @@ export default function LandingPage() {
       {/* HOW IT WORKS */}
       <section className="nq-section nq-how">
         <div className="nq-section-title">
-          <h2>How NeuroQuiet works</h2>
+          <h2>How it works</h2>
           <p>Three simple steps you repeat gently over time.</p>
         </div>
 
@@ -103,7 +99,7 @@ export default function LandingPage() {
           </div>
           <div className="nq-how-step">
             <div className="nq-step-number">2</div>
-            <h3>Choose your therapy & sound</h3>
+            <h3>Choose therapy &amp; sound</h3>
             <p>
               Select Notch Therapy or Coordinated Reset (CR). Then pick the
               background you like best — pink noise, white noise, ocean, rain,
@@ -128,7 +124,7 @@ export default function LandingPage() {
         </p>
       </section>
 
-      {/* DEVICE SHOWCASE */}
+      {/* DEVICE SHOWCASE – MOBILE + LAPTOP MOCKUPS */}
       <section className="nq-section nq-devices">
         <div className="nq-section-title">
           <h2>Works on computer and phone</h2>
@@ -142,8 +138,8 @@ export default function LandingPage() {
           <div className="nq-device-card">
             <div className="nq-device-label">Desktop / Laptop</div>
             <Image
-              src="/mockups/neuroquiet-desktop.png"
-              alt="NeuroQuiet running on desktop"
+              src="/icons/LapTop.png"
+              alt="NeuroQuiet on laptop"
               width={520}
               height={340}
               className="nq-device-image"
@@ -152,18 +148,18 @@ export default function LandingPage() {
           <div className="nq-device-card nq-device-card-mobile">
             <div className="nq-device-label">Mobile</div>
             <Image
-              src="/mockups/neuroquiet-mobile.png"
-              alt="NeuroQuiet running on mobile"
-              width={220}
-              height={420}
+              src="/icons/Mobile.png"
+              alt="NeuroQuiet on mobile"
+              width={260}
+              height={480}
               className="nq-device-image"
             />
           </div>
         </div>
 
         <p className="nq-note">
-          On supported devices, audio continues while your screen is dimmed, so
-          you can lie back and relax while the session runs.
+          On supported devices, audio can continue while your screen is dimmed,
+          so you can lie back and relax while the session runs.
         </p>
       </section>
 
@@ -184,9 +180,9 @@ export default function LandingPage() {
             Start NeuroQuiet
           </Link>
           <p className="nq-note">
-            NeuroQuiet is an experimental self-help tool and does not replace
-            medical care. For sudden changes in hearing or strong distress,
-            please seek urgent professional help.
+            NeuroQuiet is a self-help sound tool and does not replace
+            professional medical care. For sudden changes in hearing or strong
+            distress, please seek urgent medical advice.
           </p>
         </div>
       </section>
