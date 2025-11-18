@@ -11,12 +11,17 @@ import React, {
 } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { SoundLibraryMenu, SoundProfile } from "../components/SoundLibraryMenu";
 import {
-  firebaseGoogleSignIn,
-  firebaseSignOut,
-} from "../lib/firebase";
-import { useAuthCtx, SessionLog, TherapyMode, TherapyType } from "./AuthProvider";
+  SoundLibraryMenu,
+  SoundProfile,
+} from "../components/SoundLibraryMenu";
+import { firebaseGoogleSignIn, firebaseSignOut } from "../lib/firebase";
+import {
+  useAuthCtx,
+  SessionLog,
+  TherapyMode,
+  TherapyType,
+} from "./AuthProvider";
 import { useMediaSession } from "../hooks/useMediaSession";
 
 // --- LOCAL STORAGE HOOK ---
@@ -50,12 +55,17 @@ function usePersistentState<T>(
 
 // --- MAIN PAGE COMPONENT ---
 const NeuroQuietPage: React.FC = () => {
-  const { user, loading, sessionHistory, setSessionHistory, saveSessionToCloud } =
-    useAuthCtx();
+  const {
+    user,
+    loading,
+    sessionHistory,
+    setSessionHistory,
+    saveSessionToCloud,
+  } = useAuthCtx();
 
-  const [activeTab, setActiveTab] = useState<"therapy" | "history" | "progress" | "info">(
-    "therapy"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "therapy" | "history" | "progress" | "info"
+  >("therapy");
 
   const [tinnitusPitch, setTinnitusPitch] = usePersistentState<number | null>(
     "neuroquiet_pitch",
@@ -84,7 +94,9 @@ const NeuroQuietPage: React.FC = () => {
   const crTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [selectedSound, setSelectedSound] = useState<SoundProfile | null>(null);
+  const [selectedSound, setSelectedSound] = useState<SoundProfile | null>(
+    null
+  );
   const [isSoundLibraryOpen, setIsSoundLibraryOpen] = useState(false);
 
   const NOTCH_THERAPY_GAIN = 0.12;
@@ -280,8 +292,6 @@ const NeuroQuietPage: React.FC = () => {
     crTimerRef.current = setInterval(playNextTone, 500);
   };
 
-
-
   // --- SESSION LOGIC ---
   const logSessionLocal = (
     mode: TherapyMode,
@@ -301,10 +311,8 @@ const NeuroQuietPage: React.FC = () => {
       tinnitusPitch: pitch,
     };
 
-    // Save to cloud if logged in
     saveSessionToCloud(baseLog).catch(() => {});
 
-    // Local storage history (for offline)
     const localKey = "neuroquiet_sessionHistory";
     try {
       const current = JSON.parse(
@@ -362,6 +370,7 @@ const NeuroQuietPage: React.FC = () => {
     setCurrentMode(mode);
     startSessionTimer(totalMinutes, mode, therapyType, tinnitusPitch);
   };
+
   useMediaSession({
     title: "NeuroQuiet – Tinnitus Session",
     artist: "NeuroQuiet",
@@ -576,7 +585,7 @@ const NeuroQuietPage: React.FC = () => {
               </button>
               {selectedSound && (
                 <span className="sound-selected-label">
-                  Background: {selectedSound}
+                  Background: {selectedSound.label}
                 </span>
               )}
             </div>
@@ -641,7 +650,7 @@ const NeuroQuietPage: React.FC = () => {
           </div>
         )}
 
-        {/* RIGHT COLUMN – STATUS / OTHER TABS */}
+        {/* RIGHT COLUMN */}
         <div className="card status-card">
           {activeTab === "therapy" && (
             <>
@@ -661,8 +670,8 @@ const NeuroQuietPage: React.FC = () => {
                   the day.
                 </li>
                 <li>
-                  For medical concerns or sudden changes in hearing, seek
-                  urgent professional care.
+                  For medical concerns or sudden changes in hearing, seek urgent
+                  professional care.
                 </li>
               </ul>
             </>
@@ -673,7 +682,9 @@ const NeuroQuietPage: React.FC = () => {
               <h2>Session History</h2>
               {loading && <p>Loading your sessions…</p>}
               {!loading && sessionHistory.length === 0 && (
-                <p>No sessions logged yet. Your future sessions will appear here.</p>
+                <p>
+                  No sessions logged yet. Your future sessions will appear here.
+                </p>
               )}
               {sessionHistory.length > 0 && (
                 <p className="history-note">
@@ -702,9 +713,9 @@ const NeuroQuietPage: React.FC = () => {
             <>
               <h2>Progress (coming soon)</h2>
               <p>
-                Over time, NeuroQuiet will help you track how often you use
-                each mode, your average tinnitus pitch, and trends in your
-                tinnitus intrusiveness.
+                Over time, NeuroQuiet will help you track how often you use each
+                mode, your average tinnitus pitch, and trends in your tinnitus
+                intrusiveness.
               </p>
               <p>
                 This section will show charts and summaries so you and your
@@ -741,8 +752,8 @@ const NeuroQuietPage: React.FC = () => {
       />
 
       <footer className="footer">
-        © {new Date().getFullYear()} Leffler International Investments Pty Ltd
-        — NeuroQuiet. All rightsb reserved.
+        © {new Date().getFullYear()} Leffler International Investments Pty Ltd —
+        NeuroQuiet. All rights reserved.
       </footer>
     </main>
   );
