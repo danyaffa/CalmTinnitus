@@ -1,66 +1,73 @@
-// /app/register/page.tsx
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  firebaseEmailSignUp,
-  firebaseGoogleSignIn,
-} from "../../lib/firebase";
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+} from "firebase/auth";
+import { auth, googleProvider } from "../../lib/firebase";
 
-const STRIPE_LINK = "https://buy.stripe.com/4gM5kxxxxxxxxx";
+const STRIPE_LINK =
+  "https://buy.stripe.com/4gM5kD6cC0PK2YP39i4F20b"; // your live payment link
 
-export default function RegisterPage() {
+const RegisterPage: React.FC = () => {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPw, setShowPw] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleEmailRegister = async (e: React.FormEvent) => {
+  const goToStripe = () => {
+    window.location.href = STRIPE_LINK;
+  };
+
+  const handleEmailRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    setBusy(true);
+    setLoading(true);
     try {
-      await firebaseEmailSignUp(email, password);
-      window.location.href = STRIPE_LINK;
+      await createUserWithEmailAndPassword(auth, email, password);
+      goToStripe();
     } catch (err: any) {
-      setError(err.message || "Registration failed");
+      setError(err.message ?? "Registration failed");
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   };
 
-  const handleGoogle = async () => {
+  const handleGoogleRegister = async () => {
     setError(null);
-    setBusy(true);
+    setLoading(true);
     try {
-      await firebaseGoogleSignIn();
-      window.location.href = STRIPE_LINK;
+      await signInWithPopup(auth, googleProvider);
+      goToStripe();
     } catch (err: any) {
-      setError(err.message || "Google sign-up failed");
+      setError(err.message ?? "Google sign-up failed");
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   };
 
   return (
-    <main className="auth-page">
+    <div className="auth-page">
       <div className="auth-card">
-        <h1>Create Your NeuroQuiet Account</h1>
+        <h1>Create your NeuroQuiet account</h1>
         <p className="auth-sub">
-          Your therapy history will sync between devices. After sign-up you
-          will be redirected to our Stripe page.
+          We&apos;ll save your tinnitus profiles and progress securely in the
+          cloud.
         </p>
 
-        <form onSubmit={handleEmailRegister} className="auth-form">
+        <form className="auth-form" onSubmit={handleEmailRegister}>
           <label>
             Email
             <input
               type="email"
-              required
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
             />
           </label>
 
@@ -68,43 +75,51 @@ export default function RegisterPage() {
             Password
             <div className="pw-wrapper">
               <input
-                type={showPw ? "text" : "password"}
-                required
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
               />
               <button
                 type="button"
                 className="pw-toggle"
-                onClick={() => setShowPw((v) => !v)}
+                onClick={() => setShowPassword((v) => !v)}
               >
-                {showPw ? "Hide" : "See"}
+                {showPassword ? "Hide" : "See"}
               </button>
             </div>
           </label>
 
-          {error && <p className="auth-error">{error}</p>}
+          {error && <div className="auth-error">{error}</div>}
 
-          <button className="btn btn-primary auth-btn" disabled={busy}>
-            {busy ? "Registering…" : "Register & Go to Stripe"}
+          <button
+            type="submit"
+            className="btn btn-primary auth-btn"
+            disabled={loading}
+          >
+            {loading ? "Creating account..." : "Register & go to payment"}
           </button>
         </form>
 
         <button
+          type="button"
           className="btn btn-secondary auth-btn"
-          onClick={handleGoogle}
-          disabled={busy}
+          onClick={handleGoogleRegister}
+          disabled={loading}
         >
-          Sign with Google & Go to Stripe
+          Sign up with Google & go to payment
         </button>
 
-        <p className="auth-footer">
-          Already have an account? <Link href="/login">Login</Link>
-        </p>
-        <p className="auth-footer">
-          <Link href="/">← Back to app</Link>
-        </p>
+        <div className="auth-footer">
+          Already have an account?{" "}
+          <a href="/login" className="btn-link">
+            Log in
+          </a>
+        </div>
       </div>
-    </main>
+    </div>
   );
-}
+};
+
+export default RegisterPage;
