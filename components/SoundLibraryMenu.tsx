@@ -1,163 +1,218 @@
+// /components/SoundLibraryMenu.tsx
 "use client";
 
-import React from "react";
+import React, { Dispatch, SetStateAction } from "react";
 
-export type SoundProfile =
+export type SoundProfileId =
   | "pink-noise"
   | "white-noise"
-  | "brown-noise"
   | "ocean"
   | "rain"
   | "wind"
   | "soft-music";
 
-type SoundLibraryMenuProps = {
-  value: SoundProfile;
-  onChange: (value: SoundProfile) => void;
-  disabled?: boolean;
+export type SoundProfile = {
+  id: SoundProfileId;
+  label: string;
+  description: string;
 };
 
-const OPTIONS: { id: SoundProfile; label: string; description: string }[] = [
+const SOUND_LIBRARY: SoundProfile[] = [
   {
     id: "pink-noise",
-    label: "Pink noise",
-    description: "Balanced noise, good for most users (default).",
+    label: "Pink Noise (gentle)",
+    description:
+      "Soft broadband noise with more energy in the lower frequencies. Often used for tinnitus sound therapy.",
   },
   {
     id: "white-noise",
-    label: "White noise",
-    description: "Brighter noise with more high frequencies.",
-  },
-  {
-    id: "brown-noise",
-    label: "Brown noise",
-    description: "Deeper noise with more low frequencies.",
+    label: "White Noise",
+    description:
+      "Flat noise across all frequencies. Simple, neutral sound that many people already know from masking devices.",
   },
   {
     id: "ocean",
-    label: "Ocean waves",
-    description: "Gentle rolling surf, slow and calming.",
+    label: "Ocean Waves",
+    description:
+      "Slow, rolling surf sounds for people who prefer a more natural, relaxing background.",
   },
   {
     id: "rain",
     label: "Rain",
-    description: "Soft rainfall style background.",
+    description:
+      "Gentle rain sound — steady and calming, good for evening or sleep sessions.",
   },
   {
     id: "wind",
     label: "Wind",
-    description: "Soft wind / air sound.",
+    description:
+      "Soft wind / air movement texture. Similar to noise, but with a more natural feel.",
   },
   {
     id: "soft-music",
-    label: "Soft music",
-    description: "Very gentle musical background.",
+    label: "Soft Music Bed",
+    description:
+      "Very light musical background. Keep volume low so the tinnitus training remains comfortable.",
   },
 ];
 
-export const SoundLibraryMenu: React.FC<SoundLibraryMenuProps> = ({
-  value,
-  onChange,
-  disabled = false,
-}) => {
-  return (
-    <div className="sound-library">
-      <h3 className="section-subtitle">4. Choose Sound From Library</h3>
-      <p className="section-helper">
-        You can run Notch or CR therapy on top of different backgrounds. Choose
-        the one that feels most comfortable for you.
-      </p>
+export type SoundLibraryMenuProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedSound: SoundProfile | null;
+  onSelectSound: Dispatch<SetStateAction<SoundProfile | null>>;
+};
 
-      <div className="sound-library-grid">
-        {OPTIONS.map((opt) => {
-          const isActive = opt.id === value;
-          return (
-            <button
-              key={opt.id}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(opt.id)}
-              className={
-                "sound-option" +
-                (isActive ? " sound-option--active" : "") +
-                (disabled ? " sound-option--disabled" : "")
-              }
+export const SoundLibraryMenu: React.FC<SoundLibraryMenuProps> = ({
+  isOpen,
+  onClose,
+  selectedSound,
+  onSelectSound,
+}) => {
+  if (!isOpen) return null;
+
+  const handleSelect = (profile: SoundProfile) => {
+    onSelectSound(profile);
+    onClose();
+  };
+
+  return (
+    <div className="sound-modal-backdrop" onClick={onClose}>
+      <div
+        className="sound-modal"
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+      >
+        <div className="sound-modal-header">
+          <h2>Sound Library</h2>
+          <button className="sound-close-button" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <p className="sound-modal-intro">
+          Choose the background sound you feel most relaxed with. All sounds
+          will be shaped by your tinnitus settings (Notch or CR) inside the
+          engine.
+        </p>
+
+        <ul className="sound-list">
+          {SOUND_LIBRARY.map((sound) => (
+            <li
+              key={sound.id}
+              className={`sound-item ${
+                selectedSound?.id === sound.id ? "selected" : ""
+              }`}
             >
-              <div className="sound-option-label">{opt.label}</div>
-              <div className="sound-option-description">
-                {opt.description}
-              </div>
-            </button>
-          );
-        })}
+              <button
+                className="sound-item-button"
+                onClick={() => handleSelect(sound)}
+              >
+                <div className="sound-item-main">
+                  <div className="sound-item-label">{sound.label}</div>
+                  <div className="sound-item-desc">{sound.description}</div>
+                </div>
+                {selectedSound?.id === sound.id && (
+                  <span className="sound-item-tag">Selected</span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        <p className="sound-modal-footnote">
+          You can change sounds anytime. If a sound makes your tinnitus feel
+          worse, stop the session and try a different one on another day.
+        </p>
       </div>
 
       <style jsx>{`
-        .sound-library {
-          margin-top: 1.75rem;
+        .sound-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.45);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 40;
         }
-
-        .section-subtitle {
-          font-size: 1rem;
-          font-weight: 600;
-          margin-bottom: 0.35rem;
+        .sound-modal {
+          width: 100%;
+          max-width: 520px;
+          background: #ffffff;
+          border-radius: 1rem;
+          padding: 1.4rem 1.5rem 1.3rem;
+          box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
         }
-
-        .section-helper {
-          font-size: 0.875rem;
-          color: #4b5563;
-          margin-bottom: 0.75rem;
+        .sound-modal-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 0.5rem;
         }
-
-        .sound-library-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-          gap: 0.75rem;
-        }
-
-        .sound-option {
-          border-radius: 999px;
-          border: 1px solid #e5e7eb;
-          padding: 0.6rem 0.9rem;
-          background: #f9fafb;
-          text-align: left;
+        .sound-close-button {
+          border: none;
+          background: transparent;
           cursor: pointer;
-          transition: all 0.15s ease;
-          font-size: 0.85rem;
-        }
-
-        .sound-option-label {
-          font-weight: 600;
-          margin-bottom: 0.15rem;
-        }
-
-        .sound-option-description {
-          font-size: 0.78rem;
+          font-size: 1.1rem;
           color: #6b7280;
         }
-
-        .sound-option--active {
+        .sound-modal-intro {
+          font-size: 0.9rem;
+          color: #4b5563;
+          margin-bottom: 0.9rem;
+        }
+        .sound-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+          max-height: 260px;
+          overflow-y: auto;
+        }
+        .sound-item + .sound-item {
+          margin-top: 0.35rem;
+        }
+        .sound-item-button {
+          width: 100%;
+          border-radius: 0.75rem;
+          border: 1px solid #e5e7eb;
+          padding: 0.65rem 0.75rem;
+          background: #f9fafb;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.6rem;
+          cursor: pointer;
+          text-align: left;
+        }
+        .sound-item.selected .sound-item-button {
+          border-color: #0ea5e9;
+          background: #e0f2fe;
+        }
+        .sound-item-label {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: #111827;
+        }
+        .sound-item-desc {
+          font-size: 0.8rem;
+          color: #6b7280;
+          margin-top: 0.15rem;
+        }
+        .sound-item-tag {
+          font-size: 0.75rem;
+          padding: 0.2rem 0.5rem;
+          border-radius: 999px;
           background: #0ea5e9;
-          border-color: #0ea5e9;
-          color: #ffffff;
+          color: white;
+          white-space: nowrap;
         }
-
-        .sound-option--active .sound-option-description {
-          color: #e0f2fe;
-        }
-
-        .sound-option--disabled {
-          cursor: not-allowed;
-          opacity: 0.6;
-        }
-
-        .sound-option:hover:not(.sound-option--disabled) {
-          border-color: #0ea5e9;
-          box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.2);
+        .sound-modal-footnote {
+          font-size: 0.78rem;
+          color: #6b7280;
+          margin-top: 0.7rem;
         }
       `}</style>
     </div>
   );
 };
-
-export default SoundLibraryMenu;
