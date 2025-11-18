@@ -89,7 +89,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const refreshCloudSessions = async () => {
-    if (user) await loadSessions(user.uid);
+    if (user) {
+      await loadSessions(user.uid);
+    }
   };
 
   const value: AuthContextType = {
@@ -107,6 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 export const useAuthCtx = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) {
+    // SAFE FALLBACK (fixes "useAuthCtx must be used within AuthProvider" at build time)
     return {
       user: null,
       loading: true,
