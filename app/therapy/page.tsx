@@ -1,15 +1,14 @@
 // /app/therapy/page.tsx
 "use client";
+
 import React, {
   useState,
   useRef,
-  useEffect,
   useCallback,
   Dispatch,
   SetStateAction,
 } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   SoundLibraryMenu,
   SoundProfile,
@@ -20,7 +19,7 @@ import {
   SessionLog,
   TherapyMode,
   TherapyType,
-} from "./AuthProvider";
+} from "../AuthProvider";
 import { useMediaSession } from "../hooks/useMediaSession";
 
 //
@@ -30,9 +29,7 @@ function usePersistentState<T>(
   initialValue: T
 ): [T, Dispatch<SetStateAction<T>>] {
   const [state, setState] = useState<T>(() => {
-    if (typeof window === "undefined") {
-      return initialValue;
-    }
+    if (typeof window === "undefined") return initialValue;
     try {
       const item = window.localStorage.getItem(key);
       return item ? (JSON.parse(item) as T) : initialValue;
@@ -41,7 +38,7 @@ function usePersistentState<T>(
     }
   });
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       window.localStorage.setItem(key, JSON.stringify(state));
@@ -49,6 +46,7 @@ function usePersistentState<T>(
       // ignore
     }
   }, [key, state]);
+
   return [state, setState];
 }
 
@@ -57,14 +55,15 @@ function usePersistentState<T>(
 const NeuroQuietPage: React.FC = () => {
   const {
     user,
-    loading,
     sessionHistory,
     setSessionHistory,
     saveSessionToCloud,
   } = useAuthCtx();
+
   const [activeTab, setActiveTab] = useState<
     "therapy" | "history" | "progress" | "info"
   >("therapy");
+
   const [tinnitusPitch, setTinnitusPitch] = usePersistentState<number | null>(
     "neuroquiet_pitch",
     null
@@ -73,6 +72,7 @@ const NeuroQuietPage: React.FC = () => {
     "neuroquiet_sessionMinutes",
     15
   );
+
   const [frequency, setFrequency] = useState(8000);
   const [status, setStatus] = useState<"idle" | "tone-testing" | "running">(
     "idle"
@@ -80,15 +80,17 @@ const NeuroQuietPage: React.FC = () => {
   const [minutesLeft, setMinutesLeft] = useState<number | null>(null);
   const [currentMode, setCurrentMode] = useState<TherapyMode | null>(null);
   const [therapyType, setTherapyType] = useState<TherapyType>("notch");
+
   const audioCtxRef = useRef<AudioContext | null>(null);
   const mainGainRef = useRef<GainNode | null>(null);
   const testToneOscRef = useRef<OscillatorNode | null>(null);
   const noiseSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const notchFilterRef = useRef<BiquadFilterNode | null>(null);
-  const croscRef = useRef<OscillatorNode | null>(null);
+  const crOscRef = useRef<OscillatorNode | null>(null);
   const crGainRef = useRef<GainNode | null>(null);
   const crTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const [selectedSound, setSelectedSound] = useState<SoundProfile | null>(
     null
   );
@@ -103,7 +105,7 @@ const NeuroQuietPage: React.FC = () => {
   const ensureAudioContext = useCallback(() => {
     if (!audioCtxRef.current) {
       const AC =
-        window.AudioContext || (window as any).webkitAudioContext;
+        (window as any).AudioContext || (window as any).webkitAudioContext;
       audioCtxRef.current = new AC();
       mainGainRef.current = audioCtxRef.current.createGain();
       mainGainRef.current.connect(audioCtxRef.current.destination);
@@ -130,12 +132,12 @@ const NeuroQuietPage: React.FC = () => {
       notchFilterRef.current.disconnect();
       notchFilterRef.current = null;
     }
-    if (croscRef.current) {
+    if (crOscRef.current) {
       try {
-        croscRef.current.stop();
+        crOscRef.current.stop();
       } catch {}
-      croscRef.current.disconnect();
-      croscRef.current = null;
+      crOscRef.current.disconnect();
+      crOscRef.current = null;
     }
     if (crGainRef.current) {
       crGainRef.current.disconnect();
@@ -159,31 +161,36 @@ const NeuroQuietPage: React.FC = () => {
   }, []);
 
   //
-  // THERAPY PAGE - PART 2
-  const generatePinkNoiseBuffer = (ctx: AudioContext, durationSeconds = 600) => {
+  // PINK NOISE GENERATOR  (FIXED – plain JS, no $ or θ)
+  const generatePinkNoiseBuffer = (
+    ctx: AudioContext,
+    durationSeconds = 600
+  ) => {
     const length = durationSeconds * ctx.sampleRate;
     const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
     const data = buffer.getChannelData(0);
-    let $b\theta=0$,
-      $b1=0$,
-      $b2=0$,
-      $b3=0$,
-      $b4=0$,
-      $b5=0$,
-      $b6=0$;
-    for (let $i=0$; i < length; i++) {
+
+    let b0 = 0,
+      b1 = 0,
+      b2 = 0,
+      b3 = 0,
+      b4 = 0,
+      b5 = 0,
+      b6 = 0;
+
+    for (let i = 0; i < length; i++) {
       const white = Math.random() * 2 - 1;
-      $b\theta = 0.99886 * b\theta + white * 0.0555179$;
-      $b1 = 0.99332 * b1 + white * 0.0758759$;
-      $b2 = 0.969 * b2 + white * 0.153852$;
-      $b3 = 0.8665 * b3 + white * 0.3104856$;
-      $b4 = 0.55 * b4 + white * 0.5329522$;
-      $b5 = -0.7616 * b5 - white * 0.016898$;
-      const pink =
-        $b\theta + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362$;
-      $b6 = white * 0.115926$;
-      $data[i] = pink * 0.11$;
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.969 * b2 + white * 0.153852;
+      b3 = 0.8665 * b3 + white * 0.3104856;
+      b4 = 0.55 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.016898;
+      const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+      b6 = white * 0.115926;
+      data[i] = pink * 0.11;
     }
+
     return buffer;
   };
 
@@ -240,7 +247,6 @@ const NeuroQuietPage: React.FC = () => {
     mainGainRef.current.gain.value = gainLevel;
 
     notch.connect(mainGainRef.current);
-
     src.start();
 
     noiseSourceRef.current = src;
@@ -272,8 +278,9 @@ const NeuroQuietPage: React.FC = () => {
 
     const playNextTone = () => {
       if (!crGainRef.current || !audioCtxRef.current) return;
+      const ctxInner = audioCtxRef.current;
 
-      const osc = audioCtxRef.current.createOscillator();
+      const osc = ctxInner.createOscillator();
       osc.type = "sine";
       const { freq } = tones[Math.floor(Math.random() * tones.length)];
       osc.frequency.value = freq;
@@ -288,7 +295,7 @@ const NeuroQuietPage: React.FC = () => {
         osc.disconnect();
       }, 150);
 
-      croscRef.current = osc;
+      crOscRef.current = osc;
     };
 
     playNextTone();
@@ -296,9 +303,7 @@ const NeuroQuietPage: React.FC = () => {
   };
 
   //
-  // THERAPY PAGE - PART 3
-  //
-  // START SESSION
+  // SAVE SESSION
   const saveSession = () => {
     const baseLog: Omit<SessionLog, "id"> = {
       date: new Date().toISOString(),
@@ -310,10 +315,10 @@ const NeuroQuietPage: React.FC = () => {
 
     const localKey = "neuroquiet_sessionHistory";
     try {
-      const current = (JSON.parse(
-        window.localStorage.getItem(localKey) || "[]"
-      ) as SessionLog[]) || [];
-      
+      const current =
+        (JSON.parse(
+          window.localStorage.getItem(localKey) || "[]"
+        ) as SessionLog[]) || [];
       const newLocal: SessionLog = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         ...baseLog,
@@ -330,6 +335,8 @@ const NeuroQuietPage: React.FC = () => {
     }
   };
 
+  //
+  // START SESSION
   const startSession = (mode: TherapyMode) => {
     if (!tinnitusPitch) {
       alert("Please match and save your tinnitus pitch first.");
@@ -386,14 +393,13 @@ const NeuroQuietPage: React.FC = () => {
 
         let gainLevel = 0.1;
         if (currentMode === "sleep") gainLevel *= SLEEP_MODE_GAIN_MODIFIER;
-        
+
         mainGainRef.current.gain.value = gainLevel;
         src.connect(mainGainRef.current);
         src.start();
 
         noiseSourceRef.current = src;
         setSelectedSound(sound);
-
       } catch (err) {
         console.error("Error loading sound: ", err);
       }
@@ -475,10 +481,7 @@ const NeuroQuietPage: React.FC = () => {
             >
               Test Tone
             </button>
-            <button
-              className="btn-save-pitch"
-              onClick={saveTinnitusPitch}
-            >
+            <button className="btn-save-pitch" onClick={saveTinnitusPitch}>
               Save Pitch
             </button>
           </div>
@@ -526,7 +529,7 @@ const NeuroQuietPage: React.FC = () => {
 
           {status === "running" && (
             <div className="session-status">
-              <p>Session running... {minutesLeft} minutes left</p>
+              <p>Session running… {minutesLeft} minutes left</p>
               <button onClick={stopEverything}>Stop Session</button>
             </div>
           )}
@@ -545,7 +548,6 @@ const NeuroQuietPage: React.FC = () => {
         </section>
       )}
 
-      {/* THERAPY PAGE - PART 4 */}
       {activeTab === "history" && (
         <section className="history-section">
           <h2>Session History</h2>
@@ -578,7 +580,7 @@ const NeuroQuietPage: React.FC = () => {
             updates.
           </p>
           <div className="progress-placeholder">
-            <p>Progress charts coming soon...</p>
+            <p>Progress charts coming soon…</p>
           </div>
         </section>
       )}
@@ -587,7 +589,7 @@ const NeuroQuietPage: React.FC = () => {
         <section className="info-section">
           <h2>Information &amp; Safety</h2>
           <p>
-            Learn how **Notch Therapy** and **Coordinated Reset (CR)** patterns are used
+            Learn how Notch Therapy and Coordinated Reset (CR) patterns are used
             in tinnitus sound training. Always listen at a comfortable level.
           </p>
           <Link href="/info" className="info-link">
