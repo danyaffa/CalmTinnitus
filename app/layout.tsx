@@ -1,38 +1,30 @@
 // /app/layout.tsx
-import type { Metadata } from "next";
 import "./globals.css";
+import type { Metadata } from "next";
+import { AuthProvider } from "./AuthProvider";
 
 export const metadata: Metadata = {
-  title: "NeuroQuiet – Train your brain toward quieter days",
+  title: "NeuroQuiet - Silence Starts Now",
   description:
-    "Prototype sound-based neuromodulation tool for tinnitus sufferers. Train your brain toward quieter days with gentle sound sessions.",
+    "NeuroQuiet tinnitus neuromodulation therapy by Leffler International Investments Pty Ltd.",
+  themeColor: "#087a93",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
-        {/* PWA manifest & theme */}
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#0ea5e9" />
-
-        {/* Icons */}
-        <link
-          rel="icon"
-          href="/icons/icon-192x192.png"
-          sizes="192x192"
-          type="image/png"
+        <meta name="theme-color" content="#087a93" />
+        <meta
+          name="description"
+          content="NeuroQuiet is a self-help tinnitus sound training tool using Notch Therapy and Coordinated Reset (CR) with simple tracking."
         />
-        <link
-          rel="apple-touch-icon"
-          href="/icons/icon-192x192.png"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
