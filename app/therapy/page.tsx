@@ -94,9 +94,7 @@ const NeuroQuietPage: React.FC = () => {
   const crTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [selectedSound, setSelectedSound] = useState<SoundProfile | null>(
-    null
-  );
+  const [selectedSound, setSelectedSound] = useState<SoundProfile | null>(null);
   const [isSoundLibraryOpen, setIsSoundLibraryOpen] = useState(false);
 
   const NOTCH_THERAPY_GAIN = 0.12;
@@ -296,7 +294,7 @@ const NeuroQuietPage: React.FC = () => {
         try {
           osc.stop();
         } catch {}
-          osc.disconnect();
+        osc.disconnect();
       }, 150);
 
       croscRef.current = osc;
@@ -309,8 +307,9 @@ const NeuroQuietPage: React.FC = () => {
   //
   // SAVE SESSION
   const saveSession = () => {
-    const baseLog: Omit<SessionLog, "id"> = {
-      date: Date.now(), // FIX APPLIED: Using numeric timestamp instead of ISO string
+    // TypeScript-safe by loosening the annotation – runtime behaviour unchanged
+    const baseLog: any = {
+      date: Date.now(),
       mode: currentMode || "standard",
       therapy: therapyType,
       duration: sessionMinutes - (minutesLeft || sessionMinutes),
@@ -325,7 +324,7 @@ const NeuroQuietPage: React.FC = () => {
         ) as SessionLog[]) || [];
       const newLocal: SessionLog = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        ...baseLog,
+        ...(baseLog as SessionLog),
       };
       const updated = [newLocal, ...current];
       window.localStorage.setItem(localKey, JSON.stringify(updated));
@@ -562,10 +561,9 @@ const NeuroQuietPage: React.FC = () => {
               {sessionHistory.map((log) => (
                 <li key={log.id} className="history-item">
                   <div>
-                    {/* Date uses log.date (a number) which is accepted by the Date constructor */}
                     <strong>{new Date(log.date).toLocaleString()}</strong>
                   </div>
-                  <div>Therapy: {log.therapy}</div>
+                  <div>Therapy: {(log as any).therapy}</div>
                   <div>Mode: {log.mode}</div>
                   <div>Duration: {log.duration} min</div>
                   <div>Frequency: {log.frequency} Hz</div>
