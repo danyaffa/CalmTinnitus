@@ -1,11 +1,11 @@
 {
-  "name": "NeuroQuiet – Tinnitus Neuromodulation Tool",
+  "name": "NeuroQuiet – Tinnitus Neuromodulation",
   "short_name": "NeuroQuiet",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f4f8fb",
   "theme_color": "#087a93",
-  "description": "Home-based tinnitus neuromodulation tool using Notch Therapy and Coordinated Reset (CR) sound patterns.",
+  "description": "Tinnitus neuromodulation sound tool using Notch Therapy and Coordinated Reset (CR).",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
