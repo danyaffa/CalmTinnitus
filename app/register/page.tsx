@@ -1,17 +1,18 @@
+// /components/RegisterForm.tsx
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
-import { auth, googleProvider } from "../../lib/firebase";
+import { useRouter } from "next/navigation";
+import { auth, googleProvider } from "../lib/firebase";
 
 const STRIPE_LINK =
-  "https://buy.stripe.com/4gM5kD6cC0PK2YP39i4F20b"; // your live payment link
+  "https://buy.stripe.com/4gM5kD6cC0PK2YP39i4F20b"; // your payment link
 
-const RegisterPage: React.FC = () => {
+const RegisterForm: React.FC = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -51,12 +52,12 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="auth-page">
+    <main className="auth-page">
       <div className="auth-card">
         <h1>Create your NeuroQuiet account</h1>
         <p className="auth-sub">
-          We&apos;ll save your tinnitus profiles and progress securely in the
-          cloud.
+          We&apos;ll keep your tinnitus profiles and session history in sync
+          across your devices.
         </p>
 
         <form className="auth-form" onSubmit={handleEmailRegister}>
@@ -84,21 +85,21 @@ const RegisterPage: React.FC = () => {
               <button
                 type="button"
                 className="pw-toggle"
-                onClick={() => setShowPassword((v) => !v)}
+                onClick={() => setShowPassword((prev) => !prev)}
               >
                 {showPassword ? "Hide" : "See"}
               </button>
             </div>
           </label>
 
-          {error && <div className="auth-error">{error}</div>}
+          {error && <p className="auth-error">{error}</p>}
 
           <button
             type="submit"
             className="btn btn-primary auth-btn"
             disabled={loading}
           >
-            {loading ? "Creating account..." : "Register & go to payment"}
+            {loading ? "Creating account…" : "Register & go to payment"}
           </button>
         </form>
 
@@ -111,15 +112,20 @@ const RegisterPage: React.FC = () => {
           Sign up with Google & go to payment
         </button>
 
-        <div className="auth-footer">
+        <p className="auth-footer">
           Already have an account?{" "}
           <a href="/login" className="btn-link">
             Log in
           </a>
-        </div>
+        </p>
+        <p className="auth-footer">
+          <a href="/" className="btn-link">
+            ← Back to NeuroQuiet
+          </a>
+        </p>
       </div>
-    </div>
+    </main>
   );
 };
 
-export default RegisterPage;
+export default RegisterForm;
