@@ -1,63 +1,65 @@
-// /app/login/page.tsx
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  firebaseEmailSignIn,
-  firebaseGoogleSignIn,
-} from "../../lib/firebase";
+  signInWithEmailAndPassword,
+  signInWithPopup,
+} from "firebase/auth";
+import { auth, googleProvider } from "../../lib/firebase";
 
-export default function LoginPage() {
+const LoginPage: React.FC = () => {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPw, setShowPw] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleEmailLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    setBusy(true);
+    setLoading(true);
     try {
-      await firebaseEmailSignIn(email, password);
-      window.location.href = "/";
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push("/"); // back to main NeuroQuiet screen
     } catch (err: any) {
-      setError(err.message || "Failed to login");
+      setError(err.message ?? "Login failed");
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   };
 
-  const handleGoogle = async () => {
+  const handleGoogleLogin = async () => {
     setError(null);
-    setBusy(true);
+    setLoading(true);
     try {
-      await firebaseGoogleSignIn();
-      window.location.href = "/";
+      await signInWithPopup(auth, googleProvider);
+      router.push("/");
     } catch (err: any) {
-      setError(err.message || "Google sign-in failed");
+      setError(err.message ?? "Google sign-in failed");
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   };
 
   return (
-    <main className="auth-page">
+    <div className="auth-page">
       <div className="auth-card">
-        <h1>Login to NeuroQuiet</h1>
+        <h1>Log in to NeuroQuiet</h1>
         <p className="auth-sub">
-          Sync your therapy sessions across devices.
+          Access your saved sessions and progress from any device.
         </p>
 
-        <form onSubmit={handleEmailLogin} className="auth-form">
+        <form className="auth-form" onSubmit={handleEmailLogin}>
           <label>
             Email
             <input
               type="email"
-              required
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
             />
           </label>
 
@@ -65,43 +67,51 @@ export default function LoginPage() {
             Password
             <div className="pw-wrapper">
               <input
-                type={showPw ? "text" : "password"}
-                required
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
               />
               <button
                 type="button"
                 className="pw-toggle"
-                onClick={() => setShowPw((v) => !v)}
+                onClick={() => setShowPassword((v) => !v)}
               >
-                {showPw ? "Hide" : "See"}
+                {showPassword ? "Hide" : "See"}
               </button>
             </div>
           </label>
 
-          {error && <p className="auth-error">{error}</p>}
+          {error && <div className="auth-error">{error}</div>}
 
-          <button className="btn btn-primary auth-btn" disabled={busy}>
-            {busy ? "Logging in…" : "Login"}
+          <button
+            type="submit"
+            className="btn btn-primary auth-btn"
+            disabled={loading}
+          >
+            {loading ? "Logging in..." : "Log in"}
           </button>
         </form>
 
         <button
+          type="button"
           className="btn btn-secondary auth-btn"
-          onClick={handleGoogle}
-          disabled={busy}
+          onClick={handleGoogleLogin}
+          disabled={loading}
         >
-          Sign with Google
+          Continue with Google
         </button>
 
-        <p className="auth-footer">
-          No account yet? <Link href="/register">Register here</Link>
-        </p>
-        <p className="auth-footer">
-          <Link href="/">← Back to app</Link>
-        </p>
+        <div className="auth-footer">
+          New here?{" "}
+          <a href="/register" className="btn-link">
+            Create an account
+          </a>
+        </div>
       </div>
-    </main>
+    </div>
   );
-}
+};
+
+export default LoginPage;
