@@ -44,13 +44,13 @@ const THERAPY_MODES: { key: TherapyMode; label: string; description: string }[] 
 const THERAPY_TYPES: { key: TherapyType; label: string; description: string }[] =
   [
     {
-      key: "relaxation",
+      key: "notch",
       label: "Relaxation / Masking",
       description:
         "For winding down; focuses on masking tinnitus and promoting calm.",
     },
     {
-      key: "training",
+      key: "cr",
       label: "Brain Training / Habituation",
       description:
         "Focused listening sessions to help your brain tune out tinnitus over time.",
@@ -77,7 +77,7 @@ const TherapyPage = () => {
   } = useAuthCtx();
 
   // Local state
-  const [therapyType, setTherapyType] = useState<TherapyType>("relaxation");
+  const [therapyType, setTherapyType] = useState<TherapyType>("notch");
   const [sessionMinutes, setSessionMinutes] = useState<number>(
     DEFAULT_SESSION_MINUTES
   );
@@ -556,7 +556,7 @@ const TherapyPage = () => {
               </div>
               <div className="history-meta">
                 <span>
-                  {session.therapyType === "relaxation" ? "Relax" : "Train"}
+                  {session.therapyType === "notch" ? "Relax" : "Train"}
                 </span>
                 <span>•</span>
                 <span>
