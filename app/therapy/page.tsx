@@ -113,7 +113,7 @@ const NeuroQuietPage: React.FC = () => {
       audioCtxRef.current = ctx;
 
       mainGainRef.current = ctx.createGain();
-      mainGainRef.current.connect(ctx.destination);
+      mainGainRef.current!.connect(ctx.destination);
     }
     return audioCtxRef.current;
   }, []);
