@@ -6,8 +6,8 @@ import {
   onAuthStateChanged,
   signInWithPopup,
   signOut,
-  User,
 } from "firebase/auth";
+import type { User } from "firebase/auth";
 import {
   getFirestore,
   collection,
@@ -37,7 +37,6 @@ export const db = getFirestore(app);
 // Re-export auth + firestore helpers used in AuthProvider and page.tsx
 export {
   onAuthStateChanged,
-  User,
   collection,
   addDoc,
   query,
@@ -46,6 +45,8 @@ export {
   getDocs,
   Timestamp,
 };
+
+export type { User };
 
 // Small helper functions used in app/page.tsx
 export const firebaseGoogleSignIn = async () => {
