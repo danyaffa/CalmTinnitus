@@ -280,6 +280,8 @@ const NeuroQuietPage: React.FC = () => {
     crTimerRef.current = setInterval(playNextTone, 500);
   };
 
+
+
   // --- SESSION LOGIC ---
   const logSessionLocal = (
     mode: TherapyMode,
@@ -574,7 +576,7 @@ const NeuroQuietPage: React.FC = () => {
               </button>
               {selectedSound && (
                 <span className="sound-selected-label">
-                  Background: {selectedSound.label}
+                  Background: {selectedSound}
                 </span>
               )}
             </div>
@@ -740,7 +742,7 @@ const NeuroQuietPage: React.FC = () => {
 
       <footer className="footer">
         © {new Date().getFullYear()} Leffler International Investments Pty Ltd
-        — NeuroQuiet. All rights reserved.
+        — NeuroQuiet. All rightsb reserved.
       </footer>
     </main>
   );
