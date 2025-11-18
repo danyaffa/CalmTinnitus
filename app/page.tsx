@@ -425,8 +425,8 @@ const NeuroQuietPage: React.FC = () => {
           <Image
             src="/icons/icon-192x192.png"
             alt="NeuroQuiet logo"
-            width={32}
-            height={32}
+            width={60}
+            height={60}
             className="logo-image"
           />
           <div>
