@@ -16,8 +16,8 @@ export default function HomePage() {
             <Image
               src="/NeuroQuiet-Logo.png"
               alt="NeuroQuiet – Silence Starts Now"
-              width={180}
-              height={40}
+              width={200}
+              height={100}
               className="nq-logo"
             />
           </Link>
