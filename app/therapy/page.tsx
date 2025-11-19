@@ -645,8 +645,8 @@ const TherapyPage = () => {
           <Image
             src="/NeuroQuiet-Logo.png"
             alt="NeuroQuiet – Silence Starts Now"
-            width={150}
-            height={40}
+            width={240}
+            height={150}
             className="logo-image"
           />
           <div>
