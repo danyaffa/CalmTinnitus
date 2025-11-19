@@ -9,6 +9,11 @@ import {
 } from "firebase/auth";
 import { auth, googleProvider } from "../../lib/firebase";
 
+// --- NEW CONSTANT FOR DEVELOPER ACCESS ---
+// Assuming the correct email is leffleryd@gmail.com
+const DEVELOPER_EMAIL = "leffleryd@gmail.com"; 
+// -----------------------------------------
+
 const LoginPage: React.FC = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -17,13 +22,28 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // --- NEW FUNCTION TO HANDLE REDIRECTION ---
+  const handleRedirection = (userEmail: string | null) => {
+    if (userEmail?.toLowerCase() === DEVELOPER_EMAIL) {
+      // Developer bypass: Go directly to therapy page
+      router.push("/therapy");
+    } else {
+      // Standard user: Go to home page (or wherever the auth provider redirects non-paying users)
+      router.push("/");
+    }
+  };
+  // --------------------------------------------
+
   const handleEmailLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push("/");
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Use the new function to handle redirection
+      handleRedirection(userCredential.user.email);
+      
     } catch (err: any) {
       setError(err.message ?? "Login failed");
     } finally {
@@ -35,8 +55,11 @@ const LoginPage: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
-      router.push("/");
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      
+      // Use the new function to handle redirection
+      handleRedirection(userCredential.user.email);
+      
     } catch (err: any) {
       setError(err.message ?? "Google sign-in failed");
     } finally {
