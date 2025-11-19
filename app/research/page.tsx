@@ -18,7 +18,7 @@ export default function ResearchPage() {
         </p>
         <p className="nq-research-back">
           <Link href="/" className="nq-link">
-            ← Back to NeuroQuiet home
+            ← Back to CalmTinnitus home
           </Link>
         </p>
       </header>
@@ -140,9 +140,9 @@ export default function ResearchPage() {
       </section>
 
       <section className="nq-research-section nq-research-note">
-        <h2>What this means for NeuroQuiet</h2>
+        <h2>What this means for CalmTinnitus</h2>
         <p>
-          NeuroQuiet is inspired by these neuromodulation approaches. It brings
+          CalmTinnitus is inspired by these neuromodulation approaches. It brings
           together tinnitus pitch matching, notched-style and CR-style sound
           patterns, and soothing soundscapes into a tool you can use at home.
         </p>
@@ -156,7 +156,7 @@ export default function ResearchPage() {
 
       <footer className="nq-research-footer">
         <p>
-          © {year} Leffler International Investments Pty Ltd. NeuroQuiet™ is not
+          © {year} Leffler International Investments Pty Ltd. CalmTinnitus™ is not
           a medical device and does not replace professional diagnosis or
           treatment.
         </p>

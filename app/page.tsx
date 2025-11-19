@@ -14,8 +14,8 @@ export default function HomePage() {
         <div className="nq-header-left">
           <Link href="/" className="nq-logo-wrap">
             <Image
-              src="/NeuroQuiet-Logo.png"
-              alt="NeuroQuiet – Silence Starts Now"
+              src="/CalmTinnitus-Logo.png"
+              alt="CalmTinnitus – Silence Starts Now"
               width={200}
               height={100}
               className="nq-logo"
@@ -42,7 +42,7 @@ export default function HomePage() {
           <h1>Train your brain toward quieter days.</h1>
 
           <p className="nq-lead">
-            NeuroQuiet is a calm, at-home sound tool created by someone who has
+            CalmTinnitus is a calm, at-home sound tool created by someone who has
             lived with persistent tinnitus for over <strong>50 years</strong>.
             There is no miracle cure — but with steady training, many people
             experience quieter moments, better focus, and more peace.
@@ -71,7 +71,7 @@ export default function HomePage() {
 
       {/* HOW IT WORKS */}
       <section className="nq-section">
-        <h2>How NeuroQuiet supports you</h2>
+        <h2>How CalmTinnitus supports you</h2>
         <div className="nq-cards">
           <article className="nq-card">
             <h3>1. Match your tinnitus pitch</h3>
@@ -112,7 +112,7 @@ export default function HomePage() {
             </li>
           </ul>
           <p className="nq-note">
-            NeuroQuiet is a self-help sound tool and does not replace medical
+            CalmTinnitus is a self-help sound tool and does not replace medical
             care. For sudden hearing changes, strong distress, or other medical
             concerns, please seek professional help immediately.
           </p>
@@ -126,7 +126,7 @@ export default function HomePage() {
             © {year} Leffler International Investments Pty Ltd. All rights
             reserved.
           </span>
-          <span>NeuroQuiet™ – Tinnitus Relief Companion.</span>
+          <span>CalmTinnitus™ – Tinnitus Relief Companion.</span>
         </div>
         <div className="nq-footer-links">
           <Link href="/about">About</Link>
@@ -136,7 +136,7 @@ export default function HomePage() {
           <Link href="/company-policy">Company Policy</Link>
         </div>
         <p className="nq-footer-note">
-          NeuroQuiet™ is a trade mark of Leffler International Investments Pty
+          CalmTinnitus™ is a trade mark of Leffler International Investments Pty
           Ltd. This app does not diagnose, treat, cure, or prevent disease.
         </p>
       </footer>

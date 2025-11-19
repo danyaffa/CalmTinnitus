@@ -9,7 +9,7 @@ export default function CompanyPolicyPage() {
       <div className="info-card">
         <h1>Company Policy</h1>
         <p>
-          NeuroQuiet is operated by <strong>Leffler International Investments
+          CalmTinnitus is operated by <strong>Leffler International Investments
           Pty Ltd</strong>
         </p>
         <p>Key points:</p>
@@ -29,7 +29,7 @@ export default function CompanyPolicyPage() {
           <a href="mailto:support@neuroquiet.app">support@neuroquiet.app</a>.
         </p>
         <p>
-          <Link href="/">← Back to NeuroQuiet</Link>
+          <Link href="/">← Back to CalmTinnitus</Link>
         </p>
       </div>
     </main>

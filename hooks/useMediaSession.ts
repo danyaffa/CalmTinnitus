@@ -15,8 +15,8 @@ export type MediaSessionOptions = {
 
 // The hook accepts MediaSessionOptions and returns void
 export function useMediaSession({
-  title = "NeuroQuiet – Tinnitus Session",
-  artist = "NeuroQuiet",
+  title = "CalmTinnitus – Tinnitus Session",
+  artist = "CalmTinnitus",
   album = "Tinnitus Sound Training",
   onPlay,
   onPause,

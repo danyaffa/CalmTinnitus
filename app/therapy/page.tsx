@@ -405,14 +405,14 @@ const TherapyPage = () => {
 
     const title =
       mode === "relief"
-        ? "NeuroQuiet – Relief / CR Therapy"
+        ? "CalmTinnitus – Relief / CR Therapy"
         : mode === "sleep"
-        ? "NeuroQuiet – Sleep Support Session"
-        : "NeuroQuiet – Standard Sound Therapy";
+        ? "CalmTinnitus – Sleep Support Session"
+        : "CalmTinnitus – Standard Sound Therapy";
 
     setMediaSessionOptions({
       title,
-      artist: "NeuroQuiet",
+      artist: "CalmTinnitus",
       album: "Tinnitus Relief Session",
       onPlay: () => {
         if (status === "paused") {
@@ -643,14 +643,14 @@ const TherapyPage = () => {
       <header className="therapy-header">
         <div className="logo-block">
           <Image
-            src="/NeuroQuiet-Logo.png"
-            alt="NeuroQuiet – Silence Starts Now"
+            src="/CalmTinnitus-Logo.png"
+            alt="CalmTinnitus – Silence Starts Now"
             width={240}
             height={150}
             className="logo-image"
           />
           <div>
-            <div className="logo-text-main">NeuroQuiet</div>
+            <div className="logo-text-main">CalmTinnitus</div>
             <div className="logo-text-sub">Tinnitus Relief Companion</div>
           </div>
         </div>
@@ -688,7 +688,7 @@ const TherapyPage = () => {
           <div className="therapy-intro-text">
             <h1>Guided Sound Therapy for Tinnitus</h1>
             <p>
-              NeuroQuiet combines personalized soundscapes with{" "}
+              CalmTinnitus combines personalized soundscapes with{" "}
               <strong>tinnitus pitch matching</strong> and{" "}
               <strong>Coordinated Reset-style (CR) patterns</strong> to help
               your brain gradually tune out tinnitus.
@@ -894,7 +894,7 @@ const TherapyPage = () => {
           <div className="section-header">
             <h2>My past sessions</h2>
             <p>
-              See how consistently you’re using NeuroQuiet. Regular, gentle
+              See how consistently you’re using CalmTinnitus. Regular, gentle
               sessions can help your brain learn to tune out tinnitus over time.
             </p>
           </div>
@@ -910,7 +910,7 @@ const TherapyPage = () => {
               the session and adjust.
             </li>
             <li>
-              NeuroQuiet is not a medical device and does not replace medical
+              CalmTinnitus is not a medical device and does not replace medical
               advice. Talk to your audiologist or ENT if you have concerns.
             </li>
             <li>
@@ -928,9 +928,9 @@ const TherapyPage = () => {
             © {new Date().getFullYear()} Leffler International Investments Pty Ltd.
             All rights reserved.
           </span>
-          <span>NeuroQuiet™ – Tinnitus Relief Companion.</span>
+          <span>CalmTinnitus™ – Tinnitus Relief Companion.</span>
           <span>
-            NeuroQuiet™ is a trade mark of Leffler International Investments Pty Ltd.
+            CalmTinnitus™ is a trade mark of Leffler International Investments Pty Ltd.
           </span>
         </div>
         <div className="therapy-footer-links">

@@ -70,7 +70,7 @@ const LoginPage: React.FC = () => {
   return (
     <main className="auth-page">
       <div className="auth-card">
-        <h1>Log in to NeuroQuiet</h1>
+        <h1>Log in to CalmTinnitus</h1>
         <p className="auth-sub">
           Access your saved tinnitus sessions and progress from any device.
         </p>
@@ -135,7 +135,7 @@ const LoginPage: React.FC = () => {
         </p>
         <p className="auth-footer">
           <a href="/" className="btn-link">
-            ← Back to NeuroQuiet
+            ← Back to CalmTinnitus
           </a>
         </p>
       </div>

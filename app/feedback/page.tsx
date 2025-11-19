@@ -12,7 +12,7 @@ export default function FeedbackPage() {
     e.preventDefault();
     if (!message.trim()) return;
     // For now we just open email client
-    window.location.href = `mailto:support@neuroquiet.app?subject=NeuroQuiet%20Feedback&body=${encodeURIComponent(
+    window.location.href = `mailto:support@neuroquiet.app?subject=CalmTinnitus%20Feedback&body=${encodeURIComponent(
       message
     )}`;
     setSent(true);
@@ -45,7 +45,7 @@ export default function FeedbackPage() {
           )}
         </form>
         <p>
-          <Link href="/">← Back to NeuroQuiet</Link>
+          <Link href="/">← Back to CalmTinnitus</Link>
         </p>
       </div>
     </main>

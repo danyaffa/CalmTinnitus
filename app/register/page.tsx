@@ -72,7 +72,7 @@ const RegisterPage: React.FC = () => {
   return (
     <main className="auth-page">
       <div className="auth-card">
-        <h1>Create your NeuroQuiet account</h1>
+        <h1>Create your CalmTinnitus account</h1>
         <p className="auth-sub">
           We&apos;ll keep your tinnitus profiles and history synced across
           devices.
@@ -138,7 +138,7 @@ const RegisterPage: React.FC = () => {
         </p>
         <p className="auth-footer">
           <a href="/" className="btn-link">
-            ← Back to NeuroQuiet
+            ← Back to CalmTinnitus
           </a>
         </p>
       </div>

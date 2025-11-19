@@ -1,4 +1,4 @@
-# NeuroQuiet – Persistent Dual-Therapy Prototype (Notch + CR)
+# CalmTinnitus – Persistent Dual-Therapy Prototype (Notch + CR)
 
 This build combines:
 
@@ -15,7 +15,7 @@ This build combines:
 ## Files
 
 - `/app/layout.tsx` – Root layout + PWA meta
-- `/app/page.tsx` – Main NeuroQuiet UI and Web Audio engine
+- `/app/page.tsx` – Main CalmTinnitus UI and Web Audio engine
 - `/app/globals.css` – UI styling
 - `/public/manifest.json` – PWA manifest
 - `/public/sw.js` – Service worker
@@ -24,6 +24,6 @@ This build combines:
 
 ## Important Disclaimer
 
-NeuroQuiet is **experimental** and is **not** a medical device.  
+CalmTinnitus is **experimental** and is **not** a medical device.  
 It does not diagnose, treat, cure, or prevent any disease.  
 Use only at low volume and alongside professional care (ENT / audiologist).

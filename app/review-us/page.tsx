@@ -7,9 +7,9 @@ export default function ReviewUsPage() {
   return (
     <main className="info-page">
       <div className="info-card">
-        <h1>Review NeuroQuiet</h1>
+        <h1>Review CalmTinnitus</h1>
         <p>
-          If NeuroQuiet helps you, we would be grateful if you leave a short
+          If CalmTinnitus helps you, we would be grateful if you leave a short
           review. Your feedback guides our future development.
         </p>
         <ul>
@@ -20,10 +20,10 @@ export default function ReviewUsPage() {
         <p>
           For now, you can{" "}
           <a href="mailto:support@neuroquiet.app">email your review</a> or share
-          it with the person who invited you to test NeuroQuiet.
+          it with the person who invited you to test CalmTinnitus.
         </p>
         <p>
-          <Link href="/">← Back to NeuroQuiet</Link>
+          <Link href="/">← Back to CalmTinnitus</Link>
         </p>
       </div>
     </main>

@@ -8,7 +8,7 @@ export default function InfoSafetyPage() {
     <main className="info-page">
       <h1>Information &amp; Safety</h1>
       <p className="intro">
-        NeuroQuiet uses tinnitus neuromodulation sound approaches (Notch Therapy
+        CalmTinnitus uses tinnitus neuromodulation sound approaches (Notch Therapy
         and Coordinated Reset, “CR”). This page explains in plain language what
         they mean and how to use them safely.
       </p>
@@ -100,7 +100,7 @@ export default function InfoSafetyPage() {
       <section>
         <h2>5. Important note</h2>
         <p>
-          NeuroQuiet is a self-help sound tool based on tinnitus neuromodulation
+          CalmTinnitus is a self-help sound tool based on tinnitus neuromodulation
           research. It does not diagnose, treat, cure, or prevent any disease
           and does not replace professional medical advice or care.
         </p>

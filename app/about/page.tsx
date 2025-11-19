@@ -11,7 +11,7 @@ export default function AboutPage() {
       <header className="nq-about-header">
         <h1>About CalmTinnitus™</h1>
         <p>
-          NeuroQuiet™ is a calm, at-home tinnitus sound tool developed under
+          CalmTinnitus™ is a calm, at-home tinnitus sound tool developed under
           <strong> Leffler International Investments Pty Ltd</strong>.  
           It is inspired by modern neuromodulation research and built to help people
           gently retrain how the brain reacts to tinnitus.
@@ -70,7 +70,7 @@ export default function AboutPage() {
       <footer className="nq-about-footer">
         <p>
           © {year} Leffler International Investments Pty Ltd.  
-          NeuroQuiet™ — Silence Starts Now.
+          CalmTinnitus™ — Silence Starts Now.
         </p>
       </footer>
 
