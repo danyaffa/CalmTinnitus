@@ -15,6 +15,8 @@ export type SoundProfile = {
   id: SoundProfileId;
   label: string;
   description: string;
+  // FIX 1: Add the baseNoise property
+  baseNoise: string;
 };
 
 const SOUND_LIBRARY: SoundProfile[] = [
@@ -23,144 +25,99 @@ const SOUND_LIBRARY: SoundProfile[] = [
     label: "Pink Noise (gentle)",
     description:
       "Soft broadband noise with more energy in the lower frequencies. Often used for tinnitus sound therapy.",
+    baseNoise: "/audio/pink-noise.mp3", // Placeholder path
   },
   {
     id: "white-noise",
     label: "White Noise",
     description:
       "Flat noise across all frequencies. Simple, neutral sound that many people already know from masking devices.",
+    baseNoise: "/audio/white-noise.mp3", // Placeholder path
   },
   {
     id: "ocean",
     label: "Ocean Waves",
     description:
       "Slow, rolling surf sounds for people who prefer a more natural, relaxing background.",
+    baseNoise: "/audio/ocean-waves.mp3", // Placeholder path
   },
   {
     id: "rain",
     label: "Rain",
     description:
       "Gentle rain sound — steady and calming, good for evening or sleep sessions.",
+    baseNoise: "/audio/rain.mp3", // Placeholder path
   },
   {
     id: "wind",
     label: "Wind",
     description:
       "Soft wind / air movement texture. Similar to noise, but with a more natural feel.",
+    baseNoise: "/audio/wind.mp3", // Placeholder path
   },
   {
     id: "soft-music",
     label: "Soft Music Bed",
     description:
       "Very light musical background. Keep volume low so the tinnitus training remains comfortable.",
+    baseNoise: "/audio/soft-music.mp3", // Placeholder path
   },
 ];
 
+// Re-defining props to match usage in therapy/page.tsx (no modal/state logic there)
 export type SoundLibraryMenuProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  selectedSound: SoundProfile | null;
-  onSelectSound: Dispatch<SetStateAction<SoundProfile | null>>;
+  onSelectProfile: (profile: SoundProfile) => void;
 };
 
+// FIX 2: Simplify component to match usage pattern in therapy/page.tsx
 export const SoundLibraryMenu: React.FC<SoundLibraryMenuProps> = ({
-  isOpen,
-  onClose,
-  selectedSound,
-  onSelectSound,
+  onSelectProfile,
 }) => {
-  if (!isOpen) return null;
+  const [selectedSound, setSelectedSound] = React.useState<SoundProfile | null>(
+    SOUND_LIBRARY[0] // Default to first sound
+  );
 
   const handleSelect = (profile: SoundProfile) => {
-    onSelectSound(profile);
-    onClose();
+    setSelectedSound(profile);
+    onSelectProfile(profile);
   };
 
+  // Immediate selection of the default profile on mount
+  React.useEffect(() => {
+    if (selectedSound) {
+      onSelectProfile(selectedSound);
+    }
+  }, []);
+
   return (
-    <div className="sound-modal-backdrop" onClick={onClose}>
-      <div
-        className="sound-modal"
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
-      >
-        <div className="sound-modal-header">
-          <h2>Sound Library</h2>
-          <button className="sound-close-button" onClick={onClose}>
-            ✕
-          </button>
-        </div>
-        <p className="sound-modal-intro">
-          Choose the background sound you feel most relaxed with. All sounds
-          will be shaped by your tinnitus settings (Notch or CR) inside the
-          engine.
-        </p>
-
-        <ul className="sound-list">
-          {SOUND_LIBRARY.map((sound) => (
-            <li
-              key={sound.id}
-              className={`sound-item ${
-                selectedSound?.id === sound.id ? "selected" : ""
-              }`}
+    <div className="sound-library-grid">
+      <ul className="sound-list">
+        {SOUND_LIBRARY.map((sound) => (
+          <li
+            key={sound.id}
+            className={`sound-item ${
+              selectedSound?.id === sound.id ? "selected" : ""
+            }`}
+          >
+            <button
+              className="sound-item-button"
+              onClick={() => handleSelect(sound)}
             >
-              <button
-                className="sound-item-button"
-                onClick={() => handleSelect(sound)}
-              >
-                <div className="sound-item-main">
-                  <div className="sound-item-label">{sound.label}</div>
-                  <div className="sound-item-desc">{sound.description}</div>
-                </div>
-                {selectedSound?.id === sound.id && (
-                  <span className="sound-item-tag">Selected</span>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        <p className="sound-modal-footnote">
-          You can change sounds anytime. If a sound makes your tinnitus feel
-          worse, stop the session and try a different one on another day.
-        </p>
-      </div>
+              <div className="sound-item-main">
+                <div className="sound-item-label">{sound.label}</div>
+                <div className="sound-item-desc">{sound.description}</div>
+              </div>
+              {selectedSound?.id === sound.id && (
+                <span className="sound-item-tag">Selected</span>
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
 
       <style jsx>{`
-        .sound-modal-backdrop {
-          position: fixed;
-          inset: 0;
-          background: rgba(15, 23, 42, 0.45);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 40;
-        }
-        .sound-modal {
-          width: 100%;
-          max-width: 520px;
-          background: #ffffff;
-          border-radius: 1rem;
-          padding: 1.4rem 1.5rem 1.3rem;
-          box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
-        }
-        .sound-modal-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 0.5rem;
-        }
-        .sound-close-button {
-          border: none;
-          background: transparent;
-          cursor: pointer;
-          font-size: 1.1rem;
-          color: #6b7280;
-        }
-        .sound-modal-intro {
-          font-size: 0.9rem;
-          color: #4b5563;
-          margin-bottom: 0.9rem;
+        .sound-library-grid {
+          padding: 0.5rem 0;
         }
         .sound-list {
           list-style: none;
@@ -184,6 +141,11 @@ export const SoundLibraryMenu: React.FC<SoundLibraryMenuProps> = ({
           gap: 0.6rem;
           cursor: pointer;
           text-align: left;
+          transition: all 0.2s;
+        }
+        .sound-item-button:hover:not(:disabled) {
+          background: #f0f4f7;
+          border-color: #d1d5db;
         }
         .sound-item.selected .sound-item-button {
           border-color: #0ea5e9;
@@ -206,11 +168,6 @@ export const SoundLibraryMenu: React.FC<SoundLibraryMenuProps> = ({
           background: #0ea5e9;
           color: white;
           white-space: nowrap;
-        }
-        .sound-modal-footnote {
-          font-size: 0.78rem;
-          color: #6b7280;
-          margin-top: 0.7rem;
         }
       `}</style>
     </div>
