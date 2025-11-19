@@ -14,8 +14,8 @@ export default function LandingPage() {
             <Image
               src="/NeuroQuiet-Logo.png"
               alt="NeuroQuiet – Silence Starts Now"
-              width={340}
-              height={200}
+              width={240}
+              height={120}
               className="nq-logo"
             />
           </Link>
