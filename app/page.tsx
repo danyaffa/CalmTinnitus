@@ -18,8 +18,8 @@ export default function HomePage() {
                 <Image
                   src="/CalmTinnitus-Logo.png"
                   alt="CalmTinnitus – Silence Starts Now"
-                  width={200}
-                  height={100}
+                  width={150}
+                  height={150}
                   className="nq-logo"
                 />
               </Link>
