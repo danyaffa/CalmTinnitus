@@ -134,7 +134,6 @@ export default function HomePage() {
           <Link href="/legal">Legal</Link>
           <Link href="/disclaimers">Disclaimers</Link>
           <Link href="/company-policy">Company Policy</Link>
-          <Link href="/terms">Terms of Use</Link>
         </div>
         <p className="nq-footer-note">
           NeuroQuiet™ is a trade mark of Leffler International Investments Pty
