@@ -9,8 +9,7 @@ export default function LegalPage() {
       <div className="info-card">
         <h1>Legal Notice</h1>
         <p>
-          NeuroQuiet is an experimental prototype and{" "}
-          <strong>is not a medical device</strong>. It has not been assessed or
+          NeuroQuiet <strong>is not a medical device</strong>. It has not been assessed or
           approved by any health regulator.
         </p>
         <ul>
