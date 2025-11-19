@@ -9,6 +9,10 @@ import {
 } from "firebase/auth";
 import { auth, googleProvider } from "../../lib/firebase";
 
+// --- NEW CONSTANT FOR DEVELOPER ACCESS ---
+const DEVELOPER_EMAIL = "leffleryd@gmail.com"; 
+// -----------------------------------------
+
 const STRIPE_LINK =
   "https://buy.stripe.com/4gM5kD6cC0PK2YP39i4F20b"; // your live payment link
 
@@ -20,17 +24,28 @@ const RegisterPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const goToStripe = () => {
-    window.location.href = STRIPE_LINK;
+  // --- MODIFIED FUNCTION ---
+  const handleSuccessfulAuth = (userEmail: string) => {
+    // Check for developer bypass
+    if (userEmail.toLowerCase() === DEVELOPER_EMAIL) {
+      router.push("/therapy");
+    } else {
+      // Normal user flow: go to payment
+      window.location.href = STRIPE_LINK;
+    }
   };
+  // -------------------------
 
   const handleEmailRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      goToStripe();
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Use the new function to handle redirection
+      handleSuccessfulAuth(userCredential.user.email || email);
+
     } catch (err: any) {
       setError(err.message ?? "Registration failed");
     } finally {
@@ -42,8 +57,11 @@ const RegisterPage: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
-      goToStripe();
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      
+      // Use the new function to handle redirection
+      handleSuccessfulAuth(userCredential.user.email || ''); 
+
     } catch (err: any) {
       setError(err.message ?? "Google sign-up failed");
     } finally {
