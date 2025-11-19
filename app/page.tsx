@@ -202,8 +202,6 @@ export default function LandingPage() {
         </div>
       </section>
       
-      {/* DELETED: Removed REVIEWS PLACEHOLDER section */}
-
       <style jsx>{`
         .nq-landing-page {
           max-width: 1120px;
@@ -296,7 +294,7 @@ export default function LandingPage() {
           color: #6b7280;
         }
         
-        /* UPDATED: Styles for the new hero image container */
+        /* Styles for the new hero image container */
         .nq-hero-device-card.nq-hero-device-person {
           background: #f0f4f7; /* Lighter background for the photo */
           padding: 0.5rem; /* Reduced padding */
@@ -416,16 +414,21 @@ export default function LandingPage() {
         .nq-pricing-card {
           max-width: 440px;
           margin: 0 auto;
-          background: #0f172a;
-          color: #e57e7eb;
+          /* FIX: Changed background to white */
+          background: #ffffff; 
+          /* FIX: Changed text color to a dark grey for readability */
+          color: #374151; 
           border-radius: 1.1rem;
           padding: 1.8rem 1.7rem 1.7rem;
-          box-shadow: 0 20px 45px rgba(15, 23, 42, 0.6);
+          /* Adjust shadow for lighter background */
+          box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1); 
+          border: 1px solid #e5e7eb; /* Add a subtle border */
         }
 
         .nq-pricing-card h2 {
           font-size: 1.3rem;
           margin-bottom: 0.6rem;
+          color: #111827; /* Ensure heading is dark */
         }
 
         .nq-price {
@@ -435,11 +438,13 @@ export default function LandingPage() {
         .nq-price-amount {
           font-size: 2rem;
           font-weight: 700;
+          color: #111827; /* Ensure price amount is dark */
         }
 
         .nq-price-period {
           font-size: 0.95rem;
-          color: #cbd5f5;
+          /* Adjusted for better contrast on white background */
+          color: #6b7280; 
         }
 
         .nq-price-list {
@@ -447,19 +452,13 @@ export default function LandingPage() {
           padding-left: 1.1rem;
           font-size: 0.9rem;
           margin: 0.7rem 0 1.1rem;
+          color: #374151; /* Ensure list items are dark */
         }
 
-        .nq-reviews {
-          text-align: center;
-        }
-
-        .nq-stars {
-          font-size: 1.4rem;
-          margin-top: 0.8rem;
-        }
-
-        .nq-star-faded {
-          opacity: 0.35;
+        .nq-pricing-card .nq-note {
+          /* Adjust footnote color for readability on white background */
+          color: #6b7280; 
+          margin-top: 1.2rem; /* Give it more space from the button */
         }
       `}</style>
     </main>
