@@ -46,7 +46,7 @@ export default function LandingPage() {
             <span className="nq-plan-detail">— cancel anytime</span>
           </p>
           <p className="nq-plan-sub">
-            One simple plan. No free trials, no hidden upgrades. Just an
+            One simple plan. No hidden upgrades. Just an
             affordable tool you can use daily.
           </p>
         </div>
