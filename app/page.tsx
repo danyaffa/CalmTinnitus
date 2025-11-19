@@ -1,21 +1,23 @@
-// /app/page.tsx
+// app/page.tsx
 "use client";
 
 import Image from "next/image";
 import Link from "next/link";
 
-export default function LandingPage() {
+export default function HomePage() {
+  const year = new Date().getFullYear();
+
   return (
-    <main className="nq-landing-page">
-      {/* Header with logo and auth links */}
+    <main className="nq-landing">
+      {/* HEADER */}
       <header className="nq-header">
         <div className="nq-header-left">
-          <Link href="/">
+          <Link href="/" className="nq-logo-wrap">
             <Image
               src="/NeuroQuiet-Logo.png"
               alt="NeuroQuiet – Silence Starts Now"
-              width={240}
-              height={120}
+              width={180}
+              height={40}
               className="nq-logo"
             />
           </Link>
@@ -24,7 +26,7 @@ export default function LandingPage() {
           <Link href="/login" className="nq-header-link">
             Log in
           </Link>
-          <Link href="/register" className="nq-header-button">
+          <Link href="/register" className="nq-header-btn">
             Register
           </Link>
         </nav>
@@ -33,116 +35,314 @@ export default function LandingPage() {
       {/* HERO */}
       <section className="nq-hero">
         <div className="nq-hero-text">
-          <p className="nq-badge">Based on tinnitus neuromodulation research</p>
+          <Link href="/research" className="nq-research-link">
+            Based on tinnitus neuromodulation research
+          </Link>
+
           <h1>Train your brain toward quieter days.</h1>
+
           <p className="nq-lead">
             NeuroQuiet is a calm, at-home sound tool created by someone who has
             lived with persistent tinnitus for over <strong>50 years</strong>.
             There is no miracle cure — but with steady training, many people
             experience quieter moments, better focus, and more peace.
           </p>
+
           <p className="nq-plan">
-            <span className="nq-plan-price">A$7 / month</span>{" "}
-            <span className="nq-plan-detail">— cancel anytime</span>
+            <span className="nq-plan-price">A$7 / month</span>
+            <span className="nq-plan-detail"> — cancel anytime</span>
           </p>
           <p className="nq-plan-sub">
-            One simple plan. No hidden upgrades. Just an
+            One simple plan. No free trials, no hidden upgrades. Just an
             affordable tool you can use daily.
           </p>
         </div>
 
-        {/* HERO IMAGE – person with headphones */}
-        <div className="nq-hero-device nq-hero-image-person">
-          <div className="nq-hero-device-card nq-hero-device-person">
-            <Image
-              src="/woman.png"
-              alt="Person listening calmly to sound therapy"
-              width={420}
-              height={320}
-              className="nq-device-image"
-            />
-          </div>
+        <div className="nq-hero-image">
+          <Image
+            src="/woman.png"
+            alt="Calm person listening to sound therapy"
+            width={500}
+            height={360}
+            className="nq-hero-photo"
+          />
         </div>
       </section>
 
       {/* HOW IT WORKS */}
-      <section className="nq-how">
+      <section className="nq-section">
         <h2>How NeuroQuiet supports you</h2>
-        <div className="nq-how-grid">
-          <div className="nq-how-card">
+        <div className="nq-cards">
+          <article className="nq-card">
             <h3>1. Match your tinnitus pitch</h3>
             <p>
-              Use the simple slider to match a tone to your tinnitus pitch. This
-              gives us a “target” frequency for therapy.
+              Use the built-in tone matcher to find the pitch that sounds most
+              like your tinnitus. This becomes the target for sound therapy.
             </p>
-          </div>
-          <div className="nq-how-card">
-            <h3>2. Choose a therapy profile</h3>
+          </article>
+          <article className="nq-card">
+            <h3>2. Choose your therapy mode</h3>
             <p>
-              Pick between Notch Therapy, Coordinated Reset-style (CR) patterns,
-              and gentle soundscapes for sleep and focus support.
+              Pick between relaxation / masking, brain-training (CR-style
+              patterns), or gentle sleep support, depending on how you feel
+              today.
             </p>
-          </div>
-          <div className="nq-how-card">
-            <h3>3. Train daily</h3>
+          </article>
+          <article className="nq-card">
+            <h3>3. Train regularly</h3>
             <p>
-              Short, regular sessions can help your brain gradually reduce the
-              impact of tinnitus on your day.
+              Short, regular sessions can help your brain gradually reduce how
+              intrusive tinnitus feels in daily life.
             </p>
-          </div>
+          </article>
         </div>
       </section>
 
       {/* BENEFITS */}
-      <section className="nq-benefits">
-        <div className="nq-benefits-card">
-          <h2>Designed for real life, not perfection.</h2>
+      <section className="nq-section nq-section-dark">
+        <div className="nq-card-dark">
+          <h2>Designed by a long-term tinnitus sufferer.</h2>
           <ul>
-            <li>Use with your own earbuds or headphones at safe volume.</li>
-            <li>Short 5–10 minute “reset” sessions when tinnitus spikes.</li>
-            <li>Longer soothing sessions for evenings and sleep preparation.</li>
+            <li>Built for headphones or mobile earpods at safe volume.</li>
+            <li>Quick “reset” sessions when tinnitus spikes.</li>
+            <li>Longer calming sessions before bed to support sleep.</li>
             <li>
-              Simple tracking so you can see how often you are training and how
-              you feel over time.
+              Session history so you can see how often you’re training over
+              time.
             </li>
           </ul>
           <p className="nq-note">
-            NeuroQuiet is a self-help sound tool and does not replace
-            professional medical care. For sudden changes in hearing or strong
-            distress, please seek urgent medical advice.
+            NeuroQuiet is a self-help sound tool and does not replace medical
+            care. For sudden hearing changes, strong distress, or other medical
+            concerns, please seek professional help immediately.
           </p>
         </div>
       </section>
 
-      {/* FOOTER: legal + trade protection */}
+      {/* FOOTER */}
       <footer className="nq-footer">
         <div className="nq-footer-main">
           <span>
-            © {new Date().getFullYear()} Leffler International Investments Pty
-            Ltd. All rights reserved.
+            © {year} Leffler International Investments Pty Ltd. All rights
+            reserved.
           </span>
           <span>NeuroQuiet™ – Tinnitus Relief Companion.</span>
         </div>
         <div className="nq-footer-links">
-          <Link href="/info">About &amp; Safety</Link>
+          <Link href="/about">About</Link>
+          <Link href="/research">Research</Link>
           <Link href="/legal">Legal</Link>
           <Link href="/disclaimers">Disclaimers</Link>
           <Link href="/company-policy">Company Policy</Link>
           <Link href="/terms">Terms of Use</Link>
         </div>
+        <p className="nq-footer-note">
+          NeuroQuiet™ is a trade mark of Leffler International Investments Pty
+          Ltd. This app does not diagnose, treat, cure, or prevent disease.
+        </p>
       </footer>
 
+      {/* MOBILE-FRIENDLY STYLES */}
       <style jsx>{`
-        .nq-landing-page {
+        .nq-landing {
           max-width: 1120px;
           margin: 0 auto;
-          padding: 2rem 1.25rem 3rem;
+          padding: 1.25rem 1rem 2.5rem;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+            sans-serif;
         }
 
+        /* HEADER */
+        .nq-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .nq-logo-wrap {
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .nq-logo {
+          height: auto;
+          max-width: 190px;
+          width: 100%;
+        }
+
+        .nq-header-right {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          font-size: 0.9rem;
+        }
+
+        .nq-header-link {
+          text-decoration: none;
+          color: #111827;
+        }
+
+        .nq-header-link:hover {
+          text-decoration: underline;
+        }
+
+        .nq-header-btn {
+          padding: 0.35rem 0.9rem;
+          border-radius: 999px;
+          background: #111827;
+          color: #f9fafb;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 0.85rem;
+          white-space: nowrap;
+        }
+
+        .nq-header-btn:hover {
+          background: #020617;
+        }
+
+        /* HERO */
+        .nq-hero {
+          display: grid;
+          grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+          gap: 2rem;
+          align-items: center;
+          margin-bottom: 2.5rem;
+        }
+
+        .nq-hero-text h1 {
+          font-size: 2rem;
+          line-height: 1.15;
+          margin: 0 0 0.75rem;
+        }
+
+        .nq-lead {
+          font-size: 1rem;
+          line-height: 1.5;
+          color: #4b5563;
+          margin: 0 0 1rem;
+        }
+
+        .nq-plan {
+          margin: 0 0 0.15rem;
+        }
+
+        .nq-plan-price {
+          font-weight: 700;
+          font-size: 1.2rem;
+        }
+
+        .nq-plan-detail {
+          font-size: 0.95rem;
+          color: #4b5563;
+        }
+
+        .nq-plan-sub {
+          margin: 0 0 1.5rem;
+          font-size: 0.85rem;
+          color: #6b7280;
+        }
+
+        .nq-hero-image {
+          display: flex;
+          justify-content: center;
+        }
+
+        .nq-hero-photo {
+          width: 100%;
+          height: auto;
+          max-width: 460px;
+          border-radius: 1.25rem;
+          object-fit: cover;
+          box-shadow: 0 18px 45px rgba(15, 23, 42, 0.45);
+        }
+
+        /* RESEARCH LINK (NO BLUE PILL, BIGGER FONT) */
+        .nq-research-link {
+          display: inline-block;
+          margin-bottom: 0.8rem;
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: #0369a1;
+          text-decoration: underline;
+          text-underline-offset: 4px;
+        }
+
+        .nq-research-link:hover {
+          color: #075985;
+        }
+
+        /* SECTIONS */
+        .nq-section {
+          margin-bottom: 2.5rem;
+        }
+
+        .nq-section h2 {
+          font-size: 1.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .nq-cards {
+          display: grid;
+          gap: 1rem;
+        }
+
+        .nq-card {
+          background: #ffffff;
+          border-radius: 1rem;
+          padding: 1.1rem 1.2rem;
+          box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+          border: 1px solid #e5e7eb;
+          font-size: 0.95rem;
+          color: #4b5563;
+        }
+
+        .nq-card h3 {
+          margin-top: 0;
+          margin-bottom: 0.45rem;
+          font-size: 1.05rem;
+          color: #111827;
+        }
+
+        .nq-section-dark {
+          margin-bottom: 2.75rem;
+        }
+
+        .nq-card-dark {
+          background: #020617;
+          border-radius: 1.2rem;
+          padding: 1.7rem 1.6rem;
+          color: #e5e7eb;
+          box-shadow: 0 22px 50px rgba(15, 23, 42, 0.7);
+        }
+
+        .nq-card-dark h2 {
+          margin-top: 0;
+          margin-bottom: 0.9rem;
+        }
+
+        .nq-card-dark ul {
+          margin: 0 0 0.9rem;
+          padding-left: 1.4rem;
+          font-size: 0.95rem;
+          line-height: 1.5;
+        }
+
+        .nq-card-dark li + li {
+          margin-top: 0.35rem;
+        }
+
+        .nq-note {
+          font-size: 0.8rem;
+          color: #e5e7eb;
+        }
+
+        /* FOOTER */
         .nq-footer {
-          margin-top: 3rem;
-          padding-top: 1.5rem;
           border-top: 1px solid #e5e7eb;
+          padding-top: 1.4rem;
           font-size: 0.8rem;
           color: #6b7280;
         }
@@ -158,6 +358,7 @@ export default function LandingPage() {
           display: flex;
           flex-wrap: wrap;
           gap: 0.75rem;
+          margin-bottom: 0.6rem;
         }
 
         .nq-footer-links a {
@@ -169,250 +370,50 @@ export default function LandingPage() {
           text-decoration: underline;
         }
 
-        .nq-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 2rem;
+        .nq-footer-note {
+          margin: 0;
         }
 
-        .nq-header-left {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
+        /* MOBILE LAYOUT */
+        @media (max-width: 768px) {
+          .nq-landing {
+            padding: 1rem 0.8rem 2.2rem;
+          }
 
-        .nq-header-right {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          font-size: 0.85rem;
-        }
+          .nq-header {
+            flex-direction: row;
+          }
 
-        .nq-header-link {
-          text-decoration: none;
-          color: #111827;
-        }
+          .nq-logo {
+            max-width: 150px;
+          }
 
-        .nq-header-link:hover {
-          text-decoration: underline;
-        }
+          .nq-header-right {
+            gap: 0.5rem;
+          }
 
-        .nq-header-button {
-          padding: 0.35rem 0.9rem;
-          border-radius: 999px;
-          background: #111827;
-          color: #f9fafb;
-          text-decoration: none;
-          font-weight: 600;
-          font-size: 0.85rem;
-        }
+          .nq-header-btn {
+            padding-inline: 0.7rem;
+          }
 
-        .nq-header-button:hover {
-          background: #020617;
-        }
-
-        .nq-hero {
-          display: grid;
-          grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr);
-          gap: 2rem;
-          align-items: center;
-          margin-bottom: 2.5rem;
-        }
-
-        @media (max-width: 900px) {
           .nq-hero {
             grid-template-columns: minmax(0, 1fr);
+            gap: 1.5rem;
           }
-          .nq-hero-device {
+
+          .nq-hero-image {
             order: -1;
           }
-        }
 
-        .nq-hero-text h1 {
-          font-size: 2.1rem;
-          line-height: 1.15;
-          margin-bottom: 0.7rem;
-        }
-
-        .nq-badge {
-          display: inline-flex;
-          padding: 0.25rem 0.6rem;
-          border-radius: 999px;
-          background: #e0f2fe;
-          color: #0369a1;
-          font-size: 0.75rem;
-          font-weight: 600;
-          margin-bottom: 0.75rem;
-        }
-
-        .nq-lead {
-          font-size: 1rem;
-          line-height: 1.5;
-          color: #4b5563;
-          margin-bottom: 1rem;
-        }
-
-        .nq-plan {
-          margin-bottom: 0.15rem;
-        }
-
-        .nq-plan-price {
-          font-weight: 700;
-          font-size: 1.2rem;
-        }
-
-        .nq-plan-detail {
-          font-size: 0.9rem;
-          color: #4b5563;
-        }
-
-        .nq-plan-sub {
-          font-size: 0.85rem;
-          color: #6b7280;
-          margin-bottom: 1.5rem;
-        }
-
-        .nq-hero-device {
-          display: flex;
-          justify-content: center;
-        }
-
-        .nq-hero-device-card {
-          border-radius: 1.2rem;
-          padding: 0.5rem;
-          background: radial-gradient(circle at top left, #1f2937, #020617);
-          box-shadow: 0 22px 60px rgba(15, 23, 42, 0.6);
-        }
-
-        .nq-device-screen {
-          border-radius: 0.9rem;
-          padding: 1.3rem 1.2rem;
-          background: linear-gradient(to bottom right, #0f172a, #020617);
-          color: #e5e7eb;
-          min-width: 270px;
-          max-width: 330px;
-        }
-
-        .nq-device-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 0.9rem;
-        }
-
-        .nq-device-title {
-          font-size: 0.9rem;
-          font-weight: 600;
-        }
-
-        .nq-device-pill {
-          border-radius: 999px;
-          padding: 0.2rem 0.6rem;
-          font-size: 0.7rem;
-          background: rgba(15, 118, 110, 0.16);
-          color: #a7f3d0;
-        }
-
-        .nq-device-body p {
-          font-size: 0.75rem;
-          line-height: 1.4;
-          color: #e5e7eb;
-          margin-bottom: 0.7rem;
-        }
-
-        .nq-device-foot {
-          display: flex;
-          flex-direction: column;
-          gap: 0.2rem;
-        }
-
-        .nq-device-foot-label {
-          font-size: 0.7rem;
-          color: #9ca3af;
-        }
-
-        .nq-device-foot-bar {
-          height: 6px;
-          width: 100%;
-          border-radius: 999px;
-          background: linear-gradient(to right, #22c55e, #facc15);
-        }
-
-        .nq-device-foot-text {
-          font-size: 0.7rem;
-          color: #e5e7eb;
-        }
-
-        .nq-how {
-          margin-bottom: 2.8rem;
-        }
-
-        .nq-how h2 {
-          font-size: 1.5rem;
-          margin-bottom: 1rem;
-        }
-
-        .nq-how-grid {
-          display: grid;
-          gap: 1rem;
-        }
-
-        @media (min-width: 800px) {
-          .nq-how-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+          .nq-hero-text h1 {
+            font-size: 1.6rem;
           }
         }
 
-        .nq-how-card {
-          background: #ffffff;
-          border-radius: 1rem;
-          padding: 1.1rem 1.2rem;
-          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.05);
-          border: 1px solid #e5e7eb;
-        }
-
-        .nq-how-card h3 {
-          margin-top: 0;
-          margin-bottom: 0.4rem;
-          font-size: 1.05rem;
-        }
-
-        .nq-how-card p {
-          margin: 0;
-          font-size: 0.9rem;
-          color: #4b5563;
-        }
-
-        .nq-benefits-card {
-          background: #020617;
-          border-radius: 1.2rem;
-          padding: 1.8rem 1.6rem;
-          color: #e5e7eb;
-          box-shadow: 0 22px 50px rgba(15, 23, 42, 0.7);
-        }
-
-        .nq-benefits-card h2 {
-          margin-top: 0;
-          margin-bottom: 0.9rem;
-          font-size: 1.5rem;
-        }
-
-        .nq-benefits-card ul {
-          margin: 0;
-          padding-left: 1.4rem;
-          font-size: 0.92rem;
-          line-height: 1.5;
-        }
-
-        .nq-benefits-card li + li {
-          margin-top: 0.35rem;
-        }
-
-        .nq-note {
-          font-size: 0.8rem;
-          color: #e5e7eb;
-          margin-top: 1.1rem;
+        @media (min-width: 900px) {
+          .nq-cards {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
         }
       `}</style>
     </main>
