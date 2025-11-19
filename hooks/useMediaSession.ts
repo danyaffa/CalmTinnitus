@@ -3,47 +3,41 @@
 
 import { useEffect } from "react";
 
-type MediaSessionOptions = {
+// FIX 3: Add the 'stop' handler type, as it's used in the page
+export type MediaSessionOptions = {
   title?: string;
   artist?: string;
   album?: string;
   onPlay?: () => void;
   onPause?: () => void;
+  onStop?: () => void;
 };
 
+// FIX 4: Update the function signature to accept MediaSessionOptions
 export function useMediaSession({
   title = "NeuroQuiet – Tinnitus Session",
   artist = "NeuroQuiet",
   album = "Tinnitus Sound Training",
   onPlay,
   onPause,
-}: MediaSessionOptions) {
+  onStop, // Added onStop
+}: MediaSessionOptions = {}) {
   useEffect(() => {
     if (typeof navigator === "undefined") return;
     if (!("mediaSession" in navigator)) return;
 
     try {
-      navigator.mediaSession.metadata = new MediaMetadata({
+      navigator.mediaSession.metadata = new (window as any).MediaMetadata({
         title,
         artist,
         album,
       });
 
-      if (onPlay) {
-        navigator.mediaSession.setActionHandler("play", () => {
-          onPlay();
-        });
-      } else {
-        navigator.mediaSession.setActionHandler("play", null);
-      }
-
-      if (onPause) {
-        navigator.mediaSession.setActionHandler("pause", () => {
-          onPause();
-        });
-      } else {
-        navigator.mediaSession.setActionHandler("pause", null);
-      }
+      // Handlers
+      navigator.mediaSession.setActionHandler("play", onPlay || null);
+      navigator.mediaSession.setActionHandler("pause", onPause || null);
+      navigator.mediaSession.setActionHandler("stop", onStop || null); // Set stop handler
+      
     } catch {
       // ignore if browser doesn't fully support it
     }
@@ -52,11 +46,13 @@ export function useMediaSession({
       if (typeof navigator === "undefined") return;
       if (!("mediaSession" in navigator)) return;
       try {
+        // Clear handlers on cleanup
         navigator.mediaSession.setActionHandler("play", null);
         navigator.mediaSession.setActionHandler("pause", null);
+        navigator.mediaSession.setActionHandler("stop", null);
       } catch {
         // ignore
       }
     };
-  }, [title, artist, album, onPlay, onPause]);
+  }, [title, artist, album, onPlay, onPause, onStop]);
 }
