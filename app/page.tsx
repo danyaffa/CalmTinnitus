@@ -1,4 +1,3 @@
-// app/page.tsx
 "use client";
 
 import Image from "next/image";
@@ -9,65 +8,77 @@ export default function HomePage() {
 
   return (
     <main className="nq-landing">
-      {/* HEADER */}
-      <header className="nq-header">
-        <div className="nq-header-left">
-          <Link href="/" className="nq-logo-wrap">
-            <Image
-              src="/CalmTinnitus-Logo.png"
-              alt="CalmTinnitus – Silence Starts Now"
-              width={200}
-              height={200}
-              className="nq-logo"
-            />
-          </Link>
+      {/* 🌅 TOP GRADIENT SHELL (Header + Hero) */}
+      <div className="nq-hero-shell">
+        <div className="nq-hero-inner">
+          {/* HEADER */}
+          <header className="nq-header">
+            <div className="nq-header-left">
+              <Link href="/" className="nq-logo-wrap">
+                <Image
+                  src="/CalmTinnitus-Logo.png"
+                  alt="CalmTinnitus – Silence Starts Now"
+                  width={200}
+                  height={100}
+                  className="nq-logo"
+                />
+              </Link>
+            </div>
+            <nav className="nq-header-right">
+              <Link href="/login" className="nq-header-link">
+                Log in
+              </Link>
+              <Link href="/register" className="nq-header-btn">
+                Register
+              </Link>
+            </nav>
+          </header>
+
+          {/* HERO */}
+          <section className="nq-hero">
+            <div className="nq-hero-text">
+              <Link href="/research" className="nq-research-link">
+                Based on tinnitus neuromodulation research
+              </Link>
+
+              <h1>Train your brain toward quieter days.</h1>
+
+              <p className="nq-lead">
+                CalmTinnitus is a calm, at-home sound tool created by someone
+                who has lived with persistent tinnitus for over{" "}
+                <strong>50 years</strong>. There is no miracle cure — but with
+                steady training, many people experience quieter moments, better
+                focus, and more peace.
+              </p>
+
+              <div className="nq-plan-group">
+                <p className="nq-plan">
+                  <span className="nq-plan-price">A$7 / month</span>
+                  <span className="nq-plan-detail"> — cancel anytime</span>
+                </p>
+                <p className="nq-plan-sub">
+                  One simple plan. No free trials, no hidden upgrades. Just an
+                  affordable tool you can use daily.
+                </p>
+
+                <Link href="/register" className="nq-primary-cta">
+                  Start training now
+                </Link>
+              </div>
+            </div>
+
+            <div className="nq-hero-image">
+              <Image
+                src="/woman.png"
+                alt="Calm person listening to sound therapy"
+                width={500}
+                height={360}
+                className="nq-hero-photo"
+              />
+            </div>
+          </section>
         </div>
-        <nav className="nq-header-right">
-          <Link href="/login" className="nq-header-link">
-            Log in
-          </Link>
-          <Link href="/register" className="nq-header-btn">
-            Register
-          </Link>
-        </nav>
-      </header>
-
-      {/* HERO */}
-      <section className="nq-hero">
-        <div className="nq-hero-text">
-          <Link href="/research" className="nq-research-link">
-            Based on tinnitus neuromodulation research
-          </Link>
-
-          <h1>Train your brain toward quieter days.</h1>
-
-          <p className="nq-lead">
-            CalmTinnitus is a calm, at-home sound tool created by someone who has
-            lived with persistent tinnitus for over <strong>50 years</strong>.
-            There is no miracle cure — but with steady training, many people
-            experience quieter moments, better focus, and more peace.
-          </p>
-
-          <p className="nq-plan">
-            <span className="nq-plan-price">A$7 / month</span>
-            <span className="nq-plan-detail"> — cancel anytime</span>
-          </p>
-          <p className="nq-plan-sub">
-            One simple plan. No free trials, no hidden upgrades. Just an
-            affordable tool you can use daily.
-          </p>
-        </div>
-
-        <div className="nq-hero-image">
-          <Image
-            src="/woman.png"
-            alt="Calm person listening to sound therapy"
-            width={500}
-            height={360}
-            className="nq-hero-photo"
-          />
-        </div>
-      </section>
+      </div>
 
       {/* HOW IT WORKS */}
       <section className="nq-section">
@@ -141,7 +152,7 @@ export default function HomePage() {
         </p>
       </footer>
 
-      {/* MOBILE-FRIENDLY STYLES */}
+      {/* STYLES */}
       <style jsx>{`
         .nq-landing {
           max-width: 1120px;
@@ -151,13 +162,34 @@ export default function HomePage() {
             sans-serif;
         }
 
+        /* 🌅 GRADIENT TOP WRAPPER */
+        .nq-hero-shell {
+          background: radial-gradient(
+              circle at top left,
+              rgba(134, 239, 255, 0.26),
+              transparent 55%
+            ),
+            linear-gradient(135deg, #f3fbff, #f6f4ff);
+          border-radius: 1.5rem;
+          box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+          padding: 1rem 1.25rem 2.25rem;
+          margin-bottom: 2.75rem;
+        }
+
+        .nq-hero-inner {
+          max-width: 1120px;
+          margin: 0 auto;
+        }
+
         /* HEADER */
         .nq-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 1rem;
-          margin-bottom: 1.5rem;
+          padding-bottom: 0.5rem;
+          margin-bottom: 1.25rem;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.25);
         }
 
         .nq-logo-wrap {
@@ -180,7 +212,7 @@ export default function HomePage() {
 
         .nq-header-link {
           text-decoration: none;
-          color: #111827;
+          color: #0f172a;
         }
 
         .nq-header-link:hover {
@@ -188,14 +220,15 @@ export default function HomePage() {
         }
 
         .nq-header-btn {
-          padding: 0.35rem 0.9rem;
+          padding: 0.4rem 0.95rem;
           border-radius: 999px;
-          background: #111827;
+          background: #0f172a;
           color: #f9fafb;
           text-decoration: none;
           font-weight: 600;
           font-size: 0.85rem;
           white-space: nowrap;
+          box-shadow: 0 10px 20px rgba(15, 23, 42, 0.35);
         }
 
         .nq-header-btn:hover {
@@ -205,43 +238,70 @@ export default function HomePage() {
         /* HERO */
         .nq-hero {
           display: grid;
-          grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-          gap: 2rem;
+          grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+          gap: 2.5rem;
           align-items: center;
-          margin-bottom: 2.5rem;
+          margin-top: 0.75rem;
         }
 
         .nq-hero-text h1 {
-          font-size: 2rem;
-          line-height: 1.15;
-          margin: 0 0 0.75rem;
+          font-size: 2.5rem;
+          line-height: 1.1;
+          margin: 0 0 1rem;
+          color: #020617;
         }
 
         .nq-lead {
-          font-size: 1rem;
-          line-height: 1.5;
-          color: #4b5563;
-          margin: 0 0 1rem;
+          font-size: 1.05rem;
+          line-height: 1.6;
+          color: #1f2933;
+          margin: 0 0 1.5rem;
+        }
+
+        .nq-plan-group {
+          margin-bottom: 0.25rem;
         }
 
         .nq-plan {
-          margin: 0 0 0.15rem;
+          margin: 0 0 0.3rem;
+          display: flex;
+          align-items: baseline;
+          gap: 0.85rem;
         }
 
         .nq-plan-price {
-          font-weight: 700;
-          font-size: 1.2rem;
+          font-weight: 800;
+          font-size: 1.75rem;
+          color: #0369a1;
         }
 
         .nq-plan-detail {
-          font-size: 0.95rem;
-          color: #4b5563;
+          font-size: 1rem;
+          color: #334155;
         }
 
         .nq-plan-sub {
-          margin: 0 0 1.5rem;
-          font-size: 0.85rem;
-          color: #6b7280;
+          margin: 0;
+          font-size: 0.9rem;
+          color: #64748b;
+          max-width: 90%;
+        }
+
+        .nq-primary-cta {
+          display: inline-flex;
+          margin-top: 1.1rem;
+          padding: 0.6rem 1.6rem;
+          border-radius: 999px;
+          background: linear-gradient(135deg, #0ea5e9, #22c55e);
+          color: white;
+          font-weight: 700;
+          font-size: 0.98rem;
+          text-decoration: none;
+          box-shadow: 0 16px 30px rgba(56, 189, 248, 0.45);
+        }
+
+        .nq-primary-cta:hover {
+          filter: brightness(1.03);
         }
 
         .nq-hero-image {
@@ -252,25 +312,29 @@ export default function HomePage() {
         .nq-hero-photo {
           width: 100%;
           height: auto;
-          max-width: 460px;
-          border-radius: 1.25rem;
+          max-width: 480px;
+          border-radius: 1.6rem;
           object-fit: cover;
-          box-shadow: 0 18px 45px rgba(15, 23, 42, 0.45);
+          box-shadow: 0 22px 50px rgba(15, 23, 42, 0.55);
         }
 
         /* RESEARCH LINK */
         .nq-research-link {
-          display: inline-block;
-          margin-bottom: 0.8rem;
-          font-size: 0.95rem;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          margin-bottom: 0.9rem;
+          padding: 0.15rem 0.7rem;
+          font-size: 0.85rem;
           font-weight: 600;
           color: #0369a1;
-          text-decoration: underline;
-          text-underline-offset: 4px;
+          background: rgba(191, 219, 254, 0.55);
+          border-radius: 999px;
+          text-decoration: none;
         }
 
         .nq-research-link:hover {
-          color: #075985;
+          background: rgba(191, 219, 254, 0.9);
         }
 
         /* SECTIONS */
@@ -373,14 +437,20 @@ export default function HomePage() {
           margin: 0;
         }
 
-        /* MOBILE LAYOUT */
+        /* MOBILE */
         @media (max-width: 768px) {
           .nq-landing {
             padding: 1rem 0.8rem 2.2rem;
           }
 
+          .nq-hero-shell {
+            padding: 0.8rem 0.85rem 1.7rem;
+            margin-bottom: 2.25rem;
+          }
+
           .nq-header {
-            flex-direction: row;
+            padding-bottom: 0.35rem;
+            margin-bottom: 1rem;
           }
 
           .nq-logo {
@@ -405,7 +475,11 @@ export default function HomePage() {
           }
 
           .nq-hero-text h1 {
-            font-size: 1.6rem;
+            font-size: 2rem;
+          }
+
+          .nq-plan-price {
+            font-size: 1.5rem;
           }
         }
 
