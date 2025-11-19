@@ -1,4 +1,4 @@
-// /app/landing/page.tsx
+// /app/page.tsx
 "use client";
 
 import Image from "next/image";
@@ -32,13 +32,15 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div className="nq-hero-device">
-          <div className="nq-hero-device-card">
+        {/* UPDATED: Replaced laptop mockup with the person image (/woman.png) */}
+        <div className="nq-hero-device nq-hero-image-person">
+          <div className="nq-hero-device-card nq-hero-device-person">
             <Image
-              src="/icons/LapTop.png"
-              alt="NeuroQuiet running on a laptop"
+              // Assuming 'woman.png' was uploaded to public directory
+              src="/woman.png" 
+              alt="Woman with headphones relaxing, symbolizing tinnitus relief"
               width={480}
-              height={320}
+              height={480} 
             />
           </div>
         </div>
@@ -199,25 +201,8 @@ export default function LandingPage() {
           </p>
         </div>
       </section>
-
-      {/* REVIEWS PLACEHOLDER */}
-      <section className="nq-section nq-reviews">
-        <div className="nq-section-title">
-          <h2>Reviews (coming soon)</h2>
-          <p>
-            We don&apos;t believe in fake stars. As people begin using
-            NeuroQuiet, you&apos;ll see honest feedback here.
-          </p>
-        </div>
-        <div className="nq-stars">
-          <span>⭐</span>
-          <span>⭐</span>
-          <span>⭐</span>
-          <span>⭐</span>
-          <span className="nq-star-faded">⭐</span>
-        </div>
-        <p className="nq-note">4.0 / 5 – placeholder rating for early users.</p>
-      </section>
+      
+      {/* DELETED: Removed REVIEWS PLACEHOLDER section */}
 
       <style jsx>{`
         .nq-landing-page {
@@ -309,6 +294,13 @@ export default function LandingPage() {
         .nq-hero-footnote {
           font-size: 0.8rem;
           color: #6b7280;
+        }
+        
+        /* UPDATED: Styles for the new hero image container */
+        .nq-hero-device-card.nq-hero-device-person {
+          background: #f0f4f7; /* Lighter background for the photo */
+          padding: 0.5rem; /* Reduced padding */
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
         }
 
         .nq-hero-device-card {
