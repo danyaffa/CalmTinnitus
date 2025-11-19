@@ -14,8 +14,6 @@ import {
   TherapyMode,
   TherapyType,
 } from "../AuthProvider";
-// Import the types needed for the new hook signature
-import { useMediaSession, MediaHandlers, MediaMetadata } from "../../hooks/useMediaSession";
 
 const DEFAULT_SESSION_MINUTES = 30;
 
@@ -105,9 +103,6 @@ const TherapyPage = () => {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // This line is now correct because useMediaSession returns the functions
-  const { setMediaSessionMetadata, setMediaSessionHandlers } = useMediaSession();
-
   // ---------- AUDIO CONTEXT MANAGEMENT ----------
 
   const getAudioContext = useCallback(() => {
@@ -162,11 +157,7 @@ const TherapyPage = () => {
     setStatus("idle");
     setCurrentMode(null);
     setMinutesLeft(null);
-
-    // Reset media session
-    setMediaSessionMetadata(null); // Now correctly called
-    setMediaSessionHandlers({}); // Now correctly called
-  }, [setMediaSessionHandlers, setMediaSessionMetadata]);
+  }, []);
 
   // ---------- WHITE NOISE HANDLING ----------
 
@@ -374,31 +365,6 @@ const TherapyPage = () => {
         return prev - 1;
       });
     }, 60_000);
-
-    const title =
-      mode === "relief"
-        ? "NeuroQuiet – Relief / CR Therapy"
-        : mode === "sleep"
-        ? "NeuroQuiet – Sleep Support Session"
-        : "NeuroQuiet – Standard Sound Therapy";
-
-    const metadata: MediaMetadata = {
-      title,
-      artist: "NeuroQuiet",
-      album: "Tinnitus Relief Session",
-    };
-    setMediaSessionMetadata(metadata); // Correct usage
-
-    const handlers: MediaHandlers = {
-      play: () => {
-        if (status !== "running" && currentMode) {
-          startSession(currentMode);
-        }
-      },
-      pause: () => pauseSession(), // Use local pause function
-      stop: () => stopEverything(),
-    };
-    setMediaSessionHandlers(handlers); // Correct usage
   };
 
   const pauseSession = () => {
@@ -440,9 +406,6 @@ const TherapyPage = () => {
         return prev - 1;
       });
     }, 60_000);
-
-    // Re-set media session handlers/metadata on resume, if needed, or rely on startSession logic
-    // For simplicity here, we assume the existing handlers are sufficient
   };
 
   // ---------- LOCAL HISTORY LOAD ----------
