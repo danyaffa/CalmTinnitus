@@ -15,8 +15,7 @@ export type SoundProfile = {
   id: SoundProfileId;
   label: string;
   description: string;
-  // FIX 1: Add the baseNoise property
-  baseNoise: string;
+  baseNoise: string; // The URL/path to the white noise audio file
 };
 
 const SOUND_LIBRARY: SoundProfile[] = [
@@ -64,12 +63,10 @@ const SOUND_LIBRARY: SoundProfile[] = [
   },
 ];
 
-// Re-defining props to match usage in therapy/page.tsx (no modal/state logic there)
 export type SoundLibraryMenuProps = {
   onSelectProfile: (profile: SoundProfile) => void;
 };
 
-// FIX 2: Simplify component to match usage pattern in therapy/page.tsx
 export const SoundLibraryMenu: React.FC<SoundLibraryMenuProps> = ({
   onSelectProfile,
 }) => {
