@@ -95,6 +95,7 @@ body {
   padding: 1.5rem 1.6rem;
   box-shadow: 0 12px 30px rgba(4, 32, 60, 0.06);
   border: 1px solid #dde6f0;
+  margin-bottom: 1.5rem; /* Added margin for separation */
 }
 
 .card h2 {
@@ -114,7 +115,162 @@ hr {
   border-top: 1px solid #dde6f0;
 }
 
-/* --- Tabs --- */
+/* --- NEW: Therapy Page Layout Styles --- */
+.therapy-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 3rem;
+}
+
+.therapy-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.logo-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-text-main {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.logo-text-sub {
+  font-size: 0.9rem;
+  color: #50627b;
+}
+
+.therapy-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+@media (max-width: 768px) {
+    .therapy-intro {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* Step Headers */
+.section-header {
+    margin-bottom: 1rem;
+}
+
+/* Pitch Matching */
+.pitch-controls {
+    margin-top: 1rem;
+}
+.pitch-adjust-grid {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.current-pitch-display {
+    text-align: center;
+    font-size: 1.1rem;
+    padding: 0.5rem;
+    background: #f8fafc;
+    border-radius: 0.5rem;
+}
+.pitch-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+.pitch-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+.saved-pitch-label {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.95rem;
+}
+
+/* Session Setup */
+.session-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Timer Display */
+.timer-display {
+    text-align: center;
+    background: #e0f7f7;
+    border: 1px solid #c7e8ec;
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+.timer-label {
+    display: block;
+    font-size: 0.9rem;
+    color: #0b8293;
+    font-weight: 500;
+}
+.timer-value {
+    display: block;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #0f1b2b;
+    line-height: 1.2;
+}
+
+/* Session Controls */
+.session-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* History */
+.empty-history {
+    text-align: center;
+    padding: 2rem 0;
+    color: #6b7d94;
+    border: 1px dashed #dde6f0;
+    border-radius: 0.5rem;
+}
+.history-list {
+    list-style: none;
+    padding: 0;
+}
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.6rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+.history-date {
+    font-weight: 600;
+    color: #0f1b2b;
+}
+.history-meta, .history-details {
+    color: #50627b;
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+}
+
+
+/* --- Tabs (Unused in new therapy page, kept for completeness) --- */
 .tab-container {
   display: flex;
   gap: 0.5rem;
@@ -144,38 +300,44 @@ hr {
   border-color: #087a93;
 }
 
-/* --- Therapy Type Selector --- */
-.therapy-selector {
+/* --- Therapy Type Selector (Pills) --- */
+.pill-row {
   display: flex;
-  border: 1px solid #dde6f0;
-  border-radius: 0.75rem;
-  overflow: hidden;
-  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
-.therapy-button {
-  flex: 1;
-  padding: 0.75rem 0.5rem;
-  text-align: center;
+.pill {
+  border: 1px solid #dde6f0;
   background: #f8fafc;
   color: #425674;
-  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 500;
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
   transition: all 0.2s ease;
 }
 
-.therapy-button:first-child {
-  border-right: 1px solid #dde6f0;
+.pill:hover:not(:disabled) {
+  background: #eef1f4;
 }
 
-.therapy-button.active {
-  background: linear-gradient(135deg, #0b8293, #46c0c7);
+.pill-selected {
+  background: #087a93;
   color: white;
+  border-color: #087a93;
 }
 
-/* --- Controls & Buttons --- */
+.hint-text {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 0.5rem !important;
+}
+
+
+/* --- Controls & Buttons (Unified for therapy page) --- */
 .label-row {
   display: flex;
   justify-content: space-between;
@@ -196,34 +358,57 @@ hr {
   margin-top: 1rem;
 }
 
+/* Unified Button Styles */
+.primary-btn, .secondary-btn, .ghost-btn,
 .btn {
   border: none;
   border-radius: 999px;
   padding: 0.55rem 1.3rem;
-  font-size: 0.85rem;
+  font-size: 0.9rem; /* Slightly larger text for main buttons */
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  text-decoration: none;
+  text-align: center;
 }
 
-.btn-primary {
+.primary-btn {
   background: linear-gradient(135deg, #087a93, #46c0c7);
   color: white;
 }
 
-.btn-primary:hover {
+.primary-btn:hover:not(:disabled) {
   opacity: 0.9;
 }
 
-.btn-secondary {
+.secondary-btn {
   background: #ecf2fa;
   color: #1a3352;
+  border: 1px solid #dde6f0;
 }
 
-.btn-secondary:hover {
+.secondary-btn:hover:not(:disabled) {
   background: #e2e8f0;
 }
 
+.ghost-btn {
+    background: transparent;
+    color: #425674;
+    border: 1px solid transparent;
+}
+.ghost-btn:hover:not(:disabled) {
+    background: #f2f6fc;
+    border-color: #f2f6fc;
+}
+
+/* Small Button Variant */
+.primary-btn.small, .secondary-btn.small, .ghost-btn.small {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+}
+
+
+.primary-btn[disabled], .secondary-btn[disabled], .ghost-btn[disabled],
 .btn[disabled] {
   opacity: 0.6;
   cursor: not-allowed;
@@ -287,7 +472,7 @@ hr {
   line-height: 1.5;
 }
 
-/* --- History Tab --- */
+/* --- History Tab (Kept for completeness) --- */
 .history-log {
   max-height: 400px;
   overflow-y: auto;
