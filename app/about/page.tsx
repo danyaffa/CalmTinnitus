@@ -9,7 +9,7 @@ export default function AboutPage() {
   return (
     <main className="nq-about">
       <header className="nq-about-header">
-        <h1>About NeuroQuiet™</h1>
+        <h1>About CalmTinnitus™</h1>
         <p>
           NeuroQuiet™ is a calm, at-home tinnitus sound tool developed under
           <strong> Leffler International Investments Pty Ltd</strong>.  
@@ -27,7 +27,7 @@ export default function AboutPage() {
       <section className="nq-about-section">
         <h2>Created from real experience</h2>
         <p>
-          NeuroQuiet™ was created by someone living with high-pitch tinnitus for
+          CalmTinnitus™ was created by someone living with high-pitch tinnitus for
           over 50 years — including severe, war-related acoustic trauma.  
           This is not theory. This is lived experience transformed into a practical
           tool.
@@ -62,7 +62,7 @@ export default function AboutPage() {
       <section className="nq-about-section nq-about-dark">
         <h2>Responsible and honest</h2>
         <p>
-          NeuroQuiet™ is a self-help training tool. It does not replace ENT care,
+          CalmTinnitus™ is a self-help training tool. It does not replace ENT care,
           audiology evaluation, or professional medical treatment.
         </p>
       </section>
