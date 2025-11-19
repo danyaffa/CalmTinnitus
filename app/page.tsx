@@ -7,6 +7,17 @@ import Link from "next/link";
 export default function LandingPage() {
   return (
     <main className="nq-landing-page">
+      {/* NEW: Logo Header */}
+      <header className="nq-header">
+        <Image
+          src="/NeuroQuiet-Logo.jpg"
+          alt="NeuroQuiet - Silence Starts Now Logo"
+          width={180} // Set an appropriate size for a header logo
+          height={40} // Adjust height to maintain aspect ratio
+          className="nq-logo"
+        />
+      </header>
+      
       {/* HERO */}
       <section className="nq-hero">
         <div className="nq-hero-text">
@@ -208,6 +219,11 @@ export default function LandingPage() {
           margin: 0 auto;
           padding: 2rem 1.25rem 3rem;
         }
+        
+        /* NEW: Header style for logo */
+        .nq-header {
+            margin-bottom: 2rem;
+        }
 
         .nq-hero {
           display: grid;
@@ -292,6 +308,7 @@ export default function LandingPage() {
         .nq-hero-footnote {
           font-size: 0.8rem;
           color: #6b7280;
+          margin-top: 0.5rem; /* Adjusted since 'Start now' action moved up */
         }
         
         /* Styles for the new hero image container */
@@ -414,21 +431,18 @@ export default function LandingPage() {
         .nq-pricing-card {
           max-width: 440px;
           margin: 0 auto;
-          /* FIX: Changed background to white */
           background: #ffffff; 
-          /* FIX: Changed text color to a dark grey for readability */
           color: #374151; 
           border-radius: 1.1rem;
           padding: 1.8rem 1.7rem 1.7rem;
-          /* Adjust shadow for lighter background */
           box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1); 
-          border: 1px solid #e5e7eb; /* Add a subtle border */
+          border: 1px solid #e5e7eb; 
         }
 
         .nq-pricing-card h2 {
           font-size: 1.3rem;
           margin-bottom: 0.6rem;
-          color: #111827; /* Ensure heading is dark */
+          color: #111827; 
         }
 
         .nq-price {
@@ -438,12 +452,11 @@ export default function LandingPage() {
         .nq-price-amount {
           font-size: 2rem;
           font-weight: 700;
-          color: #111827; /* Ensure price amount is dark */
+          color: #111827; 
         }
 
         .nq-price-period {
           font-size: 0.95rem;
-          /* Adjusted for better contrast on white background */
           color: #6b7280; 
         }
 
@@ -452,13 +465,12 @@ export default function LandingPage() {
           padding-left: 1.1rem;
           font-size: 0.9rem;
           margin: 0.7rem 0 1.1rem;
-          color: #374151; /* Ensure list items are dark */
+          color: #374151; 
         }
 
         .nq-pricing-card .nq-note {
-          /* Adjust footnote color for readability on white background */
           color: #6b7280; 
-          margin-top: 1.2rem; /* Give it more space from the button */
+          margin-top: 1.2rem; 
         }
       `}</style>
     </main>
