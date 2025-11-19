@@ -938,7 +938,6 @@ const TherapyPage = () => {
           <a href="/legal">Legal</a>
           <a href="/disclaimers">Disclaimers</a>
           <a href="/company-policy">Company Policy</a>
-          <a href="/terms">Terms of Use</a>
         </div>
         <div className="therapy-footer-note">
           This app is a self-help sound tool and does not provide medical
