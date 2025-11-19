@@ -3,7 +3,7 @@
 
 import { useEffect } from "react";
 
-// FIX 3: Add the 'stop' handler type, as it's used in the page
+// Add the 'stop' handler type, as it's used in the page
 export type MediaSessionOptions = {
   title?: string;
   artist?: string;
@@ -13,7 +13,7 @@ export type MediaSessionOptions = {
   onStop?: () => void;
 };
 
-// FIX 4: Update the function signature to accept MediaSessionOptions
+// The hook accepts MediaSessionOptions and returns void
 export function useMediaSession({
   title = "NeuroQuiet – Tinnitus Session",
   artist = "NeuroQuiet",
