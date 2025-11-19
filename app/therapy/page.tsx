@@ -14,6 +14,8 @@ import {
   TherapyMode,
   TherapyType,
 } from "../AuthProvider";
+// FIX 5: Import the useMediaSession hook and its types
+import { useMediaSession, MediaSessionOptions } from "../../hooks/useMediaSession"; 
 
 const DEFAULT_SESSION_MINUTES = 30;
 
@@ -91,6 +93,11 @@ const TherapyPage = () => {
   const [selectedProfile, setSelectedProfile] = useState<SoundProfile | null>(
     null
   );
+  
+  // FIX 6: New state for media session options
+  const [mediaSessionOptions, setMediaSessionOptions] = useState<
+    MediaSessionOptions | undefined
+  >(undefined);
 
   const [localHistoryLoaded, setLocalHistoryLoaded] = useState(false);
 
@@ -102,6 +109,9 @@ const TherapyPage = () => {
   const crGainsRef = useRef<GainNode[]>([]);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // FIX 7: Use the hook correctly by passing options. The hook returns void.
+  useMediaSession(mediaSessionOptions);
 
   // ---------- AUDIO CONTEXT MANAGEMENT ----------
 
@@ -147,6 +157,9 @@ const TherapyPage = () => {
     // Stop audio
     stopWhiteNoise();
     stopAllOscillators();
+    
+    // Stop CR pattern
+    stopCRTherapy();
 
     // Stop timer
     if (sessionTimerRef.current) {
@@ -157,6 +170,9 @@ const TherapyPage = () => {
     setStatus("idle");
     setCurrentMode(null);
     setMinutesLeft(null);
+
+    // FIX 8: Reset media session by clearing the options state
+    setMediaSessionOptions(undefined);
   }, []);
 
   // ---------- WHITE NOISE HANDLING ----------
@@ -196,7 +212,8 @@ const TherapyPage = () => {
 
     // Start with a comfortable audible tone, say 2000 Hz
     osc.type = "sine";
-    osc.frequency.value = tinnitusPitchHz || 2000;
+    // FIX 9: If in standard/sleep mode, use the saved tinnitusPitch, otherwise default to 2000
+    osc.frequency.value = currentMode && (currentMode === 'standard' || currentMode === 'sleep') && tinnitusPitch !== null ? tinnitusPitch : tinnitusPitchHz || 2000;
 
     gain.gain.value = 0.1; // Keep it gentle
     osc.connect(gain).connect(ctx.destination);
@@ -241,6 +258,7 @@ const TherapyPage = () => {
   };
 
   // ---------- COORDINATED RESET (CR) THERAPY ----------
+  // ... (startCRTherapy and stopCRTherapy remain unchanged as they were correct)
 
   const startCRTherapy = (baseFrequency: number) => {
     const ctx = getAudioContext();
@@ -293,7 +311,7 @@ const TherapyPage = () => {
     }
     stopAllOscillators();
   };
-
+  
   // ---------- SESSION LOGGING ----------
 
   const saveSession = () => {
@@ -336,7 +354,8 @@ const TherapyPage = () => {
       return;
     }
 
-    stopEverything();
+    stopEverything(); // Calls stopCRTherapy and resets status/timer
+
     setCurrentMode(mode);
 
     const whiteNoiseEl = whiteNoiseRef.current;
@@ -354,17 +373,54 @@ const TherapyPage = () => {
     setStatus("running");
     setMinutesLeft(sessionMinutes);
 
-    sessionTimerRef.current = setInterval(() => {
-      setMinutesLeft((prev) => {
-        if (prev === null) return null;
-        if (prev <= 1) {
-          stopEverything();
-          saveSession();
-          return null;
+    // FIX 10: Timer interval logic
+    const intervalCallback = () => {
+        setMinutesLeft((prev) => {
+            if (prev === null) return null;
+            if (prev <= 1) {
+                // To avoid multiple stopEverything calls when time runs out
+                if (sessionTimerRef.current) {
+                    clearInterval(sessionTimerRef.current);
+                    sessionTimerRef.current = null;
+                }
+                stopWhiteNoise();
+                stopAllOscillators();
+                stopCRTherapy();
+                setStatus("idle");
+                setCurrentMode(null);
+                saveSession();
+                setMediaSessionOptions(undefined);
+                return null;
+            }
+            return prev - 1;
+        });
+    };
+
+    sessionTimerRef.current = setInterval(intervalCallback, 60_000);
+
+    const title =
+      mode === "relief"
+        ? "NeuroQuiet – Relief / CR Therapy"
+        : mode === "sleep"
+        ? "NeuroQuiet – Sleep Support Session"
+        : "NeuroQuiet – Standard Sound Therapy";
+
+    // FIX 11: Set media session options for the hook
+    setMediaSessionOptions({
+      title,
+      artist: "NeuroQuiet",
+      album: "Tinnitus Relief Session",
+      onPlay: () => {
+        // Only resume if currently paused, otherwise ignore
+        if (status === "paused") { 
+          resumeSession();
+        } else if (status === "idle") {
+          startSession(mode);
         }
-        return prev - 1;
-      });
-    }, 60_000);
+      },
+      onPause: pauseSession,
+      onStop: stopEverything,
+    });
   };
 
   const pauseSession = () => {
@@ -377,6 +433,16 @@ const TherapyPage = () => {
     stopAllOscillators();
     stopCRTherapy();
     setStatus("paused");
+
+    // FIX 12: Update media session to only allow play on pause
+    setMediaSessionOptions((prev) => ({
+      ...prev,
+      onPlay: () => {
+        if (status === "paused") resumeSession();
+      },
+      onPause: undefined, // Disable pause button
+      onStop: stopEverything,
+    }));
   };
 
   const resumeSession = () => {
@@ -395,17 +461,38 @@ const TherapyPage = () => {
 
     setStatus("running");
 
-    sessionTimerRef.current = setInterval(() => {
-      setMinutesLeft((prev) => {
-        if (prev === null) return null;
-        if (prev <= 1) {
-          stopEverything();
-          saveSession();
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 60_000);
+    // FIX 13: Re-start the timer logic. Use the same logic as startSession.
+    const intervalCallback = () => {
+        setMinutesLeft((prev) => {
+            if (prev === null) return null;
+            if (prev <= 1) {
+                // To avoid multiple stopEverything calls when time runs out
+                if (sessionTimerRef.current) {
+                    clearInterval(sessionTimerRef.current);
+                    sessionTimerRef.current = null;
+                }
+                stopWhiteNoise();
+                stopAllOscillators();
+                stopCRTherapy();
+                setStatus("idle");
+                setCurrentMode(null);
+                saveSession();
+                setMediaSessionOptions(undefined);
+                return null;
+            }
+            return prev - 1;
+        });
+    };
+
+    sessionTimerRef.current = setInterval(intervalCallback, 60_000);
+
+    // FIX 14: Restore media session handlers
+    setMediaSessionOptions((prev) => ({
+      ...prev,
+      onPlay: undefined, // Disable play button
+      onPause: pauseSession,
+      onStop: stopEverything,
+    }));
   };
 
   // ---------- LOCAL HISTORY LOAD ----------
@@ -436,6 +523,7 @@ const TherapyPage = () => {
     setSelectedProfile(profile);
     if (profile && profile.baseNoise) {
       if (whiteNoiseRef.current) {
+        // FIX 15: Set the src attribute of the audio element
         whiteNoiseRef.current.src = profile.baseNoise;
       }
     }
@@ -454,21 +542,21 @@ const TherapyPage = () => {
         <div className="session-controls">
           <button
             onClick={() => startSession("standard")}
-            disabled={!tinnitusPitch}
+            disabled={!tinnitusPitch || !selectedProfile}
             className="primary-btn"
           >
             Start Standard Session
           </button>
           <button
             onClick={() => startSession("relief")}
-            disabled={!tinnitusPitch}
+            disabled={!tinnitusPitch || !selectedProfile}
             className="secondary-btn"
           >
             Start Relief / CR Session
           </button>
           <button
             onClick={() => startSession("sleep")}
-            disabled={!tinnitusPitch}
+            disabled={!tinnitusPitch || !selectedProfile}
             className="ghost-btn"
           >
             Start Sleep Session
@@ -691,7 +779,9 @@ const TherapyPage = () => {
               change this anytime.
             </p>
           </div>
+          {/* FIX 16: Pass the correct function signature to the menu */}
           <SoundLibraryMenu onSelectProfile={onSelectProfile} />
+          {/* Audio element will load its source in onSelectProfile */}
           <audio ref={whiteNoiseRef} />
         </section>
 
@@ -752,7 +842,7 @@ const TherapyPage = () => {
                   <button
                     key={m.key}
                     onClick={() => startSession(m.key)}
-                    disabled={!tinnitusPitch}
+                    disabled={!tinnitusPitch || !selectedProfile} // Added disabled check
                     className={`pill ${
                       currentMode === m.key && status !== "idle"
                         ? "pill-selected"
