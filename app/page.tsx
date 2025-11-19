@@ -3,62 +3,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Metadata } from 'next';
-
-// --- UPDATED METADATA EXPORT (includes Canonical URL) ---
-export const metadata: Metadata = {
-  // Primary SEO (Fallback for Open Graph)
-  title: 'CalmTinnitus – Silence Starts Now',
-  description: 'Calm-Tinnitus helps reduce tinnitus discomfort using science-based neuromodulation, sound therapy, and guided relaxation for daily relief.',
-  
-  // Canonical Link (Handles <link rel="canonical" href="..."/>)
-  alternates: {
-    canonical: 'https://calmtinnitus.com/',
-  },
-
-  // Google & Bing Verification
-  verification: {
-    google: '1-hMw5VR5fPWM2BohUpP3BBUCgc3f_tuqvOjuV2Fnl0',
-    other: {
-      'msvalidate.01': '1A5F9E495867B41926D6E2C113347122',
-    }
-  },
-
-  // Open Graph (og:) Tags
-  openGraph: {
-    title: 'CalmTinnitus – Train your brain toward quieter days',
-    description: 'At-home sound therapy created by someone who lived with tinnitus for 50 years. Based on neuromodulation research.',
-    url: 'https://calmtinnitus.com',
-    type: 'website',
-    images: [
-      {
-        url: '/og-image.png',
-      },
-    ],
-  },
-
-  // Twitter Card (twitter:) Tags
-  twitter: {
-    card: 'summary_large_image',
-    title: 'CalmTinnitus – Tinnitus Relief Companion',
-    description: 'Train your brain toward quieter days using neuromodulation sound therapy.',
-    images: ['/og-image.png'],
-  },
-
-  // Apple Touch Icon & Favicon/Icons
-  icons: {
-    icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/icon.png', type: 'image/png' },
-    ],
-    apple: '/apple-touch-icon.png',
-  },
-  
-  // Manifest
-  manifest: '/manifest.json',
-};
-// -------------------------------------------------------------
-
 
 export default function HomePage() {
   const year = new Date().getFullYear();
@@ -314,7 +258,7 @@ export default function HomePage() {
           box-shadow: 0 18px 45px rgba(15, 23, 42, 0.45);
         }
 
-        /* RESEARCH LINK (NO BLUE PILL, BIGGER FONT) */
+        /* RESEARCH LINK */
         .nq-research-link {
           display: inline-block;
           margin-bottom: 0.8rem;
