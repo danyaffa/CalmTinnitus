@@ -3,12 +3,19 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Metadata } from 'next'; // Import Metadata type for type safety
+import { Metadata } from 'next';
 
-// --- ADDED METADATA EXPORT for SEO and Site Verification ---
+// --- UPDATED METADATA EXPORT (includes Canonical URL) ---
 export const metadata: Metadata = {
+  // Primary SEO (Fallback for Open Graph)
   title: 'CalmTinnitus – Silence Starts Now',
   description: 'Calm-Tinnitus helps reduce tinnitus discomfort using science-based neuromodulation, sound therapy, and guided relaxation for daily relief.',
+  
+  // Canonical Link (Handles <link rel="canonical" href="..."/>)
+  alternates: {
+    canonical: 'https://calmtinnitus.com/',
+  },
+
   // Google & Bing Verification
   verification: {
     google: '1-hMw5VR5fPWM2BohUpP3BBUCgc3f_tuqvOjuV2Fnl0',
@@ -16,10 +23,39 @@ export const metadata: Metadata = {
       'msvalidate.01': '1A5F9E495867B41926D6E2C113347122',
     }
   },
-  // Canonical Link
-  alternates: {
-    canonical: 'https://www.calmtinnitus.com/',
-  }
+
+  // Open Graph (og:) Tags
+  openGraph: {
+    title: 'CalmTinnitus – Train your brain toward quieter days',
+    description: 'At-home sound therapy created by someone who lived with tinnitus for 50 years. Based on neuromodulation research.',
+    url: 'https://calmtinnitus.com',
+    type: 'website',
+    images: [
+      {
+        url: '/og-image.png',
+      },
+    ],
+  },
+
+  // Twitter Card (twitter:) Tags
+  twitter: {
+    card: 'summary_large_image',
+    title: 'CalmTinnitus – Tinnitus Relief Companion',
+    description: 'Train your brain toward quieter days using neuromodulation sound therapy.',
+    images: ['/og-image.png'],
+  },
+
+  // Apple Touch Icon & Favicon/Icons
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+  
+  // Manifest
+  manifest: '/manifest.json',
 };
 // -------------------------------------------------------------
 
