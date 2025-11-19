@@ -350,6 +350,17 @@ const TherapyPage = () => {
       return;
     }
 
+    // --- NEW: Positive Reinforcement and Guidance ---
+    alert(
+      "🎉 Congratulations! You've taken the first step toward controlling your tinnitus.\n\n" +
+      "1. **Assess your Tinnitus Pitch**: You've already completed this crucial first step!\n" +
+      "2. **Select Therapy Type**: Choose your mode (Standard, Relief, or Sleep).\n" +
+      "3. **Start Therapy Session**: Click 'Start' and listen at a comfortable volume.\n" +
+      "4. **Measure your Progress**: Continue regular sessions.\n\n" +
+      "Relax, you are on your way to control of Tinnitus."
+    );
+    // --- END NEW ---
+
     stopEverything(); // Calls stopCRTherapy and resets status/timer
 
     setCurrentMode(mode);
@@ -366,7 +377,7 @@ const TherapyPage = () => {
       startCRTherapy(tinnitusPitch);
     }
 
-    setStatus("running");
+    setStatus("running"); // This is the 'green light' visual trigger (via globals.css)
     setMinutesLeft(sessionMinutes);
 
     // Timer interval logic
