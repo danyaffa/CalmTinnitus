@@ -10,8 +10,7 @@ export default function CompanyPolicyPage() {
         <h1>Company Policy</h1>
         <p>
           NeuroQuiet is operated by <strong>Leffler International Investments
-          Pty Ltd</strong>. This prototype is offered for research and personal
-          tracking purposes only.
+          Pty Ltd</strong>
         </p>
         <p>Key points:</p>
         <ul>
