@@ -3,6 +3,26 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { Metadata } from 'next'; // Import Metadata type for type safety
+
+// --- ADDED METADATA EXPORT for SEO and Site Verification ---
+export const metadata: Metadata = {
+  title: 'CalmTinnitus – Silence Starts Now',
+  description: 'Calm-Tinnitus helps reduce tinnitus discomfort using science-based neuromodulation, sound therapy, and guided relaxation for daily relief.',
+  // Google & Bing Verification
+  verification: {
+    google: '1-hMw5VR5fPWM2BohUpP3BBUCgc3f_tuqvOjuV2Fnl0',
+    other: {
+      'msvalidate.01': '1A5F9E495867B41926D6E2C113347122',
+    }
+  },
+  // Canonical Link
+  alternates: {
+    canonical: 'https://www.calmtinnitus.com/',
+  }
+};
+// -------------------------------------------------------------
+
 
 export default function HomePage() {
   const year = new Date().getFullYear();
