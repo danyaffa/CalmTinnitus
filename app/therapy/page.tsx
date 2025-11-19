@@ -14,7 +14,7 @@ import {
   TherapyMode,
   TherapyType,
 } from "../AuthProvider";
-import { useMediaSession, MediaSessionOptions } from "../../hooks/useMediaSession"; 
+import { useMediaSession, MediaSessionOptions } from "../../hooks/useMediaSession";
 
 const DEFAULT_SESSION_MINUTES = 30;
 
@@ -92,7 +92,7 @@ const TherapyPage = () => {
   const [selectedProfile, setSelectedProfile] = useState<SoundProfile | null>(
     null
   );
-  
+
   const [mediaSessionOptions, setMediaSessionOptions] = useState<
     MediaSessionOptions | undefined
   >(undefined);
@@ -149,7 +149,7 @@ const TherapyPage = () => {
       whiteNoiseRef.current.currentTime = 0;
     }
   };
-  
+
   const stopCRTherapy = () => {
     const refAny = crOscillatorsRef as any;
     if (refAny.currentIntervalId) {
@@ -163,7 +163,7 @@ const TherapyPage = () => {
     // Stop audio
     stopWhiteNoise();
     stopAllOscillators();
-    
+
     // Stop CR pattern
     stopCRTherapy();
 
@@ -177,7 +177,7 @@ const TherapyPage = () => {
     setCurrentMode(null);
     setMinutesLeft(null);
 
-    // Reset media session by clearing the options state
+    // Reset media session
     setMediaSessionOptions(undefined);
   }, []);
 
@@ -216,12 +216,16 @@ const TherapyPage = () => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    // Start with a comfortable audible tone, say 2000 Hz
+    // Start with a comfortable audible tone
     osc.type = "sine";
-    // If in standard/sleep mode, use the saved tinnitusPitch, otherwise default to 2000
-    osc.frequency.value = currentMode && (currentMode === 'standard' || currentMode === 'sleep') && tinnitusPitch !== null ? tinnitusPitch : tinnitusPitchHz || 2000;
+    osc.frequency.value =
+      currentMode &&
+      (currentMode === "standard" || currentMode === "sleep") &&
+      tinnitusPitch !== null
+        ? tinnitusPitch
+        : tinnitusPitchHz || 2000;
 
-    gain.gain.value = 0.1; // Keep it gentle
+    gain.gain.value = 0.1; // gentle
     osc.connect(gain).connect(ctx.destination);
     osc.start();
 
@@ -312,7 +316,6 @@ const TherapyPage = () => {
 
   const saveSession = () => {
     const baseLog: Omit<SessionLog, "id"> = {
-      // store numeric timestamp (ms since epoch)
       date: Date.now(),
       mode: currentMode || "standard",
       therapyType,
@@ -350,18 +353,16 @@ const TherapyPage = () => {
       return;
     }
 
-    // --- NEW: Positive Reinforcement and Guidance ---
     alert(
       "🎉 Congratulations! You've taken the first step toward controlling your tinnitus.\n\n" +
-      "1. **Assess your Tinnitus Pitch**: You've already completed this crucial first step!\n" +
-      "2. **Select Therapy Type**: Choose your mode (Standard, Relief, or Sleep).\n" +
-      "3. **Start Therapy Session**: Click 'Start' and listen at a comfortable volume.\n" +
-      "4. **Measure your Progress**: Continue regular sessions.\n\n" +
-      "Relax, you are on your way to control of Tinnitus."
+        "1. Assess your Tinnitus Pitch – you’ve already done this.\n" +
+        "2. Select Therapy Type – choose Standard, Relief, or Sleep.\n" +
+        "3. Start Therapy Session – listen at a comfortable volume.\n" +
+        "4. Measure your progress over time.\n\n" +
+        "Relax, you are on your way to control of Tinnitus."
     );
-    // --- END NEW ---
 
-    stopEverything(); // Calls stopCRTherapy and resets status/timer
+    stopEverything();
 
     setCurrentMode(mode);
 
@@ -370,37 +371,34 @@ const TherapyPage = () => {
       playWhiteNoise(whiteNoiseEl);
     }
 
-    // Standard & sleep use a single matched tone; relief uses CR pattern
     if (mode === "standard" || mode === "sleep") {
       startPitchMatchingTone();
     } else if (mode === "relief") {
       startCRTherapy(tinnitusPitch);
     }
 
-    setStatus("running"); // This is the 'green light' visual trigger (via globals.css)
+    setStatus("running");
     setMinutesLeft(sessionMinutes);
 
-    // Timer interval logic
     const intervalCallback = () => {
-        setMinutesLeft((prev) => {
-            if (prev === null) return null;
-            if (prev <= 1) {
-                // Simplified stop logic when time runs out
-                if (sessionTimerRef.current) {
-                    clearInterval(sessionTimerRef.current);
-                    sessionTimerRef.current = null;
-                }
-                stopWhiteNoise();
-                stopAllOscillators();
-                stopCRTherapy();
-                setStatus("idle");
-                setCurrentMode(null);
-                saveSession();
-                setMediaSessionOptions(undefined);
-                return null;
-            }
-            return prev - 1;
-        });
+      setMinutesLeft((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          if (sessionTimerRef.current) {
+            clearInterval(sessionTimerRef.current);
+            sessionTimerRef.current = null;
+          }
+          stopWhiteNoise();
+          stopAllOscillators();
+          stopCRTherapy();
+          setStatus("idle");
+          setCurrentMode(null);
+          saveSession();
+          setMediaSessionOptions(undefined);
+          return null;
+        }
+        return prev - 1;
+      });
     };
 
     sessionTimerRef.current = setInterval(intervalCallback, 60_000);
@@ -412,18 +410,15 @@ const TherapyPage = () => {
         ? "NeuroQuiet – Sleep Support Session"
         : "NeuroQuiet – Standard Sound Therapy";
 
-    // Set media session options for the hook
     setMediaSessionOptions({
       title,
       artist: "NeuroQuiet",
       album: "Tinnitus Relief Session",
-      // Cleaned up onPlay logic to directly call the session control functions.
       onPlay: () => {
-        // Safe to call resumeSession/startSession as they contain status checks
-        if (status === "paused") { 
+        if (status === "paused") {
           resumeSession();
         } else if (status === "idle") {
-          startSession(mode); 
+          startSession(mode);
         }
       },
       onPause: pauseSession,
@@ -442,13 +437,12 @@ const TherapyPage = () => {
     stopCRTherapy();
     setStatus("paused");
 
-    // Fix closure issue: simply call resumeSession, which contains the status check.
     setMediaSessionOptions((prev) => ({
       ...prev,
       onPlay: () => {
-        resumeSession(); 
+        resumeSession();
       },
-      onPause: undefined, // Disable pause button
+      onPause: undefined,
       onStop: stopEverything,
     }));
   };
@@ -469,35 +463,32 @@ const TherapyPage = () => {
 
     setStatus("running");
 
-    // Re-start the timer logic.
     const intervalCallback = () => {
-        setMinutesLeft((prev) => {
-            if (prev === null) return null;
-            if (prev <= 1) {
-                // Simplified stop logic when time runs out
-                if (sessionTimerRef.current) {
-                    clearInterval(sessionTimerRef.current);
-                    sessionTimerRef.current = null;
-                }
-                stopWhiteNoise();
-                stopAllOscillators();
-                stopCRTherapy();
-                setStatus("idle");
-                setCurrentMode(null);
-                saveSession();
-                setMediaSessionOptions(undefined);
-                return null;
-            }
-            return prev - 1;
-        });
+      setMinutesLeft((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          if (sessionTimerRef.current) {
+            clearInterval(sessionTimerRef.current);
+            sessionTimerRef.current = null;
+          }
+          stopWhiteNoise();
+          stopAllOscillators();
+          stopCRTherapy();
+          setStatus("idle");
+          setCurrentMode(null);
+          saveSession();
+          setMediaSessionOptions(undefined);
+          return null;
+        }
+        return prev - 1;
+      });
     };
-    
+
     sessionTimerRef.current = setInterval(intervalCallback, 60_000);
 
-    // Restore media session handlers
     setMediaSessionOptions((prev) => ({
       ...prev,
-      onPlay: undefined, // Disable play button
+      onPlay: undefined,
       onPause: pauseSession,
       onStop: stopEverything,
     }));
@@ -648,10 +639,20 @@ const TherapyPage = () => {
 
   return (
     <div className="therapy-page">
+      {/* HEADER WITH LOGO + AUTH */}
       <header className="therapy-header">
         <div className="logo-block">
-          <div className="logo-text-main">NeuroQuiet</div>
-          <div className="logo-text-sub">Tinnitus Relief Companion</div>
+          <Image
+            src="/NeuroQuiet-Logo.png"
+            alt="NeuroQuiet – Silence Starts Now"
+            width={150}
+            height={40}
+            className="logo-image"
+          />
+          <div>
+            <div className="logo-text-main">NeuroQuiet</div>
+            <div className="logo-text-sub">Tinnitus Relief Companion</div>
+          </div>
         </div>
         <div className="header-right">
           {user ? (
@@ -662,13 +663,22 @@ const TherapyPage = () => {
               </button>
             </div>
           ) : (
-            <button
-              onClick={firebaseGoogleSignIn}
-              className="primary-btn small"
-              disabled={loading}
-            >
-              Sign in with Google
-            </button>
+            <div className="auth-buttons">
+              <button
+                onClick={firebaseGoogleSignIn}
+                className="primary-btn small"
+                disabled={loading}
+              >
+                Log in
+              </button>
+              <button
+                onClick={firebaseGoogleSignIn}
+                className="secondary-btn small"
+                disabled={loading}
+              >
+                Register
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -690,7 +700,7 @@ const TherapyPage = () => {
           </div>
           <div className="therapy-hero-visual">
             <Image
-              src="/images/ear-relief.svg"
+              src="/woman.png"
               alt="Calm person listening to sound therapy"
               width={260}
               height={260}
@@ -910,6 +920,33 @@ const TherapyPage = () => {
           </ul>
         </section>
       </main>
+
+      {/* FOOTER WITH TRADE & LEGAL LINKS */}
+      <footer className="therapy-footer">
+        <div className="therapy-footer-main">
+          <span>
+            © {new Date().getFullYear()} Leffler International Investments Pty Ltd.
+            All rights reserved.
+          </span>
+          <span>NeuroQuiet™ – Tinnitus Relief Companion.</span>
+          <span>
+            NeuroQuiet™ is a trade mark of Leffler International Investments Pty Ltd.
+          </span>
+        </div>
+        <div className="therapy-footer-links">
+          <a href="/about">About</a>
+          <a href="/legal">Legal</a>
+          <a href="/disclaimers">Disclaimers</a>
+          <a href="/company-policy">Company Policy</a>
+          <a href="/terms">Terms of Use</a>
+        </div>
+        <div className="therapy-footer-note">
+          This app is a self-help sound tool and does not provide medical
+          diagnosis, treatment, or emergency care. For sudden changes in
+          hearing, severe distress, or medical concerns, please seek urgent
+          professional help.
+        </div>
+      </footer>
     </div>
   );
 };
