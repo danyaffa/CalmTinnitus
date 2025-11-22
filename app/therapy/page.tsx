@@ -1,4 +1,3 @@
-// app/therapy/page.tsx
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -237,9 +236,8 @@ function useTinnitusAudio() {
 
 // --- 🎨 COMPONENT ---
 export default function TherapyPage() {
-  // State - Default to Setup "Ready" so everything is visible
-  const [tinnitusPitch, setTinnitusPitch] = useState<number | null>(null);
-  const [currentPitch, setCurrentPitch] = useState<number>(8000);
+  // State
+  const [tinnitusPitch, setTinnitusPitch] = useState<number>(8000);
   const [selectedSound, setSelectedSound] = useState<SoundProfile>(SOUND_PROFILES[4]); 
   const [externalLink, setExternalLink] = useState("");
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("idle");
@@ -265,18 +263,18 @@ export default function TherapyPage() {
     if (sessionStatus === 'running') audio.updateVolumes(noiseVol, toneVol);
   }, [noiseVol, toneVol, sessionStatus, audio]);
 
+  // Load Settings once
   useEffect(() => {
     const saved = localStorage.getItem("calmtinnitus_settings");
     if (saved) {
       const s = JSON.parse(saved);
-      if (s.pitch) { setTinnitusPitch(s.pitch); setCurrentPitch(s.pitch); }
+      if (s.pitch) setTinnitusPitch(s.pitch);
     }
   }, []);
 
+  // Save Pitch automatically
   useEffect(() => {
-    if(tinnitusPitch) {
-        localStorage.setItem("calmtinnitus_settings", JSON.stringify({ pitch: tinnitusPitch }));
-    }
+    localStorage.setItem("calmtinnitus_settings", JSON.stringify({ pitch: tinnitusPitch }));
   }, [tinnitusPitch]);
 
   // When provider changes, auto-fill the default link if empty
@@ -295,9 +293,8 @@ export default function TherapyPage() {
       setIsPlayingTest(false);
     } else {
       audio.initAudio();
-      // Play at current tone volume (or 0.1 minimum so it can be heard)
       const testVol = Math.max(toneVol, 0.1);
-      audio.playTone(currentPitch, testVol);
+      audio.playTone(tinnitusPitch, testVol);
       setIsPlayingTest(true);
     }
   };
@@ -306,22 +303,11 @@ export default function TherapyPage() {
   useEffect(() => {
     if (isPlayingTest) {
         const testVol = Math.max(toneVol, 0.1);
-        audio.playTone(currentPitch, testVol);
+        audio.playTone(tinnitusPitch, testVol);
     }
-  }, [currentPitch, toneVol]);
-
-  // When dragging the slider, update the TinnitusPitch state as well
-  const handlePitchChange = (val: number) => {
-      setCurrentPitch(val);
-      setTinnitusPitch(val); 
-  };
+  }, [tinnitusPitch, toneVol]);
 
   const startSession = () => {
-    if (!tinnitusPitch) {
-        // If no pitch is set (null), use current slider value as default
-        setTinnitusPitch(currentPitch);
-    }
-    
     audio.initAudio(); 
     // Stop test tone if playing
     if (isPlayingTest) {
@@ -333,9 +319,9 @@ export default function TherapyPage() {
       audio.playNoise(selectedSound.id, noiseVol);
     }
     if (selectedMode === 'relief') {
-      audio.playCR(tinnitusPitch || currentPitch, toneVol);
+      audio.playCR(tinnitusPitch, toneVol);
     } else {
-      audio.playTone(tinnitusPitch || currentPitch, toneVol);
+      audio.playTone(tinnitusPitch, toneVol);
     }
     setSessionStatus("running");
     setTimeRemaining(sessionDuration);
@@ -380,7 +366,7 @@ export default function TherapyPage() {
     return null;
   };
 
-  // --- MAIN VIEW (SINGLE PAGE) ---
+  // --- MAIN VIEW (COMBINED) ---
   return (
     <main className="nq-container">
       {/* Header */}
@@ -401,11 +387,11 @@ export default function TherapyPage() {
       {/* GUIDE SECTION */}
       <div className="nq-guide">
         <strong>Quick Start:</strong>
-        <ol>
-            <li><strong>Step 1:</strong> Use the "Test" button below to match your tinnitus pitch.</li>
-            <li><strong>Step 2:</strong> Select your Therapy Mode on the left.</li>
-            <li><strong>Step 3:</strong> Choose music or noise, then click "Start Session".</li>
-        </ol>
+        <div className="nq-guide-steps">
+            <span>1. Match your tinnitus pitch below.</span>
+            <span>2. Select a therapy mode.</span>
+            <span>3. Choose music/noise & start.</span>
+        </div>
       </div>
 
       {/* Status Banner */}
@@ -419,11 +405,122 @@ export default function TherapyPage() {
         </div>
       )}
 
-      {/* 🎵 EXTERNAL PLAYER CARD */}
+      {/* STEP 1: PITCH MATCHING (Prominent Card) */}
+      <div className="nq-panel nq-step-1">
+        <div className="nq-panel-header">
+            <h3>Step 1: Match Your Tinnitus Pitch</h3>
+            <div className="nq-pitch-display">
+                <span className="nq-hz">{Math.round(tinnitusPitch)} Hz</span>
+                <button 
+                    onClick={toggleTestTone} 
+                    className={`nq-btn-test ${isPlayingTest ? 'active' : ''}`}
+                >
+                    {isPlayingTest ? '⏹ Stop Tone' : '▶ Test Tone'}
+                </button>
+            </div>
+        </div>
+        <div className="nq-range-wrap">
+            <span className="nq-range-label">Low (200Hz)</span>
+            <input 
+                type="range" min="200" max="12000" step="50" 
+                value={tinnitusPitch} 
+                onChange={e => setTinnitusPitch(Number(e.target.value))}
+                className="nq-main-slider" 
+            />
+            <span className="nq-range-label">High (12kHz)</span>
+        </div>
+      </div>
+
+      {/* STEP 2 & 3 GRID */}
+      <div className="nq-controls-grid">
+        
+        {/* Step 2: Mode */}
+        <div className="nq-panel">
+          <h3>Step 2: Therapy Mode</h3>
+          <div className="nq-list">
+            {THERAPY_MODES.map(m => (
+              <button 
+                key={m.key}
+                onClick={() => setSelectedMode(m.key)}
+                disabled={sessionStatus !== 'idle'}
+                className={`nq-list-item ${selectedMode === m.key ? 'active' : ''}`}
+              >
+                <span className="nq-icon">{m.icon}</span>
+                <div>
+                  <strong>{m.label}</strong>
+                  <p>{m.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Step 3: Sound & Mixer */}
+        <div className="nq-panel">
+          <h3>Step 3: Sound & Mixer</h3>
+          
+          {/* SOUND SELECTOR */}
+          <div className="nq-slider-group">
+             <label>Background Sound</label>
+             <select 
+                className="nq-select"
+                value={selectedSound.id}
+                onChange={(e) => {
+                    const s = SOUND_PROFILES.find(p => p.id === e.target.value);
+                    if(s) setSelectedSound(s);
+                }}
+             >
+                <optgroup label="Music Apps">
+                    {SOUND_PROFILES.filter(p => p.type === 'external').map(p => (
+                        <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                </optgroup>
+                <optgroup label="Noise & Nature">
+                    {SOUND_PROFILES.filter(p => p.type !== 'external').map(p => (
+                        <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                </optgroup>
+             </select>
+          </div>
+
+          {/* Mixer Sliders */}
+          <div className="nq-mixer">
+              {selectedSound.type !== 'external' && (
+                <div className="nq-slider-group">
+                    <label>Background Vol</label>
+                    <input 
+                        type="range" min="0" max="0.8" step="0.05" 
+                        value={noiseVol} onChange={e => setNoiseVol(Number(e.target.value))} 
+                    />
+                </div>
+              )}
+              <div className="nq-slider-group">
+                <label>Therapy Tone Vol</label>
+                <input 
+                    type="range" min="0" max="0.5" step="0.01" 
+                    value={toneVol} onChange={e => setToneVol(Number(e.target.value))} 
+                />
+              </div>
+          </div>
+
+          <div className="nq-duration-group">
+             {[15, 30, 45, 60].map(t => (
+               <button 
+                 key={t} 
+                 onClick={() => setSessionDuration(t)}
+                 disabled={sessionStatus !== 'idle'}
+                 className={`nq-chip ${sessionDuration === t ? 'active' : ''}`}
+               >
+                 {t}m
+               </button>
+             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* EXTERNAL PLAYER (Conditional) */}
       {selectedSound.type === 'external' && (
         <div className="nq-embed-card" style={{borderColor: selectedSound.color || '#333'}}>
-          
-          {/* Provider Toolbar */}
           <div className="nq-provider-toolbar">
              {SOUND_PROFILES.filter(p => p.type === 'external').map(p => (
                  <button 
@@ -465,104 +562,7 @@ export default function TherapyPage() {
         </div>
       )}
 
-      <div className="nq-controls-grid">
-        {/* Modes */}
-        <div className="nq-panel">
-          <h3>1. Therapy Mode</h3>
-          <div className="nq-list">
-            {THERAPY_MODES.map(m => (
-              <button 
-                key={m.key}
-                onClick={() => setSelectedMode(m.key)}
-                disabled={sessionStatus !== 'idle'}
-                className={`nq-list-item ${selectedMode === m.key ? 'active' : ''}`}
-              >
-                <span className="nq-icon">{m.icon}</span>
-                <div>
-                  <strong>{m.label}</strong>
-                  <p>{m.description}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Settings */}
-        <div className="nq-panel">
-          <h3>2. Mixer & Duration</h3>
-          
-          {/* SOUND SELECTOR */}
-          <div className="nq-slider-group">
-             <label>Background Sound</label>
-             <select 
-                className="nq-select"
-                value={selectedSound.id}
-                onChange={(e) => {
-                    const s = SOUND_PROFILES.find(p => p.id === e.target.value);
-                    if(s) setSelectedSound(s);
-                }}
-             >
-                <optgroup label="Music Apps">
-                    {SOUND_PROFILES.filter(p => p.type === 'external').map(p => (
-                        <option key={p.id} value={p.id}>{p.label}</option>
-                    ))}
-                </optgroup>
-                <optgroup label="Noise & Nature">
-                    {SOUND_PROFILES.filter(p => p.type !== 'external').map(p => (
-                        <option key={p.id} value={p.id}>{p.label}</option>
-                    ))}
-                </optgroup>
-             </select>
-          </div>
-
-          {selectedSound.type !== 'external' && (
-             <div className="nq-slider-group">
-               <label>Background Volume</label>
-               <input 
-                 type="range" min="0" max="0.8" step="0.05" 
-                 value={noiseVol} onChange={e => setNoiseVol(Number(e.target.value))} 
-               />
-             </div>
-          )}
-          
-          {/* TONE TESTER + SLIDER (STEP 3) */}
-          <div className="nq-slider-group" style={{marginTop: '1.5rem', borderTop: '1px solid #eee', paddingTop: '1rem'}}>
-            <div className="nq-label-row">
-               <label>3. Tinnitus Pitch ({Math.round(currentPitch)}Hz)</label>
-               <button 
-                 onClick={toggleTestTone} 
-                 className={`nq-btn-tiny ${isPlayingTest ? 'active' : ''}`}
-               >
-                 {isPlayingTest ? '⏹ Stop' : '▶ Test'}
-               </button>
-            </div>
-            <input 
-              type="range" min="200" max="12000" step="50" 
-              value={currentPitch} onChange={e => handlePitchChange(Number(e.target.value))} 
-            />
-            {/* Volume Slider for Tone */}
-            <label style={{marginTop:'0.5rem', fontSize:'0.8rem', color:'#666'}}>Therapy Volume</label>
-            <input 
-              type="range" min="0" max="0.5" step="0.01" 
-              value={toneVol} onChange={e => setToneVol(Number(e.target.value))} 
-            />
-          </div>
-
-          <div className="nq-duration-group">
-             {[15, 30, 45, 60].map(t => (
-               <button 
-                 key={t} 
-                 onClick={() => setSessionDuration(t)}
-                 disabled={sessionStatus !== 'idle'}
-                 className={`nq-chip ${sessionDuration === t ? 'active' : ''}`}
-               >
-                 {t}m
-               </button>
-             ))}
-          </div>
-        </div>
-      </div>
-
+      {/* START BUTTON */}
       {sessionStatus === 'idle' && (
          <button onClick={startSession} className="nq-btn-big">
             ▶ Start Session
@@ -592,23 +592,49 @@ function Style() {
       }
       .nq-container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; font-family: system-ui, sans-serif; color: var(--text); }
       
-      /* Guide */
-      .nq-guide { background: #f0f9ff; border: 1px solid #bae6fd; padding: 1rem; border-radius: 0.75rem; margin-bottom: 2rem; font-size: 0.9rem; color: #0369a1; }
-      .nq-guide ol { margin: 0.5rem 0 0 1.2rem; padding: 0; }
-      .nq-guide li { margin-bottom: 0.25rem; }
-
-      /* Header */
-      .nq-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+      /* Header & Guide */
+      .nq-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
       .nq-brand { margin: 0; font-size: 1.5rem; }
       .nq-subtitle { font-size: 0.9rem; color: var(--text-dim); }
       .nq-master-vol { background: white; padding: 0.5rem 1rem; border-radius: 99px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; }
+      
+      .nq-guide { background: #f0f9ff; border: 1px solid #bae6fd; padding: 1rem; border-radius: 0.75rem; margin-bottom: 2rem; font-size: 0.9rem; color: #0369a1; }
+      .nq-guide-steps { display: flex; flex-direction: column; margin-top: 0.5rem; gap: 0.25rem; font-weight: 500; }
 
-      /* Banner */
-      .nq-banner { background: linear-gradient(135deg, var(--primary), var(--success)); color: white; padding: 1.5rem; border-radius: 1rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-bottom: 2rem; }
-      .nq-timer { font-size: 2.5rem; font-weight: 800; line-height: 1; }
-      .nq-btn-stop { background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.5rem 1.25rem; border-radius: 99px; cursor: pointer; font-weight: 600; margin-top: 0.5rem; }
+      /* Step 1: Pitch Matcher (Special Panel) */
+      .nq-panel.nq-step-1 { border: 2px solid #e2e8f0; margin-bottom: 1.5rem; }
+      .nq-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+      .nq-panel-header h3 { margin: 0; }
+      .nq-pitch-display { display: flex; align-items: center; gap: 1rem; }
+      .nq-hz { font-size: 1.5rem; font-weight: 800; color: var(--primary); min-width: 80px; text-align: right; }
+      .nq-btn-test { background: #0f172a; color: white; border: none; padding: 0.5rem 1.2rem; border-radius: 99px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+      .nq-btn-test.active { background: #ef4444; }
+      
+      .nq-range-wrap { display: flex; align-items: center; gap: 1rem; }
+      .nq-range-label { font-size: 0.8rem; color: var(--text-dim); white-space: nowrap; }
+      .nq-main-slider { flex: 1; height: 8px; border-radius: 4px; appearance: none; background: #e2e8f0; }
+      .nq-main-slider::-webkit-slider-thumb { appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--primary); cursor: pointer; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 
-      /* Embed Card & Toolbar */
+      /* Step 2 & 3 Grid */
+      .nq-controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+      @media (max-width: 768px) { .nq-controls-grid { grid-template-columns: 1fr; } }
+      .nq-panel { background: white; padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+      .nq-panel h3 { margin: 0 0 1rem 0; font-size: 1.1rem; }
+      
+      .nq-list { display: grid; gap: 0.5rem; }
+      .nq-list-item { display: flex; align-items: center; gap: 1rem; text-align: left; width: 100%; background: white; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.75rem; cursor: pointer; }
+      .nq-list-item.active { border-color: var(--primary); background: #f0f9ff; }
+      
+      .nq-mixer { display: grid; gap: 1rem; margin-top: 1rem; margin-bottom: 1.5rem; }
+      .nq-slider-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
+      .nq-select { width: 100%; padding: 0.6rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; font-size: 1rem; }
+      input[type=range] { width: 100%; accent-color: var(--primary); }
+
+      .nq-duration-group { display: flex; gap: 0.5rem; }
+      .nq-chip { flex: 1; border: 1px solid #e2e8f0; background: white; padding: 0.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: 500; }
+      .nq-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+      /* External Player */
       .nq-embed-card { background: #0f172a; color: white; border-radius: 1rem; padding: 1.5rem; margin-bottom: 2rem; border-left: 4px solid; transition: 0.3s; }
       .nq-provider-toolbar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
       .nq-provider-btn { background: rgba(255,255,255,0.1); border: none; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 1.4rem; display: flex; align-items: center; justifyContent: center; transition: 0.2s; }
@@ -622,32 +648,12 @@ function Style() {
       .nq-empty-embed { text-align: center; padding: 2rem; color: #475569; background: #1e293b; border-radius: 12px; }
       .nq-btn-small { background: white; color: #0f172a; text-decoration: none; padding: 0 1rem; border-radius: 0.5rem; font-weight: 600; display: flex; alignItems: center; }
 
-      /* Panels */
-      .nq-controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
-      @media (max-width: 768px) { .nq-controls-grid { grid-template-columns: 1fr; } }
-      .nq-panel { background: white; padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-      .nq-panel h3 { margin: 0 0 1rem 0; font-size: 1.1rem; }
-      
-      .nq-list { display: grid; gap: 0.5rem; }
-      .nq-list-item { display: flex; align-items: center; gap: 1rem; text-align: left; width: 100%; background: white; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.75rem; cursor: pointer; }
-      .nq-list-item.active { border-color: var(--primary); background: #f0f9ff; }
-      
-      .nq-slider-group { margin-bottom: 1rem; }
-      .nq-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-      .nq-slider-group label { display: block; font-size: 0.85rem; font-weight: 600; }
-      input[type=range] { width: 100%; accent-color: var(--primary); }
-      .nq-select { width: 100%; padding: 0.6rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; font-size: 1rem; }
-
-      .nq-duration-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-      .nq-chip { flex: 1; border: 1px solid #e2e8f0; background: white; padding: 0.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: 500; }
-      .nq-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
-
+      /* Status & Footer */
+      .nq-banner { background: linear-gradient(135deg, var(--primary), var(--success)); color: white; padding: 1.5rem; border-radius: 1rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-bottom: 2rem; }
+      .nq-timer { font-size: 2.5rem; font-weight: 800; line-height: 1; }
+      .nq-btn-stop { background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.5rem 1.25rem; border-radius: 99px; cursor: pointer; font-weight: 600; margin-top: 0.5rem; }
       .nq-btn-big { width: 100%; background: var(--primary); color: white; border: none; padding: 1.2rem; border-radius: 1rem; font-size: 1.2rem; font-weight: 700; cursor: pointer; box-shadow: 0 10px 20px rgba(14, 165, 233, 0.2); }
       .nq-footer { text-align: center; margin-top: 3rem; font-size: 0.8rem; color: var(--text-dim); }
-      
-      /* Utilities */
-      .nq-btn-tiny { padding: 0.25rem 0.75rem; font-size: 0.75rem; background: #0f172a; color: white; border-radius: 99px; border: none; cursor: pointer; font-weight: 600; }
-      .nq-btn-tiny.active { background: #ef4444; }
     `}</style>
   );
 }
