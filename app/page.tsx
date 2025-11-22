@@ -1,4 +1,4 @@
-// /app/page.tsx
+// app/page.tsx
 "use client";
 
 import Image from "next/image";
@@ -26,6 +26,10 @@ export default function HomePage() {
               </Link>
             </div>
             <nav className="nq-header-right">
+              {/* Added Q&A Link */}
+              <Link href="/qa" className="nq-header-link">
+                Q&A
+              </Link>
               <Link href="/login" className="nq-header-link">
                 Log in
               </Link>
@@ -58,7 +62,7 @@ export default function HomePage() {
                   <span className="nq-plan-detail"> — cancel anytime</span>
                 </p>
                 <p className="nq-plan-sub">
-                  One simple plan. No hidden upgrades. Just an
+                  One simple plan. No free trials, no hidden upgrades. Just an
                   affordable tool you can use daily.
                 </p>
 
@@ -374,21 +378,17 @@ export default function HomePage() {
           margin-bottom: 2.75rem;
         }
 
-        /* --- PASTEL BOX --- */
         .nq-card-dark {
-          /* Pastel Blue Gradient */
-          background: linear-gradient(135deg, #bae6fd, #e0f2fe);
+          background: #020617;
           border-radius: 1.2rem;
           padding: 1.7rem 1.6rem;
-          /* Text flipped to dark for contrast */
-          color: #334155; 
-          box-shadow: 0 22px 50px rgba(148, 163, 184, 0.25);
+          color: #e5e7eb;
+          box-shadow: 0 22px 50px rgba(15, 23, 42, 0.7);
         }
 
         .nq-card-dark h2 {
           margin-top: 0;
           margin-bottom: 0.9rem;
-          color: #0f172a;
         }
 
         .nq-card-dark ul {
@@ -404,7 +404,7 @@ export default function HomePage() {
 
         .nq-note {
           font-size: 0.8rem;
-          color: #64748b;
+          color: #e5e7eb;
         }
 
         /* FOOTER */
