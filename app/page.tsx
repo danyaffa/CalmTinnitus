@@ -373,17 +373,19 @@ export default function HomePage() {
           margin-bottom: 2.75rem;
         }
 
+        /* --- UPDATED BLUE BOX --- */
         .nq-card-dark {
-          background: #020617;
+          background: linear-gradient(135deg, #0f5c85, #0c3b5e);
           border-radius: 1.2rem;
           padding: 1.7rem 1.6rem;
           color: #e5e7eb;
-          box-shadow: 0 22px 50px rgba(15, 23, 42, 0.7);
+          box-shadow: 0 22px 50px rgba(15, 23, 42, 0.25);
         }
 
         .nq-card-dark h2 {
           margin-top: 0;
           margin-bottom: 0.9rem;
+          color: #ffffff;
         }
 
         .nq-card-dark ul {
@@ -399,7 +401,7 @@ export default function HomePage() {
 
         .nq-note {
           font-size: 0.8rem;
-          color: #e5e7eb;
+          color: #cbd5e1;
         }
 
         /* FOOTER */
