@@ -1,4 +1,3 @@
-// app/qa/page.tsx
 "use client";
 
 import Image from "next/image";
@@ -11,12 +10,12 @@ export default function QAPage() {
     {
       question: "What is CalmTinnitus?",
       answer:
-        [span_0](start_span)[span_1](start_span)"CalmTinnitus is a web-based sound therapy tool designed to help you manage and habituate to your tinnitus. It is a wellness tool, not a medical cure, built by someone who has lived with persistent tinnitus for over 50 years.[span_0](end_span)[span_1](end_span)",
+        "CalmTinnitus is a web-based sound therapy tool designed to help you manage and habituate to your tinnitus. It is a wellness tool, not a medical cure, built by someone who has lived with persistent tinnitus for over 50 years.",
     },
     {
       question: "How does the therapy work?",
       answer:
-        "The process involves three simple steps: First, you use our built-in tone matcher to find the pitch of your tinnitus. Next, you select a therapy mode (Standard, Relief, or Sleep). [span_2](start_span)[span_3](start_span)[span_4](start_span)Finally, you choose a background sound (like noise, nature, or your own music) and start a timed session.[span_2](end_span)[span_3](end_span)[span_4](end_span)",
+        "The process involves three simple steps: First, you use our built-in tone matcher to find the pitch of your tinnitus. Next, you select a therapy mode (Standard, Relief, or Sleep). Finally, you choose a background sound (like noise, nature, or your own music) and start a timed session.",
     },
     {
       question: "What are the different therapy modes?",
@@ -24,18 +23,16 @@ export default function QAPage() {
         <ul style={{ margin: "0.5rem 0 0 1.5rem", padding: 0 }}>
           <li>
             <strong>Standard Therapy:</strong> A gentle background sound mixed
-            [span_5](start_span)with your matched tinnitus tone, designed for habituation. [cite:
-            110]
+            with your matched tinnitus tone, designed for habituation.
           </li>
           <li>
             <strong>Relief (CR) Therapy:</strong> Uses neuromodulation pulses,
             often described as clicks or rhythmic pulses, to help desynchronize
-            [cite_start]tinnitus signals.[span_5](end_span)
+            tinnitus signals.
           </li>
           <li>
             <strong>Sleep Support:</strong> A quieter, more relaxing profile
-            [span_6](start_span)specifically designed to help you wind down before bed. [cite: 110,
-            114]
+            specifically designed to help you wind down before bed.
           </li>
         </ul>
       ),
@@ -43,17 +40,17 @@ export default function QAPage() {
     {
       question: "Can I use my own music?",
       answer:
-        [cite_start]"Yes! Our external player integration allows you to embed playlists or tracks from services like Spotify, Apple Music, and YouTube directly into your therapy session.[span_6](end_span)",
+        "Yes! Our external player integration allows you to embed playlists or tracks from services like Spotify directly into your therapy session.",
     },
     {
       question: "How often should I use it?",
       answer:
-        "Regular, short sessions are recommended. Consistent training can help your brain gradually reduce how intrusive the tinnitus feels in your daily life. [span_7](start_span)[span_8](start_span)You can also use it for quick 'reset' sessions when your tinnitus spikes.[span_7](end_span)[span_8](end_span)",
+        "Regular, short sessions are recommended. Consistent training can help your brain gradually reduce how intrusive the tinnitus feels in your daily life. You can also use it for quick 'reset' sessions when your tinnitus spikes.",
     },
     {
       question: "Is it safe to use with headphones?",
       answer:
-        [span_9](start_span)"Yes, CalmTinnitus is built for use with headphones or mobile earpods at a safe, comfortable volume.[span_9](end_span)",
+        "Yes, CalmTinnitus is built for use with headphones or mobile earpods at a safe, comfortable volume.",
     },
   ];
 
@@ -76,11 +73,8 @@ export default function QAPage() {
           <Link href="/" className="nq-header-link">
             Home
           </Link>
-          <Link href="/login" className="nq-header-link">
-            Log in
-          </Link>
-          <Link href="/register" className="nq-header-btn">
-            Register
+          <Link href="/therapy" className="nq-header-btn">
+            Therapy
           </Link>
         </nav>
       </header>
@@ -94,8 +88,8 @@ export default function QAPage() {
         </p>
         <div className="nq-hero-image-container">
           <Image
-            src="/image_0.png"
-            alt="CalmTinnitus Therapy Dashboard Interface"
+            src="/Therapy.png"
+            alt="CalmTinnitus Therapy Session"
             width={1120}
             height={630}
             className="nq-hero-image"
