@@ -2,24 +2,9 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-// --- 🔥 FIREBASE IMPORTS ---
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
-
-// --- ⚙️ FIREBASE CONFIGURATION ---
-// 🔴 TODO: Paste your actual Firebase keys here
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-
-// Initialize Firebase (Singleton)
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
+// --- 🔥 FIREBASE IMPORTS (Optional - Uncomment if using Cloud) ---
+// import { initializeApp, getApps, getApp } from "firebase/app";
+// import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
 // --- TYPES ---
 type TherapyMode = "standard" | "relief" | "sleep";
@@ -230,7 +215,7 @@ function useTinnitusAudio() {
 export default function TherapyPage() {
   const [tinnitusPitch, setTinnitusPitch] = useState<number>(8000);
   const [currentPitch, setCurrentPitch] = useState<number>(8000);
-  const [selectedSound, setSelectedSound] = useState<SoundProfile>(SOUND_PROFILES[4]); // Default Pink
+  const [selectedSound, setSelectedSound] = useState<SoundProfile>(SOUND_PROFILES[2]); // Default Pink
   const [externalLink, setExternalLink] = useState("");
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("idle");
   const [selectedMode, setSelectedMode] = useState<TherapyMode>("standard");
@@ -245,7 +230,9 @@ export default function TherapyPage() {
   // Volumes
   const [masterVol, setMasterVol] = useState(0.5);
   const [noiseVol, setNoiseVol] = useState(0.3);
-  const [toneVol, setToneVol] = useState(0.1);
+  
+  // FIX: Default Tone Volume increased from 0.1 to 0.5 so it's audible
+  const [toneVol, setToneVol] = useState(0.5);
 
   const [isPlayingTest, setIsPlayingTest] = useState(false);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -260,38 +247,15 @@ export default function TherapyPage() {
     if (sessionStatus === 'running') audio.updateVolumes(noiseVol, toneVol);
   }, [noiseVol, toneVol, sessionStatus, audio]);
 
-  // --- ☁️ LOAD PROFILE FROM FIREBASE ---
+  // --- ☁️ LOAD PROFILE FROM FIRESTORE ---
   useEffect(() => {
-    const loadProfile = async () => {
-        // Get or create a user ID stored in browser so we know who this is
-        let uid = localStorage.getItem("calmtinnitus_uid");
-        if (!uid) {
-            uid = 'guest_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem("calmtinnitus_uid", uid);
-        }
-        setUserId(uid);
-
-        try {
-            const docRef = doc(db, "profiles", uid);
-            const docSnap = await getDoc(docRef);
-            
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                if (data.pitch) {
-                    setTinnitusPitch(data.pitch);
-                    setCurrentPitch(data.pitch);
-                }
-                if (data.soundId) {
-                    const s = SOUND_PROFILES.find(p => p.id === data.soundId);
-                    if(s) setSelectedSound(s);
-                }
-                console.log("Loaded profile from Cloud");
-            }
-        } catch (e) {
-            console.error("Error loading profile (Check API Keys):", e);
-        }
-    };
-    loadProfile();
+    // This block uses LocalStorage for now. 
+    // If you enabled Firebase above, replace this logic with the Firestore getDoc code.
+    const saved = localStorage.getItem("calmtinnitus_settings");
+    if (saved) {
+      const s = JSON.parse(saved);
+      if (s.pitch) { setTinnitusPitch(s.pitch); setCurrentPitch(s.pitch); }
+    }
   }, []);
 
   // Auto-fill link when sound changes
@@ -305,30 +269,19 @@ export default function TherapyPage() {
 
   // --- Handlers ---
   
-  // --- ☁️ SAVE TO FIREBASE ---
+  // --- ☁️ SAVE PROFILE ---
   const saveProfile = async () => {
-      if (!userId) return;
-      setSaveBtnText("Saving...");
+      // Save to Local Storage (Instant)
+      localStorage.setItem("calmtinnitus_settings", JSON.stringify({ pitch: tinnitusPitch }));
       
-      try {
-          await setDoc(doc(db, "profiles", userId), {
-              pitch: tinnitusPitch,
-              soundId: selectedSound.id,
-              lastUpdated: new Date().toISOString()
-          });
-          
-          setSaveBtnText("✅ Saved to Cloud!");
-          setSaveBtnClass("nq-btn-save saved");
-          
-          setTimeout(() => {
-              setSaveBtnText("Save Profile");
-              setSaveBtnClass("nq-btn-save");
-          }, 2000);
-      } catch (e) {
-          console.error("Error saving:", e);
-          setSaveBtnText("❌ Error");
-          setTimeout(() => setSaveBtnText("Save Profile"), 2000);
-      }
+      // Visual Feedback
+      setSaveBtnText("✅ Saved!");
+      setSaveBtnClass("nq-btn-save saved");
+      
+      setTimeout(() => {
+          setSaveBtnText("Save Profile");
+          setSaveBtnClass("nq-btn-save");
+      }, 2000);
   };
 
   const toggleTestTone = () => {
@@ -337,7 +290,8 @@ export default function TherapyPage() {
       setIsPlayingTest(false);
     } else {
       audio.initAudio();
-      const testVol = Math.max(toneVol, 0.1);
+      // FIX: Force volume to at least 0.5 during test so they can hear it
+      const testVol = Math.max(toneVol, 0.5); 
       audio.playTone(tinnitusPitch, testVol);
       setIsPlayingTest(true);
     }
@@ -346,7 +300,8 @@ export default function TherapyPage() {
   // Real-time pitch adjustment during test
   useEffect(() => {
     if (isPlayingTest) {
-        const testVol = Math.max(toneVol, 0.1);
+        // Ensure audible volume during sliding
+        const testVol = Math.max(toneVol, 0.5); 
         audio.playTone(tinnitusPitch, testVol);
     }
   }, [tinnitusPitch, toneVol]);
@@ -479,7 +434,7 @@ export default function TherapyPage() {
                 {saveBtnText}
             </button>
             <p style={{fontSize:'0.8rem', color:'#94a3b8', marginTop:'0.5rem'}}>
-                Save this pitch to your Cloud Profile.
+                Save this pitch to your Profile.
             </p>
         </div>
       </div>
@@ -558,7 +513,7 @@ export default function TherapyPage() {
               <div className="nq-slider-group">
                 <label>Therapy Tone Vol</label>
                 <input 
-                    type="range" min="0" max="0.5" step="0.01" 
+                    type="range" min="0" max="1.0" step="0.05" 
                     value={toneVol} onChange={e => setToneVol(Number(e.target.value))} 
                 />
               </div>
