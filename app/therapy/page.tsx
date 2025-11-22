@@ -2,9 +2,24 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-// --- 🔥 FIREBASE IMPORTS (Optional - Uncomment if using Cloud) ---
-// import { initializeApp, getApps, getApp } from "firebase/app";
-// import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+// --- 🔥 FIREBASE IMPORTS ---
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+
+// --- ⚙️ FIREBASE CONFIGURATION ---
+// 🔴 TODO: Paste your actual Firebase keys here
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+// Initialize Firebase (Singleton)
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const db = getFirestore(app);
 
 // --- TYPES ---
 type TherapyMode = "standard" | "relief" | "sleep";
@@ -230,9 +245,7 @@ export default function TherapyPage() {
   // Volumes
   const [masterVol, setMasterVol] = useState(0.5);
   const [noiseVol, setNoiseVol] = useState(0.3);
-  
-  // FIX: Default Tone Volume increased from 0.1 to 0.5 so it's audible
-  const [toneVol, setToneVol] = useState(0.5);
+  const [toneVol, setToneVol] = useState(0.5); // Default louder for pure tones
 
   const [isPlayingTest, setIsPlayingTest] = useState(false);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -249,13 +262,35 @@ export default function TherapyPage() {
 
   // --- ☁️ LOAD PROFILE FROM FIRESTORE ---
   useEffect(() => {
-    // This block uses LocalStorage for now. 
-    // If you enabled Firebase above, replace this logic with the Firestore getDoc code.
-    const saved = localStorage.getItem("calmtinnitus_settings");
-    if (saved) {
-      const s = JSON.parse(saved);
-      if (s.pitch) { setTinnitusPitch(s.pitch); setCurrentPitch(s.pitch); }
-    }
+    const loadProfile = async () => {
+        let uid = localStorage.getItem("calmtinnitus_uid");
+        if (!uid) {
+            uid = 'guest_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem("calmtinnitus_uid", uid);
+        }
+        setUserId(uid);
+
+        try {
+            const docRef = doc(db, "profiles", uid);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.pitch) {
+                    setTinnitusPitch(data.pitch);
+                    setCurrentPitch(data.pitch);
+                }
+                if (data.soundId) {
+                    const s = SOUND_PROFILES.find(p => p.id === data.soundId);
+                    if(s) setSelectedSound(s);
+                }
+                console.log("Loaded profile from Cloud");
+            }
+        } catch (e) {
+            console.error("Error loading profile:", e);
+        }
+    };
+    loadProfile();
   }, []);
 
   // Auto-fill link when sound changes
@@ -269,19 +304,30 @@ export default function TherapyPage() {
 
   // --- Handlers ---
   
-  // --- ☁️ SAVE PROFILE ---
+  // --- ☁️ SAVE TO FIREBASE ---
   const saveProfile = async () => {
-      // Save to Local Storage (Instant)
-      localStorage.setItem("calmtinnitus_settings", JSON.stringify({ pitch: tinnitusPitch }));
+      if (!userId) return;
+      setSaveBtnText("Saving...");
       
-      // Visual Feedback
-      setSaveBtnText("✅ Saved!");
-      setSaveBtnClass("nq-btn-save saved");
-      
-      setTimeout(() => {
-          setSaveBtnText("Save Profile");
-          setSaveBtnClass("nq-btn-save");
-      }, 2000);
+      try {
+          await setDoc(doc(db, "profiles", userId), {
+              pitch: tinnitusPitch,
+              soundId: selectedSound.id,
+              lastUpdated: new Date().toISOString()
+          });
+          
+          setSaveBtnText("✅ Saved!");
+          setSaveBtnClass("nq-btn-save saved");
+          
+          setTimeout(() => {
+              setSaveBtnText("Save Profile");
+              setSaveBtnClass("nq-btn-save");
+          }, 2000);
+      } catch (e) {
+          console.error("Error saving:", e);
+          setSaveBtnText("❌ Error");
+          setTimeout(() => setSaveBtnText("Save Profile"), 2000);
+      }
   };
 
   const toggleTestTone = () => {
@@ -290,7 +336,7 @@ export default function TherapyPage() {
       setIsPlayingTest(false);
     } else {
       audio.initAudio();
-      // FIX: Force volume to at least 0.5 during test so they can hear it
+      // Ensure audible volume during test
       const testVol = Math.max(toneVol, 0.5); 
       audio.playTone(tinnitusPitch, testVol);
       setIsPlayingTest(true);
@@ -300,7 +346,6 @@ export default function TherapyPage() {
   // Real-time pitch adjustment during test
   useEffect(() => {
     if (isPlayingTest) {
-        // Ensure audible volume during sliding
         const testVol = Math.max(toneVol, 0.5); 
         audio.playTone(tinnitusPitch, testVol);
     }
@@ -314,7 +359,6 @@ export default function TherapyPage() {
 
   const startSession = () => {
     audio.initAudio(); 
-    // Stop test tone if playing
     if (isPlayingTest) {
         audio.stopAll();
         setIsPlayingTest(false);
@@ -381,13 +425,19 @@ export default function TherapyPage() {
         </div>
       </header>
 
-      {/* GUIDE SECTION */}
+      {/* GUIDE SECTION (UPDATED) */}
       <div className="nq-guide">
-        <strong>Quick Start:</strong>
-        <div className="nq-guide-steps">
-            <span>1. Match your tinnitus pitch below & Save.</span>
-            <span>2. Select a therapy mode.</span>
-            <span>3. Choose music/noise & start.</span>
+        <div style={{marginBottom: '1rem'}}>
+            <strong>Quick Start:</strong>
+            <div className="nq-guide-steps">
+                <span>1. Match your tinnitus pitch below & Save.</span>
+                <span>2. Select a therapy mode.</span>
+                <span>3. Choose music/noise & start.</span>
+            </div>
+        </div>
+        <div style={{paddingTop: '1rem', borderTop: '1px solid rgba(0,0,0,0.05)'}}>
+             <strong>📅 Recommended:</strong> Use 2 sessions/day for 3-6 months for habituation. <br/>
+             <span style={{opacity: 0.8}}>Or simply use it whenever you are looking for peace.</span>
         </div>
       </div>
 
@@ -434,7 +484,7 @@ export default function TherapyPage() {
                 {saveBtnText}
             </button>
             <p style={{fontSize:'0.8rem', color:'#94a3b8', marginTop:'0.5rem'}}>
-                Save this pitch to your Profile.
+                Save this pitch to your Cloud Profile.
             </p>
         </div>
       </div>
