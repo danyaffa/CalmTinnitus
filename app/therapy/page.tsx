@@ -1,1036 +1,1014 @@
-// CalmTinnitus-main/app/therapy/page.tsx
-// app/therapy/page.tsx
-"use client";
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Volume2, VolumeX, Play, Pause, Square, Check, ChevronRight, Info } from 'lucide-react';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
-import {
-  SoundLibraryMenu,
-  SoundProfile,
-} from "../../components/SoundLibraryMenu";
-import { firebaseGoogleSignIn, firebaseSignOut } from "../../lib/firebase";
-import {
-  useAuthCtx,
-  SessionLog,
-  TherapyMode,
-  TherapyType,
-} from "../AuthProvider";
-import { useMediaSession, MediaSessionOptions } from "../../hooks/useMediaSession";
+// Types
+type TherapyMode = 'standard' | 'relief' | 'sleep';
+type SessionStatus = 'idle' | 'running' | 'paused';
+type SetupStep = 'welcome' | 'pitch' | 'sound' | 'ready';
 
-const DEFAULT_SESSION_MINUTES = 30;
+type SoundProfile = {
+  id: string;
+  label: string;
+  description: string;
+  type: 'noise' | 'nature';
+};
 
-const THERAPY_TYPES: {
-  key: TherapyType;
-  label: string;
-  description: string;
-}[] = [
-  {
-    key: "notch",
-    label: "Notch training (near your tinnitus pitch)",
-    description:
-      "For people with tonal tinnitus. Uses your matched tinnitus pitch as a reference.",
-  },
-  {
-    key: "masking" as TherapyType,
-    label: "Masking / sound enrichment",
-    description:
-      "Gentle background sound to help reduce the contrast with your tinnitus.",
-  },
-  {
-    key: "combo",
-    label: "Combination approach",
-    description:
-      "Blend of notch and masking concepts for a more complete training.",
-  },
+const SOUND_PROFILES: SoundProfile[] = [
+  { id: 'pink', label: 'Pink Noise', description: 'Soft, gentle sound', type: 'noise' },
+  { id: 'white', label: 'White Noise', description: 'Classic masking sound', type: 'noise' },
+  { id: 'brown', label: 'Brown Noise', description: 'Deep, rumbling sound', type: 'noise' },
+  { id: 'rain', label: 'Rain', description: 'Gentle rainfall', type: 'nature' },
+  { id: 'ocean', label: 'Ocean Waves', description: 'Rolling surf', type: 'nature' },
 ];
 
-const THERAPY_MODES: { key: TherapyMode; label: string; description: string }[] =
-  [
-    {
-      key: "standard",
-      label: "Standard Sound Therapy",
-      description:
-        "Gentle broadband noise plus tinnitus-matching tone for habituation.",
-    },
-    {
-      key: "relief",
-      label: "Relief / CR Therapy",
-      description:
-        "Coordinated Reset-style sequence of tones that may help desynchronize overactive neurons involved in tinnitus (experimental concept).",
-    },
-    {
-      key: "sleep",
-      label: "Sleep support",
-      description:
-        "Quieter, softer profile aimed at winding down and supporting sleep while masking tinnitus.",
-    },
-  ];
-
-// Helper to format minutes to mm:ss
-const formatTime = (totalMinutes: number | null) => {
-  if (totalMinutes === null) return "--:--";
-  const minutes = Math.floor(totalMinutes);
-  const seconds = Math.round((totalMinutes - minutes) * 60);
-  const mm = String(minutes).padStart(2, "0");
-  const ss = String(seconds).padStart(2, "0");
-  return `${mm}:${ss}`;
-};
-
-const TherapyPage = () => {
-  const {
-    user,
-    sessionHistory,
-    setSessionHistory,
-    saveSessionToCloud,
-    loading,
-  } = useAuthCtx();
-
-  // Local state
-  const [therapyType, setTherapyType] = useState<TherapyType>("notch");
-  const [sessionMinutes, setSessionMinutes] = useState<number>(
-    DEFAULT_SESSION_MINUTES
-  );
-  const [minutesLeft, setMinutesLeft] = useState<number | null>(null);
-  const [status, setStatus] = useState<"idle" | "running" | "paused">("idle");
-  const [currentMode, setCurrentMode] = useState<TherapyMode | null>(null);
-
-  const [tinnitusPitch, setTinnitusPitch] = useState<number | null>(null);
-  const [tinnitusPitchHz, setTinnitusPitchHz] = useState<number | null>(null);
-  const [isMatchingPitch, setIsMatchingPitch] = useState(false);
-
-  const [selectedProfile, setSelectedProfile] = useState<SoundProfile | null>(
-    null
-  );
-
-  const [mediaSessionOptions, setMediaSessionOptions] = useState<
-    MediaSessionOptions | undefined
-  >(undefined);
-
-  const [localHistoryLoaded, setLocalHistoryLoaded] = useState(false);
-
-  // Audio-related refs
-  const whiteNoiseRef = useRef<HTMLAudioElement | null>(null);
-  const toneOscRef = useRef<OscillatorNode | null>(null);
-  const toneGainRef = useRef<GainNode | null>(null);
-  const crOscillatorsRef = useRef<OscillatorNode[]>([]);
-  const crGainsRef = useRef<GainNode[]>([]);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  useMediaSession(mediaSessionOptions);
-
-  // ---------- LOAD SAVED PROFILE / PITCH ON MOUNT ----------
-
-  useEffect(() => {
-    try {
-      // Load full saved profile if present
-      const storedProfile = window.localStorage.getItem("calmtinnitus_profile");
-      if (storedProfile) {
-        const parsed = JSON.parse(storedProfile) as {
-          therapyType?: TherapyType;
-          sessionMinutes?: number;
-          tinnitusPitch?: number | null;
-          tinnitusPitchHz?: number | null;
-          selectedProfile?: SoundProfile | null;
-        };
-
-        if (parsed.therapyType) {
-          setTherapyType(parsed.therapyType);
-        }
-        if (typeof parsed.sessionMinutes === "number") {
-          setSessionMinutes(parsed.sessionMinutes);
-          setMinutesLeft(parsed.sessionMinutes);
-        }
-        if (typeof parsed.tinnitusPitch === "number") {
-          setTinnitusPitch(parsed.tinnitusPitch);
-        }
-        if (typeof parsed.tinnitusPitchHz === "number") {
-          setTinnitusPitchHz(parsed.tinnitusPitchHz);
-        } else if (typeof parsed.tinnitusPitch === "number") {
-          setTinnitusPitchHz(parsed.tinnitusPitch);
-        }
-        if (parsed.selectedProfile) {
-          setSelectedProfile(parsed.selectedProfile);
-          if (
-            parsed.selectedProfile.baseNoise &&
-            whiteNoiseRef.current
-          ) {
-            whiteNoiseRef.current.src = parsed.selectedProfile.baseNoise;
-          }
-        }
-      }
-
-      // Backwards-compatible: if user only has a saved pitch, load it
-      const storedPitch = window.localStorage.getItem(
-        "calmtinnitus_matchedPitch"
-      );
-      if (storedPitch) {
-        const { hz } = JSON.parse(storedPitch) as { hz?: number };
-        if (typeof hz === "number") {
-          setTinnitusPitch(hz);
-          setTinnitusPitchHz(hz);
-        }
-      }
-    } catch {
-      // Safe to ignore – user will simply start fresh
-    }
-  }, []);
-
-  // ---------- AUDIO CONTEXT MANAGEMENT ----------
-
-  const getAudioContext = useCallback(() => {
-    if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
-      audioCtxRef.current = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
-    }
-    return audioCtxRef.current;
-  }, []);
-
-  const stopAllOscillators = () => {
-    if (toneOscRef.current) {
-      try {
-        toneOscRef.current.stop();
-      } catch {}
-      toneOscRef.current.disconnect();
-      toneOscRef.current = null;
-    }
-    if (toneGainRef.current) {
-      toneGainRef.current.disconnect();
-      toneGainRef.current = null;
-    }
-    crOscillatorsRef.current.forEach((osc) => {
-      try {
-        osc.stop();
-      } catch {}
-      osc.disconnect();
-    });
-    crGainsRef.current.forEach((g) => g.disconnect());
-    crOscillatorsRef.current = [];
-    crGainsRef.current = [];
-  };
-
-  const stopWhiteNoise = () => {
-    if (whiteNoiseRef.current) {
-      whiteNoiseRef.current.pause();
-      whiteNoiseRef.current.currentTime = 0;
-    }
-  };
-
-  const stopCRTherapy = () => {
-    const refAny = crOscillatorsRef as any;
-    if (refAny.currentIntervalId) {
-      clearInterval(refAny.currentIntervalId);
-      refAny.currentIntervalId = null;
-    }
-    stopAllOscillators();
-  };
-
-  const stopEverything = useCallback(() => {
-    stopWhiteNoise();
-    stopAllOscillators();
-    stopCRTherapy();
-
-    if (sessionTimerRef.current) {
-      clearInterval(sessionTimerRef.current);
-      sessionTimerRef.current = null;
-    }
-
-    setStatus("idle");
-    setCurrentMode(null);
-    setMinutesLeft(null);
-
-    // Reset media session
-    setMediaSessionOptions(undefined);
-  }, []);
-
-  // ---------- WHITE NOISE HANDLING ----------
-
-  const playWhiteNoise = (audioElement: HTMLAudioElement) => {
-    const ctx = getAudioContext();
-    if (ctx.state === "suspended") {
-      ctx.resume();
-    }
-    audioElement.loop = true;
-    audioElement
-      .play()
-      .catch((err) => console.error("Failed to play white noise", err));
-  };
-
-  // ---------- TINNITUS PITCH MATCHING ----------
-
-  const startPitchMatchingTone = () => {
-    const ctx = getAudioContext();
-    if (ctx.state === "suspended") {
-      ctx.resume();
-    }
-
-    // Clean previous tone
-    if (toneOscRef.current) {
-      try {
-        toneOscRef.current.stop();
-      } catch {}
-      toneOscRef.current.disconnect();
-    }
-    if (toneGainRef.current) {
-      toneGainRef.current.disconnect();
-    }
-
-    // Create new oscillator for pitch matching
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = "sine";
-    osc.frequency.value = tinnitusPitchHz || 8000; // default high pitch if not set yet
-    gain.gain.value = 0.1;
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-
-    toneOscRef.current = osc;
-    toneGainRef.current = gain;
-
-    setIsMatchingPitch(true);
-  };
-
-  const stopPitchMatchingTone = () => {
-    if (toneOscRef.current) {
-      try {
-        toneOscRef.current.stop();
-      } catch {}
-      toneOscRef.current.disconnect();
-      toneOscRef.current = null;
-    }
-    if (toneGainRef.current) {
-      toneGainRef.current.disconnect();
-      toneGainRef.current = null;
-    }
-  };
-
-  const handlePitchIncrease = (amountHz: number) => {
-    if (!toneOscRef.current) return;
-    toneOscRef.current.frequency.value += amountHz;
-    setTinnitusPitchHz(toneOscRef.current.frequency.value);
-  };
-
-  const handlePitchDecrease = (amountHz: number) => {
-    if (!toneOscRef.current) return;
-    const newFreq = Math.max(100, toneOscRef.current.frequency.value - amountHz);
-    toneOscRef.current.frequency.value = newFreq;
-    setTinnitusPitchHz(newFreq);
-  };
-
-  const saveMatchedPitch = () => {
-    if (!tinnitusPitchHz) return;
-    setTinnitusPitch(tinnitusPitchHz);
-    setIsMatchingPitch(false);
-    stopPitchMatchingTone();
-
-    // Persist matched pitch so the user doesn't need to rematch every time
-    try {
-      window.localStorage.setItem(
-        "calmtinnitus_matchedPitch",
-        JSON.stringify({ hz: tinnitusPitchHz })
-      );
-    } catch {
-      // Non-critical if persistence fails
-    }
-  };
-
-  // ---------- COORDINATED RESET (CR) THERAPY ----------
-
-  const startCRTherapy = (baseFrequency: number) => {
-    const ctx = getAudioContext();
-    if (ctx.state === "suspended") {
-      ctx.resume();
-    }
-
-    stopAllOscillators();
-
-    const crFrequencies = [0.9, 1.0, 1.1, 1.2].map(
-      (multiplier) => baseFrequency * multiplier
-    );
-
-    const gains: GainNode[] = [];
-    const oscillators: OscillatorNode[] = [];
-
-    crFrequencies.forEach((freq) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gain.gain.value = 0;
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-
-      oscillators.push(osc);
-      gains.push(gain);
-    });
-
-    crOscillatorsRef.current = oscillators;
-    crGainsRef.current = gains;
-
-    const patternInterval = 200;
-    let currentIndex = 0;
-
-    gains.forEach((g) => (g.gain.value = 0));
-
-    const intervalId = setInterval(() => {
-      gains.forEach((g, i) => {
-        g.gain.value = i === currentIndex ? 0.08 : 0;
-      });
-      currentIndex = (currentIndex + 1) % gains.length;
-    }, patternInterval);
-
-    (crOscillatorsRef as any).currentIntervalId = intervalId;
-  };
-
-  // ---------- PERSIST USER PROFILE (pitch, sound, settings) ----------
-
-  useEffect(() => {
-    try {
-      const profile = {
-        therapyType,
-        sessionMinutes,
-        tinnitusPitch,
-        tinnitusPitchHz,
-        selectedProfile,
-      };
-      window.localStorage.setItem(
-        "calmtinnitus_profile",
-        JSON.stringify(profile)
-      );
-    } catch {
-      // Non-critical if persistence fails
-    }
-  }, [therapyType, sessionMinutes, tinnitusPitch, tinnitusPitchHz, selectedProfile]);
-
-  // ---------- SESSION LOGGING ----------
-
-  const saveSession = () => {
-    const baseLog: Omit<SessionLog, "id"> = {
-      date: Date.now(),
-      mode: currentMode || "standard",
-      therapyType,
-      duration: sessionMinutes - (minutesLeft || sessionMinutes),
-      tinnitusPitch: tinnitusPitch || 0,
-    };
-
-    const localKey = "neuroquiet_sessionHistory";
-    try {
-      const current =
-        (JSON.parse(
-          window.localStorage.getItem(localKey) || "[]"
-        ) as SessionLog[]) || [];
-      const newLocal: SessionLog = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        ...baseLog,
-      };
-      const updated = [newLocal, ...current];
-      window.localStorage.setItem(localKey, JSON.stringify(updated));
-      setSessionHistory(updated);
-    } catch (err) {
-      console.error("Failed to save session locally", err);
-    }
-
-    if (user) {
-      saveSessionToCloud(baseLog).catch((err) =>
-        console.error("Failed to save session to cloud", err)
-      );
-    }
-  };
-
-  // ---------- SESSION CONTROL ----------
-
-  const startSession = (mode: TherapyMode) => {
-    if (!tinnitusPitch) {
-      alert("Please match and save your tinnitus pitch first.");
-      return;
-    }
-
-    alert(
-      "🎉 Congratulations! You've taken the first step toward controlling your tinnitus.\n\n" +
-        "1. Assess your Tinnitus Pitch – you’ve already done this.\n" +
-        "2. Select Therapy Type – choose Standard, Relief, or Sleep.\n" +
-        "3. Start Therapy Session – listen at a comfortable volume.\n" +
-        "4. Measure your progress over time.\n\n" +
-        "Relax, you are on your way to control of Tinnitus."
-    );
-
-    stopEverything();
-
-    setCurrentMode(mode);
-
-    const whiteNoiseEl = whiteNoiseRef.current;
-    if (whiteNoiseEl) {
-      playWhiteNoise(whiteNoiseEl);
-    }
-
-    if (mode === "standard" || mode === "sleep") {
-      startPitchMatchingTone();
-    } else if (mode === "relief") {
-      if (!tinnitusPitch) {
-        alert(
-          "Please match your tinnitus pitch before starting Relief / CR therapy."
-        );
-        return;
-      }
-      startCRTherapy(tinnitusPitch);
-    }
-
-    setStatus("running");
-    setMinutesLeft(sessionMinutes);
-
-    const start = Date.now();
-    const totalMs = sessionMinutes * 60 * 1000;
-
-    if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
-    sessionTimerRef.current = setInterval(() => {
-      const elapsed = Date.now() - start;
-      const remainingMs = Math.max(0, totalMs - elapsed);
-      const remainingMinutes = remainingMs / 60000;
-      setMinutesLeft(remainingMinutes);
-      if (remainingMinutes <= 0) {
-        clearInterval(sessionTimerRef.current!);
-        sessionTimerRef.current = null;
-        stopEverything();
-        saveSession();
-        alert("Session complete. Well done for sticking with it!");
-      }
-    }, 1000);
-
-    const title =
-      mode === "relief"
-        ? "CalmTinnitus – Relief / CR Therapy"
-        : mode === "sleep"
-        ? "CalmTinnitus – Sleep Support Session"
-        : "CalmTinnitus – Standard Sound Therapy";
-
-    setMediaSessionOptions({
-      title,
-      artist: "CalmTinnitus",
-      album: "Tinnitus Relief Session",
-      onPlay: () => {
-        if (status === "paused") {
-          resumeSession();
-        } else if (status === "idle") {
-          startSession(mode);
-        }
-      },
-      onPause: () => pauseSession(),
-      onStop: () => stopEverything(),
-    });
-  };
-
-  const pauseSession = () => {
-    if (status !== "running") return;
-
-    stopWhiteNoise();
-    stopPitchMatchingTone();
-    stopCRTherapy();
-
-    if (sessionTimerRef.current) {
-      clearInterval(sessionTimerRef.current);
-      sessionTimerRef.current = null;
-    }
-
-    setStatus("paused");
-
-    setMediaSessionOptions((prev) => ({
-      ...(prev || {}),
-      onPlay: () => resumeSession(),
-      onPause: () => pauseSession(),
-      onStop: () => stopEverything(),
-    }));
-  };
-
-  const resumeSession = () => {
-    if (status !== "paused" || minutesLeft === null || !currentMode) return;
-
-    const whiteNoiseEl = whiteNoiseRef.current;
-    if (whiteNoiseEl) {
-      playWhiteNoise(whiteNoiseEl);
-    }
-
-    if (currentMode === "standard" || currentMode === "sleep") {
-      startPitchMatchingTone();
-    } else if (currentMode === "relief" && tinnitusPitch) {
-      startCRTherapy(tinnitusPitch);
-    }
-
-    setStatus("running");
-
-    const start = Date.now();
-    const totalMs = minutesLeft * 60 * 1000;
-    if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
-    sessionTimerRef.current = setInterval(() => {
-      const elapsed = Date.now() - start;
-      const remainingMs = Math.max(0, totalMs - elapsed);
-      const remainingMinutes = remainingMs / 60000;
-      setMinutesLeft(remainingMinutes);
-      if (remainingMinutes <= 0) {
-        clearInterval(sessionTimerRef.current!);
-        sessionTimerRef.current = null;
-        stopEverything();
-        saveSession();
-        alert("Session complete. Well done for sticking with it!");
-      }
-    }, 1000);
-  };
-
-  const handleSessionMinutesChange = (minutes: number) => {
-    setSessionMinutes(minutes);
-    if (status === "running" || status === "paused") {
-      setMinutesLeft(minutes);
-    }
-  };
-
-  const onSelectProfile = (profile: SoundProfile | null) => {
-    setSelectedProfile(profile);
-
-    if (profile && profile.baseNoise && whiteNoiseRef.current) {
-      // Update the background sound source
-      const audioEl = whiteNoiseRef.current;
-      const shouldRestart = status === "running";
-
-      audioEl.src = profile.baseNoise;
-
-      // If a session is currently running, immediately switch to the new sound
-      if (shouldRestart) {
-        playWhiteNoise(audioEl);
-      }
-    }
-
-    // Persist the chosen sound profile so it can be restored next time
-    try {
-      window.localStorage.setItem(
-        "calmtinnitus_selectedProfile",
-        JSON.stringify(profile)
-      );
-    } catch {
-      // Non-critical if persistence fails
-    }
-  };
-
-  const renderSessionControls = () => {
-    if (!currentMode || status === "idle") {
-      return (
-        <div className="session-controls">
-          <button
-            onClick={() => startSession("standard")}
-            className="primary-btn"
-            disabled={!tinnitusPitch || !selectedProfile}
-          >
-            Start Standard Session
-          </button>
-          <button
-            onClick={() => startSession("relief")}
-            className="secondary-btn"
-            disabled={!tinnitusPitch || !selectedProfile}
-          >
-            Start Relief / CR Session
-          </button>
-          <button
-            onClick={() => startSession("sleep")}
-            className="secondary-btn"
-            disabled={!tinnitusPitch || !selectedProfile}
-          >
-            Start Sleep Support Session
-          </button>
-        </div>
-      );
-    }
-
-    if (status === "running") {
-      return (
-        <div className="session-controls">
-          <button onClick={pauseSession} className="secondary-btn">
-            Pause Session
-          </button>
-          <button onClick={stopEverything} className="ghost-btn">
-            Stop Session
-          </button>
-        </div>
-      );
-    }
-
-    if (status === "paused") {
-      return (
-        <div className="session-controls">
-          <button onClick={resumeSession} className="primary-btn">
-            Resume Session
-          </button>
-          <button onClick={stopEverything} className="ghost-btn">
-            Stop Session
-          </button>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  useEffect(() => {
-    return () => {
-      stopEverything();
-    };
-  }, [stopEverything]);
-
-  // ---------- LOCAL HISTORY LOAD ----------
-
-  useEffect(() => {
-    if (localHistoryLoaded) return;
-    try {
-      const stored = window.localStorage.getItem("neuroquiet_sessionHistory");
-      if (stored) {
-        const parsed = JSON.parse(stored) as SessionLog[];
-        setSessionHistory(parsed);
-      }
-    } catch {}
-    setLocalHistoryLoaded(true);
-  }, [localHistoryLoaded, setSessionHistory]);
-
-  const handleGoogleSignIn = async () => {
-    try {
-      await firebaseGoogleSignIn();
-    } catch (err) {
-      console.error("Sign in error: ", err);
-      alert("Failed to sign in. Please try again.");
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await firebaseSignOut();
-    } catch (err) {
-      console.error("Sign out error: ", err);
-      alert("Failed to sign out. Please try again.");
-    }
-  };
-
-  return (
-    <div className="therapy-page">
-      <header className="therapy-header">
-        <div className="header-left">
-          <Image
-            src="/CalmTinnitus-Logo.png"
-            alt="CalmTinnitus Logo"
-            width={160}
-            height={40}
-            priority
-            className="header-logo"
-          />
-          <div className="header-text">
-            <h1>Guided Sound Therapy for Tinnitus</h1>
-            <p>
-              CalmTinnitus combines personalized soundscapes with{" "}
-              <strong>pitch-matched training</strong> to support tinnitus
-              habituation and relief.
-            </p>
-          </div>
-        </div>
-        <div className="header-right">
-          {user ? (
-            <div className="user-box">
-              <span className="user-email">
-                Signed in as <strong>{user.email}</strong>
-              </span>
-              <button onClick={handleSignOut} className="ghost-btn">
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <div className="user-box">
-              <span className="user-email">
-                Sign in to save your sessions across devices.
-              </span>
-              <button onClick={handleGoogleSignIn} className="secondary-btn">
-                Sign in with Google
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
-
-      <main className="therapy-main">
-        <section className="card pitch-section">
-          <div className="section-header">
-            <h2>Step 1 – Match Your Tinnitus Pitch (once, then it’s saved)</h2>
-            <p>
-              Find the tone that most closely matches your tinnitus sound. Once
-              you save it, CalmTinnitus remembers it for next time.
-            </p>
-          </div>
-
-          <div className="pitch-grid">
-            <div className="pitch-controls">
-              <div className="pitch-display">
-                <span className="label">Live tone:</span>
-                <span className="value">
-                  {tinnitusPitchHz ? `${Math.round(tinnitusPitchHz)} Hz` : "--"}
-                </span>
-              </div>
-              <div className="pitch-display">
-                <span className="label">Saved pitch:</span>
-                <span className="value">
-                  {tinnitusPitch
-                    ? `${Math.round(tinnitusPitch)} Hz`
-                    : "Not saved yet"}
-                </span>
-              </div>
-
-              <div className="pitch-buttons">
-                <button
-                  onClick={() =>
-                    tinnitusPitchHz
-                      ? handlePitchDecrease(100)
-                      : setTinnitusPitchHz(8000)
-                  }
-                  className="secondary-btn"
-                >
-                  -100 Hz
-                </button>
-                <button
-                  onClick={() =>
-                    tinnitusPitchHz
-                      ? handlePitchIncrease(100)
-                      : setTinnitusPitchHz(8000)
-                  }
-                  className="secondary-btn"
-                >
-                  +100 Hz
-                </button>
-              </div>
-
-              <div className="pitch-actions">
-                <button onClick={saveMatchedPitch} className="primary-btn">
-                  Save Matched Pitch
-                </button>
-                <button
-                  onClick={() => {
-                    setIsMatchingPitch(false);
-                    stopPitchMatchingTone();
-                  }}
-                  className="ghost-btn"
-                >
-                  Stop Test Tone
-                </button>
-              </div>
-
-              <div className="pitch-hint">
-                <p>
-                  Tip: Start high, then adjust down slowly until the tone feels
-                  similar to your tinnitus. It doesn’t need to be perfect.
-                </p>
-              </div>
-            </div>
-
-            <div className="pitch-visual">
-              <div className="ear-diagram">
-                <Image
-                  src="/woman.png"
-                  alt="Calm person listening to sound therapy"
-                  width={300}
-                  height={300}
-                  className="ear-image"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="card sound-profile-section">
-          <div className="section-header">
-            <h2>Step 2 – Choose Your Sound Profile</h2>
-            <p>
-              Pick a background soundscape that feels good to you. You can
-              change this anytime.
-            </p>
-          </div>
-          <SoundLibraryMenu
-            onSelectProfile={onSelectProfile}
-            currentProfileId={selectedProfile?.id}
-          />
-          <audio ref={whiteNoiseRef} />
-        </section>
-
-        <section className="card session-setup-section">
-          <div className="section-header">
-            <h2>Step 3 – Session Settings</h2>
-            <p>
-              Choose what kind of therapy you want to do today and for how long.
-            </p>
-          </div>
-
-          <div className="session-grid">
-            <div className="therapy-type-block">
-              <h3>Therapy goal</h3>
-              <div className="pill-row">
-                {THERAPY_TYPES.map((t) => (
-                  <button
-                    key={t.key}
-                    onClick={() => setTherapyType(t.key)}
-                    className={`pill ${
-                      therapyType === t.key ? "pill-selected" : ""
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-              <p className="hint-text">
-                {THERAPY_TYPES.find((t) => t.key === therapyType)?.description}
-              </p>
-            </div>
-
-            <div className="session-length-block">
-              <h3>Session length</h3>
-              <div className="pill-row">
-                {[15, 30, 45, 60].map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => handleSessionMinutesChange(m)}
-                    className={`pill ${
-                      sessionMinutes === m ? "pill-selected" : ""
-                    }`}
-                  >
-                    {m} minutes
-                  </button>
-                ))}
-              </div>
-              <p className="hint-text">
-                You can always stop earlier if you feel done.
-              </p>
-            </div>
-
-            <div className="session-status-block">
-              <h3>Session status</h3>
-              <div className="status-row">
-                <span className="label">Time left:</span>
-                <span className="value">{formatTime(minutesLeft)}</span>
-              </div>
-              <div className="status-row">
-                <span className="label">Mode:</span>
-                <span className="value">
-                  {currentMode
-                    ? THERAPY_MODES.find((m) => m.key === currentMode)?.label
-                    : "Not started"}
-                </span>
-              </div>
-              <div className="status-row">
-                <span className="label">State:</span>
-                <span className="value">
-                  {status === "idle"
-                    ? "Idle"
-                    : status === "running"
-                    ? "Running"
-                    : "Paused"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="session-controls-wrapper">
-            {renderSessionControls()}
-          </div>
-        </section>
-
-        <section className="card session-history-section">
-          <div className="section-header">
-            <h2>Your recent sessions</h2>
-            <p>Track your consistency over time.</p>
-          </div>
-
-          {loading && <p>Loading session history...</p>}
-          {!loading && sessionHistory.length === 0 && (
-            <p>You don&apos;t have any logged sessions yet.</p>
-          )}
-          {!loading && sessionHistory.length > 0 && (
-            <ul className="history-list">
-              {sessionHistory.slice(0, 10).map((s) => (
-                <li key={s.id} className="history-item">
-                  <div className="history-row">
-                    <span className="label">Date</span>
-                    <span className="value">
-                      {new Date(s.date).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="history-row">
-                    <span className="label">Mode</span>
-                    <span className="value">
-                      {
-                        THERAPY_MODES.find((m) => m.key === s.mode)?.label ??
-                        s.mode
-                      }
-                    </span>
-                  </div>
-                  <div className="history-row">
-                    <span className="label">Therapy type</span>
-                    <span className="value">
-                      {
-                        THERAPY_TYPES.find((t) => t.key === s.therapyType)
-                          ?.label
-                      }
-                    </span>
-                  </div>
-                  <div className="history-row">
-                    <span className="label">Duration</span>
-                    <span className="value">{s.duration} min</span>
-                  </div>
-                  <div className="history-row">
-                    <span className="label">Pitch</span>
-                    <span className="value">{Math.round(s.tinnitusPitch)} Hz</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="card safety-section">
-          <div className="section-header">
-            <h2>Safety & notes</h2>
-            <p>Please always listen at a comfortable volume.</p>
-          </div>
-          <ul className="safety-list">
-            <li>Always keep the volume at a comfortable level.</li>
-            <li>
-              If any sound feels irritating or makes your tinnitus worse, stop
-              the session and adjust.
-            </li>
-            <li>
-              CalmTinnitus is not a medical device and does not replace medical
-              advice. Talk to your audiologist or ENT if you have concerns.
-            </li>
-            <li>
-              If you experience dizziness, pain, or discomfort, stop using the
-              app and consult a professional.
-            </li>
-          </ul>
-        </section>
-      </main>
-
-      <footer className="therapy-footer">
-        <div className="therapy-footer-links">
-          <a href="/about">About</a>
-          <a href="/info">How It Works</a>
-          <a href="/legal">Legal</a>
-          <a href="/disclaimers">Disclaimers</a>
-          <a href="/company-policy">Company Policy</a>
-        </div>
-        <div className="therapy-footer-note">
-          This app is a self-help sound tool and does not provide medical
-          diagnosis, treatment, or emergency care. For sudden changes in
-          hearing, severe distress, or medical concerns, please seek urgent
-          professional help.
-        </div>
-      </footer>
-    </div>
-  );
-};
-
-export default TherapyPage;
+const THERAPY_MODES = [
+  { 
+    key: 'standard' as TherapyMode, 
+    label: 'Standard Therapy', 
+    description: 'Gentle background sound with your matched tone for habituation',
+    icon: ' '
+  },
+  { 
+    key: 'relief' as TherapyMode, 
+    label: 'Relief (CR) Therapy', 
+    description: 'Coordinated reset pattern that may help desynchronize neurons',
+    icon: ' '
+  },
+  { 
+    key: 'sleep' as TherapyMode, 
+    label: 'Sleep Support', 
+    description: 'Quieter profile to help you wind down and sleep',
+    icon: ' '
+  },
+];
+
+export default function ImprovedTherapyPage() {
+  // Setup state
+  const [setupStep, setSetupStep] = useState<SetupStep>('welcome');
+  const [isFirstTime, setIsFirstTime] = useState(true);
+  
+  // Audio state
+  const [tinnitusPitch, setTinnitusPitch] = useState<number | null>(null);
+  const [currentPitch, setCurrentPitch] = useState<number>(8000);
+  const [isPitchPlaying, setIsPitchPlaying] = useState(false);
+  const [selectedSound, setSelectedSound] = useState<SoundProfile>(SOUND_PROFILES[0]);
+  const [masterVolume, setMasterVolume] = useState(0.3);
+  const [noiseVolume, setNoiseVolume] = useState(0.2);
+  const [toneVolume, setToneVolume] = useState(0.1);
+  
+  // Session state
+  const [selectedMode, setSelectedMode] = useState<TherapyMode>('standard');
+  const [sessionDuration, setSessionDuration] = useState(30);
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>('idle');
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  
+  // Audio refs
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const noiseNodeRef = useRef<AudioBufferSourceNode | null>(null);
+  const noiseGainRef = useRef<GainNode | null>(null);
+  const toneOscRef = useRef<OscillatorNode | null>(null);
+  const toneGainRef = useRef<GainNode | null>(null);
+  const masterGainRef = useRef<GainNode | null>(null);
+  const crOscillatorsRef = useRef<OscillatorNode[]>([]);
+  const crGainsRef = useRef<GainNode[]>([]);
+  const crIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Initialize audio context
+  const getAudioContext = useCallback(() => {
+    if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Create master gain node
+      if (!masterGainRef.current) {
+        masterGainRef.current = audioContextRef.current.createGain();
+        masterGainRef.current.connect(audioContextRef.current.destination);
+        masterGainRef.current.gain.value = masterVolume;
+      }
+    }
+    return audioContextRef.current;
+  }, [masterVolume]);
+
+  // Generate noise buffer
+  const generateNoiseBuffer = useCallback((ctx: AudioContext, type: string) => {
+    const bufferSize = ctx.sampleRate * 2;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    if (type === 'white') {
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+    } else if (type === 'pink') {
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+        data[i] *= 0.11;
+        b6 = white * 0.115926;
+      }
+    } else if (type === 'brown') {
+      let lastOut = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        data[i] = (lastOut + (0.02 * white)) / 1.02;
+        lastOut = data[i];
+        data[i] *= 3.5;
+      }
+    } else if (type === 'rain' || type === 'ocean') {
+      // Simplified nature sounds using filtered noise
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * 0.5;
+      }
+    }
+    
+    return buffer;
+  }, []);
+
+  // Play background noise
+  const playNoise = useCallback(() => {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+    
+    // Stop existing noise
+    if (noiseNodeRef.current) {
+      noiseNodeRef.current.stop();
+      noiseNodeRef.current.disconnect();
+    }
+    
+    // Create new noise
+    const buffer = generateNoiseBuffer(ctx, selectedSound.id);
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    
+    source.buffer = buffer;
+    source.loop = true;
+    gain.gain.value = noiseVolume;
+    
+    source.connect(gain);
+    gain.connect(masterGainRef.current!);
+    
+    source.start(0);
+    
+    noiseNodeRef.current = source;
+    noiseGainRef.current = gain;
+  }, [getAudioContext, generateNoiseBuffer, selectedSound, noiseVolume]);
+
+  // Stop background noise
+  const stopNoise = useCallback(() => {
+    if (noiseNodeRef.current) {
+      noiseNodeRef.current.stop();
+      noiseNodeRef.current.disconnect();
+      noiseNodeRef.current = null;
+    }
+    if (noiseGainRef.current) {
+      noiseGainRef.current.disconnect();
+      noiseGainRef.current = null;
+    }
+  }, []);
+
+  // Play pitch matching tone
+  const playPitchTone = useCallback(() => {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+    
+    // Stop existing tone
+    if (toneOscRef.current) {
+      toneOscRef.current.stop();
+      toneOscRef.current.disconnect();
+    }
+    
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.value = currentPitch;
+    gain.gain.value = toneVolume;
+    
+    osc.connect(gain);
+    gain.connect(masterGainRef.current!);
+    
+    osc.start();
+    
+    toneOscRef.current = osc;
+    toneGainRef.current = gain;
+    setIsPitchPlaying(true);
+  }, [getAudioContext, currentPitch, toneVolume]);
+
+  // Stop pitch tone
+  const stopPitchTone = useCallback(() => {
+    if (toneOscRef.current) {
+      toneOscRef.current.stop();
+      toneOscRef.current.disconnect();
+      toneOscRef.current = null;
+    }
+    if (toneGainRef.current) {
+      toneGainRef.current.disconnect();
+      toneGainRef.current = null;
+    }
+    setIsPitchPlaying(false);
+  }, []);
+
+  // Start CR therapy
+  const startCRTherapy = useCallback((baseFreq: number) => {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+    
+    // Stop existing CR
+    crOscillatorsRef.current.forEach(osc => {
+      osc.stop();
+      osc.disconnect();
+    });
+    crGainsRef.current.forEach(g => g.disconnect());
+    if (crIntervalRef.current) clearInterval(crIntervalRef.current);
+    
+    const frequencies = [0.9, 1.0, 1.1, 1.2].map(m => baseFreq * m);
+    const oscillators: OscillatorNode[] = [];
+    const gains: GainNode[] = [];
+    
+    frequencies.forEach(freq => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.value = 0;
+      
+      osc.connect(gain);
+      gain.connect(masterGainRef.current!);
+      osc.start();
+      
+      oscillators.push(osc);
+      gains.push(gain);
+    });
+    
+    crOscillatorsRef.current = oscillators;
+    crGainsRef.current = gains;
+    
+    let index = 0;
+    const interval = setInterval(() => {
+      gains.forEach((g, i) => {
+        g.gain.value = i === index ? toneVolume : 0;
+      });
+      index = (index + 1) % gains.length;
+    }, 200);
+    
+    crIntervalRef.current = interval;
+  }, [getAudioContext, toneVolume]);
+
+  // Stop CR therapy
+  const stopCRTherapy = useCallback(() => {
+    crOscillatorsRef.current.forEach(osc => {
+      osc.stop();
+      osc.disconnect();
+    });
+    crGainsRef.current.forEach(g => g.disconnect());
+    crOscillatorsRef.current = [];
+    crGainsRef.current = [];
+    
+    if (crIntervalRef.current) {
+      clearInterval(crIntervalRef.current);
+      crIntervalRef.current = null;
+    }
+  }, []);
+
+  // Start session
+  const startSession = useCallback(() => {
+    if (!tinnitusPitch) {
+      alert('Please match your tinnitus pitch first');
+      return;
+    }
+    
+    playNoise();
+    
+    if (selectedMode === 'relief') {
+      startCRTherapy(tinnitusPitch);
+    } else {
+      playPitchTone();
+    }
+    
+    setSessionStatus('running');
+    setTimeRemaining(sessionDuration);
+    
+    const startTime = Date.now();
+    const endTime = startTime + sessionDuration * 60 * 1000;
+    
+    sessionTimerRef.current = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, (endTime - now) / 60000);
+      setTimeRemaining(remaining);
+      
+      if (remaining <= 0) {
+        stopSession();
+      }
+    }, 1000);
+  }, [tinnitusPitch, selectedMode, sessionDuration, playNoise, startCRTherapy, playPitchTone]);
+
+  // Pause session
+  const pauseSession = useCallback(() => {
+    stopNoise();
+    stopPitchTone();
+    stopCRTherapy();
+    
+    if (sessionTimerRef.current) {
+      clearInterval(sessionTimerRef.current);
+      sessionTimerRef.current = null;
+    }
+    
+    setSessionStatus('paused');
+  }, [stopNoise, stopPitchTone, stopCRTherapy]);
+
+  // Resume session
+  const resumeSession = useCallback(() => {
+    if (!timeRemaining) return;
+    
+    playNoise();
+    
+    if (selectedMode === 'relief' && tinnitusPitch) {
+      startCRTherapy(tinnitusPitch);
+    } else {
+      playPitchTone();
+    }
+    
+    setSessionStatus('running');
+    
+    const startTime = Date.now();
+    const endTime = startTime + timeRemaining * 60 * 1000;
+    
+    sessionTimerRef.current = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, (endTime - now) / 60000);
+      setTimeRemaining(remaining);
+      
+      if (remaining <= 0) {
+        stopSession();
+      }
+    }, 1000);
+  }, [timeRemaining, selectedMode, tinnitusPitch, playNoise, startCRTherapy, playPitchTone]);
+
+  // Stop session
+  const stopSession = useCallback(() => {
+    stopNoise();
+    stopPitchTone();
+    stopCRTherapy();
+    
+    if (sessionTimerRef.current) {
+      clearInterval(sessionTimerRef.current);
+      sessionTimerRef.current = null;
+    }
+    
+    setSessionStatus('idle');
+    setTimeRemaining(null);
+  }, [stopNoise, stopPitchTone, stopCRTherapy]);
+
+  // Update master volume
+  useEffect(() => {
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.value = masterVolume;
+    }
+  }, [masterVolume]);
+
+  // Update noise volume
+  useEffect(() => {
+    if (noiseGainRef.current) {
+      noiseGainRef.current.gain.value = noiseVolume;
+    }
+  }, [noiseVolume]);
+
+  // Update tone volume
+  useEffect(() => {
+    if (toneGainRef.current) {
+      toneGainRef.current.gain.value = toneVolume;
+    }
+    crGainsRef.current.forEach(g => {
+      // Only update if this gain is currently "on"
+      if (g.gain.value > 0) {
+        g.gain.value = toneVolume;
+      }
+    });
+  }, [toneVolume]);
+
+  // Update pitch frequency
+  useEffect(() => {
+    if (toneOscRef.current) {
+      toneOscRef.current.frequency.value = currentPitch;
+    }
+  }, [currentPitch]);
+
+  // Load saved settings
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('calmtinnitus_settings');
+      if (saved) {
+        const settings = JSON.parse(saved);
+        if (settings.tinnitusPitch) {
+          setTinnitusPitch(settings.tinnitusPitch);
+          setCurrentPitch(settings.tinnitusPitch);
+          setIsFirstTime(false);
+          setSetupStep('ready');
+        }
+        if (settings.selectedSound) {
+          const sound = SOUND_PROFILES.find(s => s.id === settings.selectedSound);
+          if (sound) setSelectedSound(sound);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load settings', e);
+    }
+  }, []);
+
+  // Save settings
+  useEffect(() => {
+    try {
+      localStorage.setItem('calmtinnitus_settings', JSON.stringify({
+        tinnitusPitch,
+        selectedSound: selectedSound.id,
+      }));
+    } catch (e) {
+      console.error('Failed to save settings', e);
+    }
+  }, [tinnitusPitch, selectedSound]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopSession();
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, [stopSession]);
+
+  // Format time
+  const formatTime = (minutes: number | null) => {
+    if (minutes === null) return '--:--';
+    const m = Math.floor(minutes);
+    const s = Math.round((minutes - m) * 60);
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  // Render setup wizard
+  if (isFirstTime && setupStep !== 'ready') {
+    return (
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem 1rem' }}>
+        <div style={{ 
+          background: 'white', 
+          borderRadius: '1rem', 
+          padding: '2rem',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+        }}>
+          {setupStep === 'welcome' && (
+            <div>
+              <h1 style={{ marginTop: 0 }}>Welcome to CalmTinnitus</h1>
+              <p>Let's get you set up in 3 quick steps:</p>
+              <ol style={{ lineHeight: 1.8 }}>
+                <li>Match your tinnitus pitch</li>
+                <li>Choose a background sound</li>
+                <li>Start your first session</li>
+              </ol>
+              <p style={{ fontSize: '0.9rem', color: '#666', background: '#fef3cd', padding: '1rem', borderRadius: '0.5rem' }}>
+                <strong> Safety reminder:</strong> Keep your volume comfortable. We'll start very quiet.
+              </p>
+              <button
+                onClick={() => setSetupStep('pitch')}
+                style={{
+                  background: 'linear-gradient(135deg, #0ea5e9, #22c55e)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.75rem 2rem',
+                  borderRadius: '999px',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  marginTop: '1rem'
+                }}
+              >
+                Get Started
+              </button>
+            </div>
+          )}
+
+          {setupStep === 'pitch' && (
+            <div>
+              <h2 style={{ marginTop: 0 }}>Step 1: Match Your Tinnitus Pitch</h2>
+              <p>Adjust the slider until the tone sounds similar to your tinnitus.</p>
+              
+              <div style={{ marginTop: '2rem' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  marginBottom: '0.5rem',
+                  alignItems: 'center'
+                }}>
+                  <span style={{ fontWeight: '600' }}>Test Tone: {Math.round(currentPitch)} Hz</span>
+                  <button
+                    onClick={() => isPitchPlaying ? stopPitchTone() : playPitchTone()}
+                    style={{
+                      background: isPitchPlaying ? '#ef4444' : '#22c55e',
+                      color: 'white',
+                      border: 'none',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '999px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    {isPitchPlaying ? <><Square size={16} /> Stop</> : <><Play size={16} /> Play</>}
+                  </button>
+                </div>
+                
+                <input
+                  type="range"
+                  min="250"
+                  max="16000"
+                  step="50"
+                  value={currentPitch}
+                  onChange={(e) => setCurrentPitch(Number(e.target.value))}
+                  style={{ width: '100%', height: '8px' }}
+                />
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>
+                  <span>Low (250 Hz)</span>
+                  <span>High (16000 Hz)</span>
+                </div>
+              </div>
+
+              <div style={{ 
+                marginTop: '2rem', 
+                padding: '1rem', 
+                background: '#f0f9ff', 
+                borderRadius: '0.5rem',
+                fontSize: '0.9rem'
+              }}>
+                <strong>Tip:</strong> Most tinnitus is between 3000-8000 Hz. Start high and adjust down slowly.
+              </div>
+
+              <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
+                <button
+                  onClick={() => {
+                    stopPitchTone();
+                    setSetupStep('welcome');
+                  }}
+                  style={{
+                    background: '#e5e7eb',
+                    color: '#374151',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '999px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => {
+                    setTinnitusPitch(currentPitch);
+                    stopPitchTone();
+                    setSetupStep('sound');
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #0ea5e9, #22c55e)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '999px',
+                    cursor: 'pointer',
+                    flex: 1
+                  }}
+                >
+                  Save & Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {setupStep === 'sound' && (
+            <div>
+              <h2 style={{ marginTop: 0 }}>Step 2: Choose Background Sound</h2>
+              <p>Select the sound that feels most comfortable to you:</p>
+              
+              <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1.5rem' }}>
+                {SOUND_PROFILES.map(profile => (
+                  <button
+                    key={profile.id}
+                    onClick={() => setSelectedSound(profile)}
+                    style={{
+                      padding: '1rem',
+                      border: selectedSound.id === profile.id ? '2px solid #0ea5e9' : '1px solid #e5e7eb',
+                      borderRadius: '0.75rem',
+                      background: selectedSound.id === profile.id ? '#f0f9ff' : 'white',
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                  >
+                    <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>{profile.label}</div>
+                    <div style={{ fontSize: '0.85rem', color: '#666' }}>{profile.description}</div>
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
+                <button
+                  onClick={() => setSetupStep('pitch')}
+                  style={{
+                    background: '#e5e7eb',
+                    color: '#374151',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '999px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => {
+                    setSetupStep('ready');
+                    setIsFirstTime(false);
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #0ea5e9, #22c55e)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '999px',
+                    cursor: 'pointer',
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <Check size={20} />
+                  Complete Setup
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Main therapy interface
+  return (
+    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 1rem' }}>
+      {/* Header with Volume Control */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: '2rem',
+        flexWrap: 'wrap',
+        gap: '1rem'
+      }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '1.75rem' }}>CalmTinnitus</h1>
+          <p style={{ margin: '0.25rem 0 0', color: '#666' }}>Your personalized tinnitus therapy</p>
+        </div>
+        
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '0.75rem',
+          padding: '0.75rem 1rem',
+          background: 'white',
+          borderRadius: '999px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          {masterVolume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={masterVolume}
+            onChange={(e) => setMasterVolume(Number(e.target.value))}
+            style={{ width: '120px' }}
+          />
+          <span style={{ fontSize: '0.85rem', fontWeight: '600', minWidth: '45px' }}>
+            {Math.round(masterVolume * 100)}%
+          </span>
+        </div>
+      </div>
+
+      {/* Session Status - Prominent when running */}
+      {sessionStatus !== 'idle' && (
+        <div style={{
+          background: 'linear-gradient(135deg, #0ea5e9, #22c55e)',
+          color: 'white',
+          padding: '1.5rem',
+          borderRadius: '1rem',
+          marginBottom: '2rem',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '3rem', fontWeight: '700', marginBottom: '0.5rem' }}>
+            {formatTime(timeRemaining)}
+          </div>
+          <div style={{ fontSize: '1rem', opacity: 0.9 }}>
+            {THERAPY_MODES.find(m => m.key === selectedMode)?.label} • {sessionStatus === 'running' ? 'In Progress' : 'Paused'}
+          </div>
+          
+          <div style={{ 
+            display: 'flex', 
+            gap: '0.75rem', 
+            justifyContent: 'center', 
+            marginTop: '1.5rem',
+            flexWrap: 'wrap'
+          }}>
+            {sessionStatus === 'running' ? (
+              <button
+                onClick={pauseSession}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  border: '2px solid white',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '999px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <Pause size={20} /> Pause
+              </button>
+            ) : (
+              <button
+                onClick={resumeSession}
+                style={{
+                  background: 'white',
+                  color: '#0ea5e9',
+                  border: 'none',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '999px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <Play size={20} /> Resume
+              </button>
+            )}
+            
+            <button
+              onClick={stopSession}
+              style={{
+                background: 'rgba(239,68,68,0.9)',
+                color: 'white',
+                border: 'none',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '999px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <Square size={20} /> Stop
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gap: '1.5rem' }}>
+        {/* Therapy Mode Selection */}
+        <div style={{ 
+          background: 'white', 
+          padding: '1.5rem', 
+          borderRadius: '1rem',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{ marginTop: 0, fontSize: '1.25rem' }}>Therapy Mode</h2>
+          <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1rem' }}>
+            {THERAPY_MODES.map(mode => (
+              <button
+                key={mode.key}
+                onClick={() => setSelectedMode(mode.key)}
+                disabled={sessionStatus !== 'idle'}
+                style={{
+                  padding: '1rem',
+                  border: selectedMode === mode.key ? '2px solid #0ea5e9' : '1px solid #e5e7eb',
+                  borderRadius: '0.75rem',
+                  background: selectedMode === mode.key ? '#f0f9ff' : 'white',
+                  cursor: sessionStatus === 'idle' ? 'pointer' : 'not-allowed',
+                  textAlign: 'left',
+                  opacity: sessionStatus !== 'idle' ? 0.6 : 1
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '1.5rem' }}>{mode.icon}</span>
+                  <span style={{ fontWeight: '600' }}>{mode.label}</span>
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#666', paddingLeft: '2.25rem' }}>
+                  {mode.description}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Session Duration */}
+        <div style={{ 
+          background: 'white', 
+          padding: '1.5rem', 
+          borderRadius: '1rem',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{ marginTop: 0, fontSize: '1.25rem' }}>Session Duration</h2>
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+            {[15, 30, 45, 60].map(duration => (
+              <button
+                key={duration}
+                onClick={() => setSessionDuration(duration)}
+                disabled={sessionStatus !== 'idle'}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  border: sessionDuration === duration ? '2px solid #0ea5e9' : '1px solid #e5e7eb',
+                  borderRadius: '999px',
+                  background: sessionDuration === duration ? '#f0f9ff' : 'white',
+                  cursor: sessionStatus === 'idle' ? 'pointer' : 'not-allowed',
+                  fontWeight: '600',
+                  opacity: sessionStatus !== 'idle' ? 0.6 : 1
+                }}
+              >
+                {duration} min
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Start Session Button */}
+        {sessionStatus === 'idle' && (
+          <button
+            onClick={startSession}
+            disabled={!tinnitusPitch}
+            style={{
+              background: tinnitusPitch ? 'linear-gradient(135deg, #0ea5e9, #22c55e)' : '#e5e7eb',
+              color: tinnitusPitch ? 'white' : '#9ca3af',
+              border: 'none',
+              padding: '1.25rem',
+              borderRadius: '1rem',
+              fontSize: '1.25rem',
+              fontWeight: '700',
+              cursor: tinnitusPitch ? 'pointer' : 'not-allowed',
+              boxShadow: tinnitusPitch ? '0 4px 6px rgba(0,0,0,0.1)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem'
+            }}
+          >
+            <Play size={24} />
+            Start {THERAPY_MODES.find(m => m.key === selectedMode)?.label}
+          </button>
+        )}
+
+        {/* Settings Panel */}
+        <div style={{ 
+          background: 'white', 
+          padding: '1.5rem', 
+          borderRadius: '1rem',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{ marginTop: 0, fontSize: '1.25rem' }}>Advanced Settings</h2>
+          
+          {/* Tinnitus Pitch */}
+          <div style={{ marginTop: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label style={{ fontWeight: '600' }}>Tinnitus Pitch</label>
+              <span style={{ fontSize: '0.9rem', color: '#666' }}>
+                {tinnitusPitch ? `${Math.round(tinnitusPitch)} Hz` : 'Not set'}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setIsFirstTime(true);
+                setSetupStep('pitch');
+              }}
+              disabled={sessionStatus !== 'idle'}
+              style={{
+                background: '#f3f4f6',
+                border: '1px solid #e5e7eb',
+                padding: '0.5rem 1rem',
+                borderRadius: '0.5rem',
+                cursor: sessionStatus === 'idle' ? 'pointer' : 'not-allowed',
+                fontSize: '0.9rem',
+                opacity: sessionStatus !== 'idle' ? 0.6 : 1
+              }}
+            >
+              Re-match Pitch
+            </button>
+          </div>
+
+          {/* Background Sound */}
+          <div style={{ marginTop: '1.5rem' }}>
+            <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.75rem' }}>
+              Background Sound
+            </label>
+            <select
+              value={selectedSound.id}
+              onChange={(e) => {
+                const sound = SOUND_PROFILES.find(s => s.id === e.target.value);
+                if (sound) setSelectedSound(sound);
+              }}
+              disabled={sessionStatus === 'running'}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                border: '1px solid #e5e7eb',
+                fontSize: '1rem',
+                cursor: sessionStatus === 'running' ? 'not-allowed' : 'pointer',
+                opacity: sessionStatus === 'running' ? 0.6 : 1
+              }}
+            >
+              {SOUND_PROFILES.map(profile => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.label} - {profile.description}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Volume Controls */}
+          <div style={{ marginTop: '1.5rem' }}>
+            <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.75rem' }}>
+              Background Volume: {Math.round(noiseVolume * 100)}%
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="0.5"
+              step="0.05"
+              value={noiseVolume}
+              onChange={(e) => setNoiseVolume(Number(e.target.value))}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          <div style={{ marginTop: '1rem' }}>
+            <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.75rem' }}>
+              Tone Volume: {Math.round(toneVolume * 100)}%
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="0.3"
+              step="0.05"
+              value={toneVolume}
+              onChange={(e) => setToneVolume(Number(e.target.value))}
+              style={{ width: '100%' }}
+            />
+          </div>
+        </div>
+
+        {/* Info Panel */}
+        <div style={{ 
+          background: '#fef3cd', 
+          padding: '1.5rem', 
+          borderRadius: '1rem',
+          border: '1px solid #fbbf24'
+        }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+            <Info size={20} style={{ flexShrink: 0, marginTop: '0.15rem' }} />
+            <div>
+              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem' }}>How to use CalmTinnitus</h3>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                <li>Listen at a comfortable volume - never too loud</li>
+                <li>Use daily for 15-30 minutes for best results</li>
+                <li>You can change therapy modes between sessions</li>
+                <li>Stop if you feel any discomfort or your tinnitus worsens</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ 
+        marginTop: '3rem', 
+        paddingTop: '2rem', 
+        borderTop: '1px solid #e5e7eb',
+        textAlign: 'center',
+        fontSize: '0.85rem',
+        color: '#666'
+      }}>
+        <p>CalmTinnitus is a self-help sound tool and does not replace medical care.</p>
+        <p>For sudden hearing changes or medical concerns, please seek professional help.</p>
+      </div>
+    </div>
+  );
+}
