@@ -1,4 +1,3 @@
-// app/page.tsx
 "use client";
 
 import Image from "next/image";
@@ -26,7 +25,6 @@ export default function HomePage() {
               </Link>
             </div>
             <nav className="nq-header-right">
-              {/* Added Q&A Link */}
               <Link href="/qa" className="nq-header-link">
                 Q&A
               </Link>
@@ -66,7 +64,7 @@ export default function HomePage() {
                   affordable tool you can use daily.
                 </p>
 
-                <Link href="/register" className="nq-primary-cta">
+                <Link href="/therapy" className="nq-primary-cta">
                   Start training now
                 </Link>
               </div>
@@ -167,7 +165,6 @@ export default function HomePage() {
             sans-serif;
         }
 
-        /* 🌅 GRADIENT TOP WRAPPER */
         .nq-hero-shell {
           background: radial-gradient(
               circle at top left,
@@ -186,7 +183,6 @@ export default function HomePage() {
           margin: 0 auto;
         }
 
-        /* HEADER */
         .nq-header {
           display: flex;
           align-items: center;
@@ -240,7 +236,6 @@ export default function HomePage() {
           background: #020617;
         }
 
-        /* HERO */
         .nq-hero {
           display: grid;
           grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
@@ -323,7 +318,6 @@ export default function HomePage() {
           box-shadow: 0 22px 50px rgba(15, 23, 42, 0.55);
         }
 
-        /* RESEARCH LINK */
         .nq-research-link {
           display: inline-flex;
           align-items: center;
@@ -342,7 +336,6 @@ export default function HomePage() {
           background: rgba(191, 219, 254, 0.9);
         }
 
-        /* SECTIONS */
         .nq-section {
           margin-bottom: 2.5rem;
         }
@@ -379,16 +372,17 @@ export default function HomePage() {
         }
 
         .nq-card-dark {
-          background: #020617;
+          background: linear-gradient(135deg, #bae6fd, #e0f2fe);
           border-radius: 1.2rem;
           padding: 1.7rem 1.6rem;
-          color: #e5e7eb;
-          box-shadow: 0 22px 50px rgba(15, 23, 42, 0.7);
+          color: #334155;
+          box-shadow: 0 22px 50px rgba(148, 163, 184, 0.25);
         }
 
         .nq-card-dark h2 {
           margin-top: 0;
           margin-bottom: 0.9rem;
+          color: #0f172a;
         }
 
         .nq-card-dark ul {
@@ -404,10 +398,9 @@ export default function HomePage() {
 
         .nq-note {
           font-size: 0.8rem;
-          color: #e5e7eb;
+          color: #64748b;
         }
 
-        /* FOOTER */
         .nq-footer {
           border-top: 1px solid #e5e7eb;
           padding-top: 1.4rem;
@@ -442,47 +435,37 @@ export default function HomePage() {
           margin: 0;
         }
 
-        /* MOBILE */
         @media (max-width: 768px) {
           .nq-landing {
             padding: 1rem 0.8rem 2.2rem;
           }
-
           .nq-hero-shell {
             padding: 0.8rem 0.85rem 1.7rem;
             margin-bottom: 2.25rem;
           }
-
           .nq-header {
             padding-bottom: 0.35rem;
             margin-bottom: 1rem;
           }
-
           .nq-logo {
             max-width: 150px;
           }
-
           .nq-header-right {
             gap: 0.5rem;
           }
-
           .nq-header-btn {
             padding-inline: 0.7rem;
           }
-
           .nq-hero {
             grid-template-columns: minmax(0, 1fr);
             gap: 1.5rem;
           }
-
           .nq-hero-image {
             order: -1;
           }
-
           .nq-hero-text h1 {
             font-size: 2rem;
           }
-
           .nq-plan-price {
             font-size: 1.5rem;
           }
