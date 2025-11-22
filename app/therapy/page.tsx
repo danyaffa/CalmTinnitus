@@ -12,10 +12,39 @@ type SoundProfile = {
   id: string;
   label: string;
   description: string;
-  type: "noise" | "nature";
+  type: "noise" | "nature" | "external";
+  color?: string; // Brand color for UI
 };
 
 const SOUND_PROFILES: SoundProfile[] = [
+  {
+    id: "spotify",
+    label: "Spotify",
+    description: "Embed your playlists",
+    type: "external",
+    color: "#1DB954",
+  },
+  {
+    id: "apple",
+    label: "Apple Music",
+    description: "Stream albums & stations",
+    type: "external",
+    color: "#FA243C",
+  },
+  {
+    id: "youtube",
+    label: "YouTube / Google",
+    description: "Video & Music integration",
+    type: "external",
+    color: "#FF0000",
+  },
+  {
+    id: "amazon",
+    label: "Amazon Music",
+    description: "Play via external tab",
+    type: "external",
+    color: "#00A8E1",
+  },
   {
     id: "pink",
     label: "Pink Noise",
@@ -80,9 +109,15 @@ export default function ImprovedTherapyPage() {
   const [tinnitusPitch, setTinnitusPitch] = useState<number | null>(null);
   const [currentPitch, setCurrentPitch] = useState<number>(8000);
   const [isPitchPlaying, setIsPitchPlaying] = useState(false);
+  
+  // Default Sound
   const [selectedSound, setSelectedSound] = useState<SoundProfile>(
-    SOUND_PROFILES[0]
+    SOUND_PROFILES.find(s => s.id === 'pink') || SOUND_PROFILES[4]
   );
+  
+  // External Link State
+  const [externalLink, setExternalLink] = useState("");
+  
   const [masterVolume, setMasterVolume] = useState(0.3);
   const [noiseVolume, setNoiseVolume] = useState(0.2);
   const [toneVolume, setToneVolume] = useState(0.1);
@@ -121,6 +156,52 @@ export default function ImprovedTherapyPage() {
     return audioContextRef.current;
   }, [masterVolume]);
 
+  /**
+   * 🎵 EXTERNAL PLAYER HELPERS
+   */
+  const getEmbedUrl = (provider: string, url: string) => {
+    if (!url) return null;
+
+    try {
+      // SPOTIFY
+      if (provider === 'spotify') {
+        if (url.includes("/embed/")) return url;
+        const match = url.match(/spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
+        if (match) return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
+      } 
+
+      // APPLE MUSIC
+      if (provider === 'apple') {
+        // Convert music.apple.com -> embed.music.apple.com
+        if (url.includes("embed.music.apple.com")) return url;
+        return url.replace("music.apple.com", "embed.music.apple.com");
+      }
+
+      // YOUTUBE
+      if (provider === 'youtube') {
+        if (url.includes("youtube.com/embed/")) return url;
+        // Standard Watch URL
+        let videoId = "";
+        const matchStandard = url.match(/[?&]v=([^&]+)/);
+        const matchShort = url.match(/youtu\.be\/([^?]+)/);
+        
+        if (matchStandard) videoId = matchStandard[1];
+        else if (matchShort) videoId = matchShort[1];
+
+        if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+      }
+
+      // AMAZON - No direct generic iframe, usually requires "Share -> Embed" specific code or just a link
+      // We will handle Amazon via a "Launch" button in the UI instead of an iframe to avoid errors.
+
+    } catch (e) {
+      console.error("Error parsing embed URL", e);
+      return null;
+    }
+    return null;
+  };
+
+
   // Generate noise buffer
   const generateNoiseBuffer = useCallback(
     (ctx: AudioContext, type: string) => {
@@ -133,13 +214,7 @@ export default function ImprovedTherapyPage() {
           data[i] = Math.random() * 2 - 1;
         }
       } else if (type === "pink") {
-        let b0 = 0,
-          b1 = 0,
-          b2 = 0,
-          b3 = 0,
-          b4 = 0,
-          b5 = 0,
-          b6 = 0;
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
         for (let i = 0; i < bufferSize; i++) {
           const white = Math.random() * 2 - 1;
           b0 = 0.99886 * b0 + white * 0.0555179;
@@ -161,12 +236,10 @@ export default function ImprovedTherapyPage() {
           data[i] *= 3.5;
         }
       } else if (type === "rain" || type === "ocean") {
-        // Simplified nature sounds using filtered noise
         for (let i = 0; i < bufferSize; i++) {
           data[i] = (Math.random() * 2 - 1) * 0.5;
         }
       }
-
       return buffer;
     },
     []
@@ -174,16 +247,17 @@ export default function ImprovedTherapyPage() {
 
   // Play background noise
   const playNoise = useCallback(() => {
+    // If External Sound is selected, do NOT play internal noise
+    if (selectedSound.type === 'external') return;
+
     const ctx = getAudioContext();
     if (ctx.state === "suspended") ctx.resume();
 
-    // Stop existing noise
     if (noiseNodeRef.current) {
       noiseNodeRef.current.stop();
       noiseNodeRef.current.disconnect();
     }
 
-    // Create new noise
     const buffer = generateNoiseBuffer(ctx, selectedSound.id);
     const source = ctx.createBufferSource();
     const gain = ctx.createGain();
@@ -219,7 +293,6 @@ export default function ImprovedTherapyPage() {
     const ctx = getAudioContext();
     if (ctx.state === "suspended") ctx.resume();
 
-    // Stop existing tone
     if (toneOscRef.current) {
       toneOscRef.current.stop();
       toneOscRef.current.disconnect();
@@ -262,7 +335,6 @@ export default function ImprovedTherapyPage() {
       const ctx = getAudioContext();
       if (ctx.state === "suspended") ctx.resume();
 
-      // Stop existing CR
       crOscillatorsRef.current.forEach((osc) => {
         osc.stop();
         osc.disconnect();
@@ -321,7 +393,7 @@ export default function ImprovedTherapyPage() {
     }
   }, []);
 
-  // Stop entire session (used by several flows)
+  // Stop entire session
   const stopSessionInternal = useCallback(() => {
     stopNoise();
     stopPitchTone();
@@ -343,7 +415,10 @@ export default function ImprovedTherapyPage() {
       return;
     }
 
-    playNoise();
+    // Only play noise if it's NOT an external player
+    if (selectedSound.type !== 'external') {
+      playNoise();
+    }
 
     if (selectedMode === "relief") {
       startCRTherapy(tinnitusPitch);
@@ -374,6 +449,7 @@ export default function ImprovedTherapyPage() {
     startCRTherapy,
     playPitchTone,
     stopSessionInternal,
+    selectedSound
   ]);
 
   // Pause session
@@ -394,7 +470,9 @@ export default function ImprovedTherapyPage() {
   const resumeSession = useCallback(() => {
     if (!timeRemaining) return;
 
-    playNoise();
+    if (selectedSound.type !== 'external') {
+      playNoise();
+    }
 
     if (selectedMode === "relief" && tinnitusPitch) {
       startCRTherapy(tinnitusPitch);
@@ -424,41 +502,36 @@ export default function ImprovedTherapyPage() {
     startCRTherapy,
     playPitchTone,
     stopSessionInternal,
+    selectedSound
   ]);
 
-  // Stop session (external handler)
   const stopSession = useCallback(() => {
     stopSessionInternal();
   }, [stopSessionInternal]);
 
-  // Update master volume
   useEffect(() => {
     if (masterGainRef.current) {
       masterGainRef.current.gain.value = masterVolume;
     }
   }, [masterVolume]);
 
-  // Update noise volume
   useEffect(() => {
     if (noiseGainRef.current) {
       noiseGainRef.current.gain.value = noiseVolume;
     }
   }, [noiseVolume]);
 
-  // Update tone volume
   useEffect(() => {
     if (toneGainRef.current) {
       toneGainRef.current.gain.value = toneVolume;
     }
     crGainsRef.current.forEach((g) => {
-      // Only update if this gain is currently "on"
       if (g.gain.value > 0) {
         g.gain.value = toneVolume;
       }
     });
   }, [toneVolume]);
 
-  // Update pitch frequency
   useEffect(() => {
     if (toneOscRef.current) {
       toneOscRef.current.frequency.value = currentPitch;
@@ -483,6 +556,9 @@ export default function ImprovedTherapyPage() {
           );
           if (sound) setSelectedSound(sound);
         }
+        if (settings.externalLink) {
+          setExternalLink(settings.externalLink);
+        }
       }
     } catch (e) {
       console.error("Failed to load settings", e);
@@ -497,14 +573,15 @@ export default function ImprovedTherapyPage() {
         JSON.stringify({
           tinnitusPitch,
           selectedSound: selectedSound.id,
+          externalLink,
         })
       );
     } catch (e) {
       console.error("Failed to save settings", e);
     }
-  }, [tinnitusPitch, selectedSound]);
+  }, [tinnitusPitch, selectedSound, externalLink]);
 
-  // Cleanup on unmount
+  // Cleanup
   useEffect(() => {
     return () => {
       stopSessionInternal();
@@ -514,7 +591,6 @@ export default function ImprovedTherapyPage() {
     };
   }, [stopSessionInternal]);
 
-  // Format time
   const formatTime = (minutes: number | null) => {
     if (minutes === null) return "--:--";
     const m = Math.floor(minutes);
@@ -522,7 +598,7 @@ export default function ImprovedTherapyPage() {
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  // Render setup wizard
+  // Render Setup
   if (isFirstTime && setupStep !== "ready") {
     return (
       <div
@@ -545,18 +621,6 @@ export default function ImprovedTherapyPage() {
                 <li>Choose a background sound</li>
                 <li>Start your first session</li>
               </ol>
-              <p
-                style={{
-                  fontSize: "0.9rem",
-                  color: "#666",
-                  background: "#fef3cd",
-                  padding: "1rem",
-                  borderRadius: "0.5rem",
-                }}
-              >
-                <strong> Safety reminder:</strong> Keep your volume comfortable.
-                We'll start very quiet.
-              </p>
               <button
                 onClick={() => setSetupStep("pitch")}
                 style={{
@@ -577,119 +641,106 @@ export default function ImprovedTherapyPage() {
           )}
 
           {setupStep === "pitch" && (
-            <div>
-              <h2 style={{ marginTop: 0 }}>Step 1: Match Your Tinnitus Pitch</h2>
-              <p>Adjust the slider until the tone sounds similar to your tinnitus.</p>
+             <div>
+             <h2 style={{ marginTop: 0 }}>Step 1: Match Your Tinnitus Pitch</h2>
+             <p>Adjust the slider until the tone sounds similar to your tinnitus.</p>
 
-              <div style={{ marginTop: "2rem" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: "0.5rem",
-                    alignItems: "center",
-                  }}
-                >
-                  <span style={{ fontWeight: "600" }}>
-                    Test Tone: {Math.round(currentPitch)} Hz
-                  </span>
-                  <button
-                    onClick={() =>
-                      isPitchPlaying ? stopPitchTone() : playPitchTone()
-                    }
-                    style={{
-                      background: isPitchPlaying ? "#ef4444" : "#22c55e",
-                      color: "white",
-                      border: "none",
-                      padding: "0.5rem 1rem",
-                      borderRadius: "999px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    <span aria-hidden="true">
-                      {isPitchPlaying ? "⏹" : "▶"}
-                    </span>
-                    {isPitchPlaying ? "Stop" : "Play"}
-                  </button>
-                </div>
+             <div style={{ marginTop: "2rem" }}>
+               <div
+                 style={{
+                   display: "flex",
+                   justifyContent: "space-between",
+                   marginBottom: "0.5rem",
+                   alignItems: "center",
+                 }}
+               >
+                 <span style={{ fontWeight: "600" }}>
+                   Test Tone: {Math.round(currentPitch)} Hz
+                 </span>
+                 <button
+                   onClick={() =>
+                     isPitchPlaying ? stopPitchTone() : playPitchTone()
+                   }
+                   style={{
+                     background: isPitchPlaying ? "#ef4444" : "#22c55e",
+                     color: "white",
+                     border: "none",
+                     padding: "0.5rem 1rem",
+                     borderRadius: "999px",
+                     cursor: "pointer",
+                     display: "flex",
+                     alignItems: "center",
+                     gap: "0.5rem",
+                   }}
+                 >
+                   <span aria-hidden="true">
+                     {isPitchPlaying ? "⏹" : "▶"}
+                   </span>
+                   {isPitchPlaying ? "Stop" : "Play"}
+                 </button>
+               </div>
 
-                <input
-                  type="range"
-                  min="250"
-                  max="16000"
-                  step="50"
-                  value={currentPitch}
-                  onChange={(e) => setCurrentPitch(Number(e.target.value))}
-                  style={{ width: "100%", height: "8px" }}
-                />
+               <input
+                 type="range"
+                 min="250"
+                 max="16000"
+                 step="50"
+                 value={currentPitch}
+                 onChange={(e) => setCurrentPitch(Number(e.target.value))}
+                 style={{ width: "100%", height: "8px" }}
+               />
 
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "0.8rem",
-                    color: "#666",
-                    marginTop: "0.25rem",
-                  }}
-                >
-                  <span>Low (250 Hz)</span>
-                  <span>High (16000 Hz)</span>
-                </div>
-              </div>
+               <div
+                 style={{
+                   display: "flex",
+                   justifyContent: "space-between",
+                   fontSize: "0.8rem",
+                   color: "#666",
+                   marginTop: "0.25rem",
+                 }}
+               >
+                 <span>Low (250 Hz)</span>
+                 <span>High (16000 Hz)</span>
+               </div>
+             </div>
 
-              <div
-                style={{
-                  marginTop: "2rem",
-                  padding: "1rem",
-                  background: "#f0f9ff",
-                  borderRadius: "0.5rem",
-                  fontSize: "0.9rem",
-                }}
-              >
-                <strong>Tip:</strong> Most tinnitus is between 3000-8000 Hz.
-                Start high and adjust down slowly.
-              </div>
-
-              <div style={{ marginTop: "2rem", display: "flex", gap: "1rem" }}>
-                <button
-                  onClick={() => {
-                    stopPitchTone();
-                    setSetupStep("welcome");
-                  }}
-                  style={{
-                    background: "#e5e7eb",
-                    color: "#374151",
-                    border: "none",
-                    padding: "0.75rem 1.5rem",
-                    borderRadius: "999px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => {
-                    setTinnitusPitch(currentPitch);
-                    stopPitchTone();
-                    setSetupStep("sound");
-                  }}
-                  style={{
-                    background: "linear-gradient(135deg, #0ea5e9, #22c55e)",
-                    color: "white",
-                    border: "none",
-                    padding: "0.75rem 1.5rem",
-                    borderRadius: "999px",
-                    cursor: "pointer",
-                    flex: 1,
-                  }}
-                >
-                  Save & Continue
-                </button>
-              </div>
-            </div>
+             <div style={{ marginTop: "2rem", display: "flex", gap: "1rem" }}>
+               <button
+                 onClick={() => {
+                   stopPitchTone();
+                   setSetupStep("welcome");
+                 }}
+                 style={{
+                   background: "#e5e7eb",
+                   color: "#374151",
+                   border: "none",
+                   padding: "0.75rem 1.5rem",
+                   borderRadius: "999px",
+                   cursor: "pointer",
+                 }}
+               >
+                 Back
+               </button>
+               <button
+                 onClick={() => {
+                   setTinnitusPitch(currentPitch);
+                   stopPitchTone();
+                   setSetupStep("sound");
+                 }}
+                 style={{
+                   background: "linear-gradient(135deg, #0ea5e9, #22c55e)",
+                   color: "white",
+                   border: "none",
+                   padding: "0.75rem 1.5rem",
+                   borderRadius: "999px",
+                   cursor: "pointer",
+                   flex: 1,
+                 }}
+               >
+                 Save & Continue
+               </button>
+             </div>
+           </div>
           )}
 
           {setupStep === "sound" && (
@@ -702,6 +753,7 @@ export default function ImprovedTherapyPage() {
                   display: "grid",
                   gap: "0.75rem",
                   marginTop: "1.5rem",
+                  gridTemplateColumns: "1fr 1fr" // Grid for more options
                 }}
               >
                 {SOUND_PROFILES.map((profile) => (
@@ -712,30 +764,34 @@ export default function ImprovedTherapyPage() {
                       padding: "1rem",
                       border:
                         selectedSound.id === profile.id
-                          ? "2px solid #0ea5e9"
+                          ? `2px solid ${profile.color || '#0ea5e9'}`
                           : "1px solid #e5e7eb",
                       borderRadius: "0.75rem",
                       background:
                         selectedSound.id === profile.id ? "#f0f9ff" : "white",
                       cursor: "pointer",
                       textAlign: "left",
+                      position: 'relative',
+                      overflow: 'hidden'
                     }}
                   >
-                    <div
-                      style={{
-                        fontWeight: "600",
-                        marginBottom: "0.25rem",
-                      }}
-                    >
-                      {profile.label}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "0.85rem",
-                        color: "#666",
-                      }}
-                    >
-                      {profile.description}
+                    {profile.color && (
+                        <div style={{
+                            position:'absolute', left:0, top:0, bottom:0, width:'6px', background: profile.color
+                        }} />
+                    )}
+                    <div style={{marginLeft: profile.color ? '0.5rem' : '0'}}>
+                      <div
+                        style={{
+                          fontWeight: "600",
+                          marginBottom: "0.25rem",
+                        }}
+                      >
+                        {profile.label}
+                      </div>
+                      <div style={{ fontSize: "0.85rem", color: "#666" }}>
+                        {profile.description}
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -843,7 +899,7 @@ export default function ImprovedTherapyPage() {
         </div>
       </div>
 
-      {/* Session Status - Prominent when running */}
+      {/* Session Status */}
       {sessionStatus !== "idle" && (
         <div
           style={{
@@ -938,6 +994,102 @@ export default function ImprovedTherapyPage() {
       )}
 
       <div style={{ display: "grid", gap: "1.5rem" }}>
+        
+        {/* 🎵 EXTERNAL MUSIC PLAYER UI */}
+        {selectedSound.type === 'external' && (
+            <div style={{
+                background: '#0f172a', 
+                borderRadius: '1rem',
+                padding: '1.5rem',
+                color: 'white'
+            }}>
+                <h3 style={{marginTop: 0, display:'flex', alignItems:'center', gap: '0.75rem'}}>
+                    {/* Header Icon based on Provider */}
+                    <span style={{
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                        background: 'white', borderRadius:'50%', width:'32px', height:'32px',
+                        fontSize: '1.2rem'
+                    }}>
+                        {selectedSound.id === 'spotify' && '🟢'}
+                        {selectedSound.id === 'apple' && '🍎'}
+                        {selectedSound.id === 'youtube' && '▶️'}
+                        {selectedSound.id === 'amazon' && '🛒'}
+                    </span>
+                    {selectedSound.label} Integration
+                </h3>
+                
+                {/* Input for link */}
+                <div style={{marginBottom: '1rem'}}>
+                    <label style={{fontSize: '0.9rem', color: '#94a3b8', display: 'block', marginBottom: '0.5rem'}}>
+                        Paste your {selectedSound.label} Link (Song, Album, or Playlist):
+                    </label>
+                    <div style={{display:'flex', gap: '0.5rem'}}>
+                        <input 
+                            type="text" 
+                            placeholder="https://..."
+                            value={externalLink}
+                            onChange={(e) => setExternalLink(e.target.value)}
+                            style={{
+                                flex: 1,
+                                padding: '0.75rem',
+                                borderRadius: '0.5rem',
+                                border: '1px solid #334155',
+                                background: '#1e293b',
+                                color: 'white',
+                                fontSize: '1rem'
+                            }}
+                        />
+                        {selectedSound.id === 'amazon' && externalLink && (
+                             <a 
+                                href={externalLink} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                style={{
+                                    background: '#00A8E1',
+                                    color: 'white',
+                                    textDecoration: 'none',
+                                    padding: '0 1.25rem',
+                                    borderRadius: '0.5rem',
+                                    fontWeight: '600',
+                                    display:'flex', alignItems:'center'
+                                }}
+                             >
+                                Open
+                             </a>
+                        )}
+                    </div>
+                </div>
+
+                {/* EMBED RENDERER */}
+                <div style={{minHeight: '100px', background: '#1e293b', borderRadius: '12px', overflow:'hidden', display:'flex', justifyContent:'center', alignItems:'center'}}>
+                    
+                    {/* 1. If link exists and provider supports embed */}
+                    {externalLink && selectedSound.id !== 'amazon' && getEmbedUrl(selectedSound.id, externalLink) ? (
+                        <iframe 
+                            style={{border: 0, width:'100%', height: selectedSound.id === 'youtube' ? '300px' : '152px'}} 
+                            src={getEmbedUrl(selectedSound.id, externalLink)!} 
+                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                            loading="lazy"
+                        ></iframe>
+                    ) : (
+                        /* 2. Fallback / Empty State */
+                        <div style={{padding: '2rem', textAlign: 'center', color: '#64748b'}}>
+                            {selectedSound.id === 'amazon' ? (
+                                <p>Amazon Music does not support direct embedding.<br/>Click "Open" above to play music in a new tab.</p>
+                            ) : (
+                                <p>Paste a valid link above to load the player.</p>
+                            )}
+                        </div>
+                    )}
+                </div>
+                
+                <div style={{fontSize: '0.85rem', color: '#94a3b8', marginTop: '1rem', display:'flex', gap: '0.5rem', alignItems:'flex-start'}}>
+                    <span>⚠️</span>
+                    <span><strong>Note:</strong> Control music volume directly in the player above. The "Master Volume" slider below only affects the therapy tones.</span>
+                </div>
+            </div>
+        )}
+
         {/* Therapy Mode Selection */}
         <div
           style={{
@@ -993,52 +1145,7 @@ export default function ImprovedTherapyPage() {
           </div>
         </div>
 
-        {/* Session Duration */}
-        <div
-          style={{
-            background: "white",
-            padding: "1.5rem",
-            borderRadius: "1rem",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-          }}
-        >
-          <h2 style={{ marginTop: 0, fontSize: "1.25rem" }}>
-            Session Duration
-          </h2>
-          <div
-            style={{
-              display: "flex",
-              gap: "0.75rem",
-              marginTop: "1rem",
-              flexWrap: "wrap",
-            }}
-          >
-            {[15, 30, 45, 60].map((duration) => (
-              <button
-                key={duration}
-                onClick={() => setSessionDuration(duration)}
-                disabled={sessionStatus !== "idle"}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  border:
-                    sessionDuration === duration
-                      ? "2px solid #0ea5e9"
-                      : "1px solid #e5e7eb",
-                  borderRadius: "999px",
-                  background:
-                    sessionDuration === duration ? "#f0f9ff" : "white",
-                  cursor: sessionStatus === "idle" ? "pointer" : "not-allowed",
-                  fontWeight: "600",
-                  opacity: sessionStatus !== "idle" ? 0.6 : 1,
-                }}
-              >
-                {duration} min
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Start Session Button */}
+        {/* Start Button */}
         {sessionStatus === "idle" && (
           <button
             onClick={startSession}
@@ -1081,41 +1188,6 @@ export default function ImprovedTherapyPage() {
             Advanced Settings
           </h2>
 
-          {/* Tinnitus Pitch */}
-          <div style={{ marginTop: "1rem" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "0.5rem",
-              }}
-            >
-              <label style={{ fontWeight: "600" }}>Tinnitus Pitch</label>
-              <span style={{ fontSize: "0.9rem", color: "#666" }}>
-                {tinnitusPitch ? `${Math.round(tinnitusPitch)} Hz` : "Not set"}
-              </span>
-            </div>
-            <button
-              onClick={() => {
-                setIsFirstTime(true);
-                setSetupStep("pitch");
-              }}
-              disabled={sessionStatus !== "idle"}
-              style={{
-                background: "#f3f4f6",
-                border: "1px solid #e5e7eb",
-                padding: "0.5rem 1rem",
-                borderRadius: "0.5rem",
-                cursor: sessionStatus === "idle" ? "pointer" : "not-allowed",
-                fontSize: "0.9rem",
-                opacity: sessionStatus !== "idle" ? 0.6 : 1,
-              }}
-            >
-              Re-match Pitch
-            </button>
-          </div>
-
           {/* Background Sound */}
           <div style={{ marginTop: "1.5rem" }}>
             <label
@@ -1154,27 +1226,29 @@ export default function ImprovedTherapyPage() {
             </select>
           </div>
 
-          {/* Volume Controls */}
-          <div style={{ marginTop: "1.5rem" }}>
-            <label
-              style={{
-                fontWeight: "600",
-                display: "block",
-                marginBottom: "0.75rem",
-              }}
-            >
-              Background Volume: {Math.round(noiseVolume * 100)}%
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="0.5"
-              step="0.05"
-              value={noiseVolume}
-              onChange={(e) => setNoiseVolume(Number(e.target.value))}
-              style={{ width: "100%" }}
-            />
-          </div>
+          {/* Conditional Noise Volume Slider (Hide if External Audio is active) */}
+          {selectedSound.type !== 'external' && (
+              <div style={{ marginTop: "1.5rem" }}>
+                <label
+                  style={{
+                    fontWeight: "600",
+                    display: "block",
+                    marginBottom: "0.75rem",
+                  }}
+                >
+                  Background Volume: {Math.round(noiseVolume * 100)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="0.5"
+                  step="0.05"
+                  value={noiseVolume}
+                  onChange={(e) => setNoiseVolume(Number(e.target.value))}
+                  style={{ width: "100%" }}
+                />
+              </div>
+          )}
 
           <div style={{ marginTop: "1rem" }}>
             <label
@@ -1184,7 +1258,7 @@ export default function ImprovedTherapyPage() {
                 marginBottom: "0.75rem",
               }}
             >
-              Tone Volume: {Math.round(toneVolume * 100)}%
+              Therapy Tone Volume: {Math.round(toneVolume * 100)}%
             </label>
             <input
               type="range"
@@ -1195,52 +1269,6 @@ export default function ImprovedTherapyPage() {
               onChange={(e) => setToneVolume(Number(e.target.value))}
               style={{ width: "100%" }}
             />
-          </div>
-        </div>
-
-        {/* Info Panel */}
-        <div
-          style={{
-            background: "#fef3cd",
-            padding: "1.5rem",
-            borderRadius: "1rem",
-            border: "1px solid #fbbf24",
-          }}
-        >
-          <div
-            style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}
-          >
-            <span
-              aria-hidden="true"
-              style={{ flexShrink: 0, marginTop: "0.15rem" }}
-            >
-              ℹ
-            </span>
-            <div>
-              <h3
-                style={{
-                  margin: "0 0 0.5rem",
-                  fontSize: "1rem",
-                }}
-              >
-                How to use CalmTinnitus
-              </h3>
-              <ul
-                style={{
-                  margin: 0,
-                  paddingLeft: "1.25rem",
-                  fontSize: "0.9rem",
-                  lineHeight: 1.6,
-                }}
-              >
-                <li>Listen at a comfortable volume - never too loud</li>
-                <li>Use daily for 15-30 minutes for best results</li>
-                <li>You can change therapy modes between sessions</li>
-                <li>
-                  Stop if you feel any discomfort or your tinnitus worsens
-                </li>
-              </ul>
-            </div>
           </div>
         </div>
       </div>
@@ -1259,10 +1287,6 @@ export default function ImprovedTherapyPage() {
         <p>
           CalmTinnitus is a self-help sound tool and does not replace medical
           care.
-        </p>
-        <p>
-          For sudden hearing changes or medical concerns, please seek
-          professional help.
         </p>
       </div>
     </div>
