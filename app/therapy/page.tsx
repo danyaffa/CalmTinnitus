@@ -21,38 +21,11 @@ const SOUND_PROFILES: SoundProfile[] = [
   { 
     id: "spotify", 
     label: "Spotify", 
-    description: "Embed your playlists", 
+    description: "Music & Playlists", 
     type: "external", 
     color: "#1DB954", 
     icon: "🟢",
     defaultLink: "https://open.spotify.com/playlist/37i9dQZF1DWZd79rJ6a7lp" 
-  },
-  { 
-    id: "apple", 
-    label: "Apple Music", 
-    description: "Stream albums & stations", 
-    type: "external", 
-    color: "#FA243C", 
-    icon: "🍎",
-    defaultLink: "https://music.apple.com/us/playlist/pure-ambient/pl.a8e2cb15695c4ca79e6fb2c782373db6"
-  },
-  { 
-    id: "youtube", 
-    label: "YouTube", 
-    description: "Video & Music integration", 
-    type: "external", 
-    color: "#FF0000", 
-    icon: "▶️",
-    defaultLink: "https://www.youtube.com/watch?v=AGuKfQ23oXI"
-  },
-  { 
-    id: "amazon", 
-    label: "Amazon Music", 
-    description: "Play via external tab", 
-    type: "external", 
-    color: "#00A8E1", 
-    icon: "🛒",
-    defaultLink: "https://music.amazon.com/stations/Is3k73"
   },
   { id: "pink", label: "Pink Noise", description: "Soft, gentle sound", type: "noise" },
   { id: "white", label: "White Noise", description: "Classic masking sound", type: "noise" },
@@ -238,7 +211,8 @@ function useTinnitusAudio() {
 export default function TherapyPage() {
   // State
   const [tinnitusPitch, setTinnitusPitch] = useState<number>(8000);
-  const [selectedSound, setSelectedSound] = useState<SoundProfile>(SOUND_PROFILES[4]); 
+  const [currentPitch, setCurrentPitch] = useState<number>(8000);
+  const [selectedSound, setSelectedSound] = useState<SoundProfile>(SOUND_PROFILES[4]); // Default Pink
   const [externalLink, setExternalLink] = useState("");
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("idle");
   const [selectedMode, setSelectedMode] = useState<TherapyMode>("standard");
@@ -268,7 +242,7 @@ export default function TherapyPage() {
     const saved = localStorage.getItem("calmtinnitus_settings");
     if (saved) {
       const s = JSON.parse(saved);
-      if (s.pitch) setTinnitusPitch(s.pitch);
+      if (s.pitch) { setTinnitusPitch(s.pitch); setCurrentPitch(s.pitch); }
     }
   }, []);
 
@@ -306,6 +280,12 @@ export default function TherapyPage() {
         audio.playTone(tinnitusPitch, testVol);
     }
   }, [tinnitusPitch, toneVol]);
+
+  // When dragging the slider, update the TinnitusPitch state as well
+  const handlePitchChange = (val: number) => {
+      setCurrentPitch(val);
+      setTinnitusPitch(val); 
+  };
 
   const startSession = () => {
     audio.initAudio(); 
@@ -355,14 +335,6 @@ export default function TherapyPage() {
       const m = cleanUrl.match(/spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
       return m ? `https://open.spotify.com/embed/${m[1]}/${m[2]}?utm_source=generator&theme=0` : null;
     }
-    if (type === 'apple') {
-        if (url.includes("embed.music.apple.com")) return url;
-        return url.replace("music.apple.com", "embed.music.apple.com");
-    }
-    if (type === 'youtube') {
-      const v = url.match(/[?&]v=([^&]+)/)?.[1] || url.match(/youtu\.be\/([^?]+)/)?.[1];
-      return v ? `https://www.youtube.com/embed/${v}` : null;
-    }
     return null;
   };
 
@@ -405,7 +377,7 @@ export default function TherapyPage() {
         </div>
       )}
 
-      {/* STEP 1: PITCH MATCHING (Prominent Card) */}
+      {/* STEP 1: PITCH MATCHING */}
       <div className="nq-panel nq-step-1">
         <div className="nq-panel-header">
             <h3>Step 1: Match Your Tinnitus Pitch</h3>
@@ -452,6 +424,14 @@ export default function TherapyPage() {
                 </div>
               </button>
             ))}
+          </div>
+          {/* EXPLANATION BOX */}
+          <div className="nq-info-box">
+            <span style={{fontSize:'1.2rem', marginRight:'0.5rem'}}>ℹ️</span>
+            <div>
+                <strong>About Therapy Sounds:</strong><br/>
+                If you hear clicks or rhythmic pulses in <em>Relief Mode</em>, this is intentional. It is a technique called <strong>"making a hole in the pitch"</strong> (Neuromodulation) to disrupt tinnitus synchrony.
+            </div>
           </div>
         </div>
 
@@ -521,31 +501,14 @@ export default function TherapyPage() {
       {/* EXTERNAL PLAYER (Conditional) */}
       {selectedSound.type === 'external' && (
         <div className="nq-embed-card" style={{borderColor: selectedSound.color || '#333'}}>
-          <div className="nq-provider-toolbar">
-             {SOUND_PROFILES.filter(p => p.type === 'external').map(p => (
-                 <button 
-                    key={p.id} 
-                    onClick={() => setSelectedSound(p)}
-                    className={`nq-provider-btn ${selectedSound.id === p.id ? 'active' : ''}`}
-                    style={selectedSound.id === p.id ? {background: p.color} : {}}
-                    title={`Switch to ${p.label}`}
-                 >
-                    {p.icon}
-                 </button>
-             ))}
-          </div>
-
           <div className="nq-embed-header">
             <span className="nq-badge" style={{background: selectedSound.color}}>{selectedSound.label}</span>
             <input 
-              placeholder={`Paste full ${selectedSound.label} URL...`}
+              placeholder={`Paste your ${selectedSound.label} link here...`}
               value={externalLink}
               onChange={e => setExternalLink(e.target.value)}
               className="nq-input-dark"
             />
-            {selectedSound.id === 'amazon' && externalLink && (
-                <a href={externalLink} target="_blank" className="nq-btn-small">Open ↗</a>
-            )}
           </div>
           
           {getEmbedUrl(selectedSound.id, externalLink) ? (
@@ -554,11 +517,15 @@ export default function TherapyPage() {
               className="nq-iframe" 
               allow="encrypted-media; autoplay; clipboard-write; picture-in-picture"
             />
-          ) : selectedSound.id !== 'amazon' && (
+          ) : (
             <div className="nq-empty-embed">
-                <p>Paste a valid link above to load player.</p>
+                <p>Paste your music link below to listen to your preferred tracks.</p>
             </div>
           )}
+          
+          <div style={{textAlign:'center', fontSize:'0.85rem', color:'#94a3b8', marginTop:'0.75rem'}}>
+             ⚠️ Control music volume inside the player above
+          </div>
         </div>
       )}
 
@@ -621,6 +588,8 @@ function Style() {
       .nq-panel { background: white; padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
       .nq-panel h3 { margin: 0 0 1rem 0; font-size: 1.1rem; }
       
+      .nq-info-box { margin-top: 1.5rem; background: #fffbeb; border: 1px solid #fcd34d; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.8rem; color: #92400e; display: flex; align-items: flex-start; line-height: 1.4; }
+
       .nq-list { display: grid; gap: 0.5rem; }
       .nq-list-item { display: flex; align-items: center; gap: 1rem; text-align: left; width: 100%; background: white; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.75rem; cursor: pointer; }
       .nq-list-item.active { border-color: var(--primary); background: #f0f9ff; }
@@ -636,10 +605,6 @@ function Style() {
 
       /* External Player */
       .nq-embed-card { background: #0f172a; color: white; border-radius: 1rem; padding: 1.5rem; margin-bottom: 2rem; border-left: 4px solid; transition: 0.3s; }
-      .nq-provider-toolbar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
-      .nq-provider-btn { background: rgba(255,255,255,0.1); border: none; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 1.4rem; display: flex; align-items: center; justifyContent: center; transition: 0.2s; }
-      .nq-provider-btn:hover { background: rgba(255,255,255,0.2); transform: scale(1.1); }
-      .nq-provider-btn.active { transform: scale(1.1); box-shadow: 0 0 15px rgba(255,255,255,0.3); background: rgba(255,255,255,0.2); border: 2px solid white; }
       
       .nq-embed-header { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
       .nq-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; display:flex; align-items:center;}
