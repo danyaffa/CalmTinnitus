@@ -165,6 +165,7 @@ export default function HomePage() {
             sans-serif;
         }
 
+        /* 🌅 GRADIENT TOP WRAPPER */
         .nq-hero-shell {
           background: radial-gradient(
               circle at top left,
@@ -183,6 +184,7 @@ export default function HomePage() {
           margin: 0 auto;
         }
 
+        /* HEADER */
         .nq-header {
           display: flex;
           align-items: center;
@@ -236,6 +238,7 @@ export default function HomePage() {
           background: #020617;
         }
 
+        /* HERO */
         .nq-hero {
           display: grid;
           grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
@@ -297,186 +300,4 @@ export default function HomePage() {
           font-weight: 700;
           font-size: 0.98rem;
           text-decoration: none;
-          box-shadow: 0 16px 30px rgba(56, 189, 248, 0.45);
-        }
-
-        .nq-primary-cta:hover {
-          filter: brightness(1.03);
-        }
-
-        .nq-hero-image {
-          display: flex;
-          justify-content: center;
-        }
-
-        .nq-hero-photo {
-          width: 100%;
-          height: auto;
-          max-width: 480px;
-          border-radius: 1.6rem;
-          object-fit: cover;
-          box-shadow: 0 22px 50px rgba(15, 23, 42, 0.55);
-        }
-
-        .nq-research-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.35rem;
-          margin-bottom: 0.9rem;
-          padding: 0.15rem 0.7rem;
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: #0369a1;
-          background: rgba(191, 219, 254, 0.55);
-          border-radius: 999px;
-          text-decoration: none;
-        }
-
-        .nq-research-link:hover {
-          background: rgba(191, 219, 254, 0.9);
-        }
-
-        .nq-section {
-          margin-bottom: 2.5rem;
-        }
-
-        .nq-section h2 {
-          font-size: 1.5rem;
-          margin-bottom: 1rem;
-        }
-
-        .nq-cards {
-          display: grid;
-          gap: 1rem;
-        }
-
-        .nq-card {
-          background: #ffffff;
-          border-radius: 1rem;
-          padding: 1.1rem 1.2rem;
-          box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
-          border: 1px solid #e5e7eb;
-          font-size: 0.95rem;
-          color: #4b5563;
-        }
-
-        .nq-card h3 {
-          margin-top: 0;
-          margin-bottom: 0.45rem;
-          font-size: 1.05rem;
-          color: #111827;
-        }
-
-        .nq-section-dark {
-          margin-bottom: 2.75rem;
-        }
-
-        .nq-card-dark {
-          background: linear-gradient(135deg, #bae6fd, #e0f2fe);
-          border-radius: 1.2rem;
-          padding: 1.7rem 1.6rem;
-          color: #334155;
-          box-shadow: 0 22px 50px rgba(148, 163, 184, 0.25);
-        }
-
-        .nq-card-dark h2 {
-          margin-top: 0;
-          margin-bottom: 0.9rem;
-          color: #0f172a;
-        }
-
-        .nq-card-dark ul {
-          margin: 0 0 0.9rem;
-          padding-left: 1.4rem;
-          font-size: 0.95rem;
-          line-height: 1.5;
-        }
-
-        .nq-card-dark li + li {
-          margin-top: 0.35rem;
-        }
-
-        .nq-note {
-          font-size: 0.8rem;
-          color: #64748b;
-        }
-
-        .nq-footer {
-          border-top: 1px solid #e5e7eb;
-          padding-top: 1.4rem;
-          font-size: 0.8rem;
-          color: #6b7280;
-        }
-
-        .nq-footer-main {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-          margin-bottom: 0.75rem;
-        }
-
-        .nq-footer-links {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.75rem;
-          margin-bottom: 0.6rem;
-        }
-
-        .nq-footer-links a {
-          color: #4b5563;
-          text-decoration: none;
-        }
-
-        .nq-footer-links a:hover {
-          text-decoration: underline;
-        }
-
-        .nq-footer-note {
-          margin: 0;
-        }
-
-        @media (max-width: 768px) {
-          .nq-landing {
-            padding: 1rem 0.8rem 2.2rem;
-          }
-          .nq-hero-shell {
-            padding: 0.8rem 0.85rem 1.7rem;
-            margin-bottom: 2.25rem;
-          }
-          .nq-header {
-            padding-bottom: 0.35rem;
-            margin-bottom: 1rem;
-          }
-          .nq-logo {
-            max-width: 150px;
-          }
-          .nq-header-right {
-            gap: 0.5rem;
-          }
-          .nq-header-btn {
-            padding-inline: 0.7rem;
-          }
-          .nq-hero {
-            grid-template-columns: minmax(0, 1fr);
-            gap: 1.5rem;
-          }
-          .nq-hero-image {
-            order: -1;
-          }
-          .nq-hero-text h1 {
-            font-size: 2rem;
-          }
-          .nq-plan-price {
-            font-size: 1.5rem;
-          }
-        }
-
-        @media (min-width: 900px) {
-          .nq-cards {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-          }
-        }
-      `}</style>
-    </main>
-  );
-}
+          box-
