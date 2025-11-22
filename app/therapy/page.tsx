@@ -31,7 +31,7 @@ const THERAPY_TYPES: {
       "For people with tonal tinnitus. Uses your matched tinnitus pitch as a reference.",
   },
   {
-    key: "masking",
+    key: "masking" as TherapyType,
     label: "Masking / sound enrichment",
     description:
       "Gentle background sound to help reduce the contrast with your tinnitus.",
