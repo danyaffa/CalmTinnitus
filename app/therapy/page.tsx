@@ -1,3 +1,4 @@
+// app/therapy/page.tsx
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -5,7 +6,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 // --- TYPES ---
 type TherapyMode = "standard" | "relief" | "sleep";
 type SessionStatus = "idle" | "running" | "paused";
-type SetupStep = "welcome" | "pitch" | "sound" | "ready";
 
 type SoundProfile = {
   id: string;
@@ -14,7 +14,7 @@ type SoundProfile = {
   type: "noise" | "nature" | "external";
   color?: string;
   icon?: string;
-  defaultLink?: string; // NEW: Auto-loads a playlist so player appears instantly
+  defaultLink?: string;
 };
 
 // --- CONSTANTS ---
@@ -26,8 +26,7 @@ const SOUND_PROFILES: SoundProfile[] = [
     type: "external", 
     color: "#1DB954", 
     icon: "🟢",
-    // Default: A popular Tinnitus Relief playlist to ensure player loads immediately
-    defaultLink: "https://open.spotify.com/playlist/37i9dQZF1DX5uO7oxiC9Vl" 
+    defaultLink: "https://open.spotify.com/playlist/37i9dQZF1DWZd79rJ6a7lp" 
   },
   { 
     id: "apple", 
@@ -36,7 +35,6 @@ const SOUND_PROFILES: SoundProfile[] = [
     type: "external", 
     color: "#FA243C", 
     icon: "🍎",
-    // Default: Apple Music Chill Mix
     defaultLink: "https://music.apple.com/us/playlist/pure-ambient/pl.a8e2cb15695c4ca79e6fb2c782373db6"
   },
   { 
@@ -46,7 +44,6 @@ const SOUND_PROFILES: SoundProfile[] = [
     type: "external", 
     color: "#FF0000", 
     icon: "▶️",
-    // Default: Tinnitus Sound Therapy Video
     defaultLink: "https://www.youtube.com/watch?v=AGuKfQ23oXI"
   },
   { 
@@ -240,8 +237,7 @@ function useTinnitusAudio() {
 
 // --- 🎨 COMPONENT ---
 export default function TherapyPage() {
-  // State
-  const [setupStep, setSetupStep] = useState<SetupStep>("welcome");
+  // State - Default to Setup "Ready" so everything is visible
   const [tinnitusPitch, setTinnitusPitch] = useState<number | null>(null);
   const [currentPitch, setCurrentPitch] = useState<number>(8000);
   const [selectedSound, setSelectedSound] = useState<SoundProfile>(SOUND_PROFILES[4]); 
@@ -273,9 +269,7 @@ export default function TherapyPage() {
     const saved = localStorage.getItem("calmtinnitus_settings");
     if (saved) {
       const s = JSON.parse(saved);
-      if (s.pitch) { setTinnitusPitch(s.pitch); setCurrentPitch(s.pitch); setSetupStep("ready"); }
-      // Removed the persistence for "selectedSound" here so you aren't stuck on Spotify on reload
-      // if (s.sound) { const p = SOUND_PROFILES.find(p => p.id === s.sound); if(p) setSelectedSound(p); }
+      if (s.pitch) { setTinnitusPitch(s.pitch); setCurrentPitch(s.pitch); }
     }
   }, []);
 
@@ -301,25 +295,47 @@ export default function TherapyPage() {
       setIsPlayingTest(false);
     } else {
       audio.initAudio();
-      audio.playTone(currentPitch, 0.1);
+      // Play at current tone volume (or 0.1 minimum so it can be heard)
+      const testVol = Math.max(toneVol, 0.1);
+      audio.playTone(currentPitch, testVol);
       setIsPlayingTest(true);
     }
   };
 
+  // Real-time pitch adjustment during test
   useEffect(() => {
-    if (isPlayingTest) audio.playTone(currentPitch, 0.1);
-  }, [currentPitch]);
+    if (isPlayingTest) {
+        const testVol = Math.max(toneVol, 0.1);
+        audio.playTone(currentPitch, testVol);
+    }
+  }, [currentPitch, toneVol]);
+
+  // When dragging the slider, update the TinnitusPitch state as well
+  const handlePitchChange = (val: number) => {
+      setCurrentPitch(val);
+      setTinnitusPitch(val); 
+  };
 
   const startSession = () => {
-    if (!tinnitusPitch) return;
+    if (!tinnitusPitch) {
+        // If no pitch is set (null), use current slider value as default
+        setTinnitusPitch(currentPitch);
+    }
+    
     audio.initAudio(); 
+    // Stop test tone if playing
+    if (isPlayingTest) {
+        audio.stopAll();
+        setIsPlayingTest(false);
+    }
+
     if (selectedSound.type !== 'external') {
       audio.playNoise(selectedSound.id, noiseVol);
     }
     if (selectedMode === 'relief') {
-      audio.playCR(tinnitusPitch, toneVol);
+      audio.playCR(tinnitusPitch || currentPitch, toneVol);
     } else {
-      audio.playTone(tinnitusPitch, toneVol);
+      audio.playTone(tinnitusPitch || currentPitch, toneVol);
     }
     setSessionStatus("running");
     setTimeRemaining(sessionDuration);
@@ -349,7 +365,8 @@ export default function TherapyPage() {
     if (!url) return null;
     if (type === 'spotify') {
       if (url.includes("/embed/")) return url;
-      const m = url.match(/spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
+      const cleanUrl = url.split('?')[0];
+      const m = cleanUrl.match(/spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
       return m ? `https://open.spotify.com/embed/${m[1]}/${m[2]}?utm_source=generator&theme=0` : null;
     }
     if (type === 'apple') {
@@ -363,82 +380,14 @@ export default function TherapyPage() {
     return null;
   };
 
-  // --- SETUP VIEW ---
-  if (setupStep !== "ready") {
-    return (
-      <main className="nq-container">
-        <div className="nq-card nq-setup-card">
-          {setupStep === "welcome" && (
-            <div className="nq-step">
-              <h1>Welcome to CalmTinnitus</h1>
-              <p>Let's calibrate your therapy in 3 steps.</p>
-              <button onClick={() => setSetupStep("pitch")} className="nq-btn-primary">Get Started</button>
-            </div>
-          )}
-
-          {setupStep === "pitch" && (
-            <div className="nq-step">
-              <h2>Step 1: Match Pitch</h2>
-              <p>Adjust until the tone matches your tinnitus.</p>
-              <div className="nq-pitch-control">
-                <button onClick={toggleTestTone} className={`nq-btn-icon ${isPlayingTest ? 'active' : ''}`}>
-                  {isPlayingTest ? '⏹ Stop' : '▶ Play Tone'}
-                </button>
-                <span className="nq-value">{Math.round(currentPitch)} Hz</span>
-              </div>
-              <input 
-                type="range" min="200" max="12000" step="50" 
-                value={currentPitch} onChange={e => setCurrentPitch(Number(e.target.value))}
-                className="nq-slider"
-              />
-              <div className="nq-actions">
-                <button onClick={() => { audio.stopAll(); setSetupStep("welcome"); }} className="nq-btn-ghost">Back</button>
-                <button onClick={() => { 
-                  setTinnitusPitch(currentPitch); 
-                  audio.stopAll(); 
-                  setIsPlayingTest(false);
-                  setSetupStep("sound"); 
-                }} className="nq-btn-primary">Next</button>
-              </div>
-            </div>
-          )}
-
-          {setupStep === "sound" && (
-            <div className="nq-step">
-              <h2>Step 2: Soundscape</h2>
-              <div className="nq-grid">
-                {SOUND_PROFILES.map(s => (
-                  <button 
-                    key={s.id} 
-                    onClick={() => setSelectedSound(s)}
-                    className={`nq-sound-btn ${selectedSound.id === s.id ? 'selected' : ''}`}
-                    style={selectedSound.id === s.id && s.color ? { borderColor: s.color, background: `${s.color}15` } : {}}
-                  >
-                    <strong>{s.label}</strong>
-                    <small>{s.description}</small>
-                  </button>
-                ))}
-              </div>
-              <div className="nq-actions">
-                <button onClick={() => setSetupStep("pitch")} className="nq-btn-ghost">Back</button>
-                <button onClick={() => { setSetupStep("ready"); }} className="nq-btn-primary">Finish</button>
-              </div>
-            </div>
-          )}
-        </div>
-        <Style />
-      </main>
-    );
-  }
-
-  // --- MAIN VIEW ---
+  // --- MAIN VIEW (SINGLE PAGE) ---
   return (
     <main className="nq-container">
       {/* Header */}
       <header className="nq-header">
         <div>
           <h1 className="nq-brand">CalmTinnitus</h1>
-          <span className="nq-subtitle">Session Config</span>
+          <span className="nq-subtitle">Therapy Dashboard</span>
         </div>
         <div className="nq-master-vol">
           <span>🔊 Master</span>
@@ -448,6 +397,16 @@ export default function TherapyPage() {
           />
         </div>
       </header>
+
+      {/* GUIDE SECTION */}
+      <div className="nq-guide">
+        <strong>Quick Start:</strong>
+        <ol>
+            <li><strong>Step 1:</strong> Use the "Test" button below to match your tinnitus pitch.</li>
+            <li><strong>Step 2:</strong> Select your Therapy Mode on the left.</li>
+            <li><strong>Step 3:</strong> Choose music or noise, then click "Start Session".</li>
+        </ol>
+      </div>
 
       {/* Status Banner */}
       {sessionStatus !== 'idle' && (
@@ -460,7 +419,7 @@ export default function TherapyPage() {
         </div>
       )}
 
-      {/* 🎵 EXTERNAL PLAYER CARD (FIXED) */}
+      {/* 🎵 EXTERNAL PLAYER CARD */}
       {selectedSound.type === 'external' && (
         <div className="nq-embed-card" style={{borderColor: selectedSound.color || '#333'}}>
           
@@ -509,7 +468,7 @@ export default function TherapyPage() {
       <div className="nq-controls-grid">
         {/* Modes */}
         <div className="nq-panel">
-          <h3>Therapy Mode</h3>
+          <h3>1. Therapy Mode</h3>
           <div className="nq-list">
             {THERAPY_MODES.map(m => (
               <button 
@@ -530,9 +489,9 @@ export default function TherapyPage() {
 
         {/* Settings */}
         <div className="nq-panel">
-          <h3>Mixer & Duration</h3>
+          <h3>2. Mixer & Duration</h3>
           
-          {/* SOUND SELECTOR (ALWAYS VISIBLE) */}
+          {/* SOUND SELECTOR */}
           <div className="nq-slider-group">
              <label>Background Sound</label>
              <select 
@@ -566,8 +525,23 @@ export default function TherapyPage() {
              </div>
           )}
           
-          <div className="nq-slider-group">
-            <label>Therapy Tone ({Math.round(tinnitusPitch || 0)}Hz)</label>
+          {/* TONE TESTER + SLIDER (STEP 3) */}
+          <div className="nq-slider-group" style={{marginTop: '1.5rem', borderTop: '1px solid #eee', paddingTop: '1rem'}}>
+            <div className="nq-label-row">
+               <label>3. Tinnitus Pitch ({Math.round(currentPitch)}Hz)</label>
+               <button 
+                 onClick={toggleTestTone} 
+                 className={`nq-btn-tiny ${isPlayingTest ? 'active' : ''}`}
+               >
+                 {isPlayingTest ? '⏹ Stop' : '▶ Test'}
+               </button>
+            </div>
+            <input 
+              type="range" min="200" max="12000" step="50" 
+              value={currentPitch} onChange={e => handlePitchChange(Number(e.target.value))} 
+            />
+            {/* Volume Slider for Tone */}
+            <label style={{marginTop:'0.5rem', fontSize:'0.8rem', color:'#666'}}>Therapy Volume</label>
             <input 
               type="range" min="0" max="0.5" step="0.01" 
               value={toneVol} onChange={e => setToneVol(Number(e.target.value))} 
@@ -590,14 +564,13 @@ export default function TherapyPage() {
       </div>
 
       {sessionStatus === 'idle' && (
-         <button onClick={startSession} disabled={!tinnitusPitch} className="nq-btn-big">
+         <button onClick={startSession} className="nq-btn-big">
             ▶ Start Session
          </button>
       )}
       
       <div className="nq-footer">
          <p>Medical Disclaimer: This is a wellness tool. Consult a doctor for hearing health issues.</p>
-         <button onClick={() => {localStorage.removeItem("calmtinnitus_settings"); window.location.reload();}} style={{marginTop:'1rem', fontSize:'0.75rem', background:'none', border:'none', color:'red', cursor:'pointer'}}>Reset App Data</button>
       </div>
 
       <Style />
@@ -619,18 +592,16 @@ function Style() {
       }
       .nq-container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; font-family: system-ui, sans-serif; color: var(--text); }
       
+      /* Guide */
+      .nq-guide { background: #f0f9ff; border: 1px solid #bae6fd; padding: 1rem; border-radius: 0.75rem; margin-bottom: 2rem; font-size: 0.9rem; color: #0369a1; }
+      .nq-guide ol { margin: 0.5rem 0 0 1.2rem; padding: 0; }
+      .nq-guide li { margin-bottom: 0.25rem; }
+
       /* Header */
       .nq-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
       .nq-brand { margin: 0; font-size: 1.5rem; }
       .nq-subtitle { font-size: 0.9rem; color: var(--text-dim); }
       .nq-master-vol { background: white; padding: 0.5rem 1rem; border-radius: 99px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; }
-
-      /* Setup & Grid */
-      .nq-setup-card { max-width: 500px; margin: 4rem auto; text-align: center; }
-      .nq-step h2 { margin-top: 0; }
-      .nq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin: 1.5rem 0; }
-      .nq-sound-btn { border: 1px solid #e2e8f0; background: white; padding: 1rem; border-radius: 0.75rem; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 0.25rem; }
-      .nq-sound-btn.selected { border-color: var(--primary); background: #f0f9ff; }
 
       /* Banner */
       .nq-banner { background: linear-gradient(135deg, var(--primary), var(--success)); color: white; padding: 1.5rem; border-radius: 1rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-bottom: 2rem; }
@@ -662,7 +633,8 @@ function Style() {
       .nq-list-item.active { border-color: var(--primary); background: #f0f9ff; }
       
       .nq-slider-group { margin-bottom: 1rem; }
-      .nq-slider-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; }
+      .nq-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+      .nq-slider-group label { display: block; font-size: 0.85rem; font-weight: 600; }
       input[type=range] { width: 100%; accent-color: var(--primary); }
       .nq-select { width: 100%; padding: 0.6rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; font-size: 1rem; }
 
@@ -674,12 +646,8 @@ function Style() {
       .nq-footer { text-align: center; margin-top: 3rem; font-size: 0.8rem; color: var(--text-dim); }
       
       /* Utilities */
-      .nq-btn-primary { background: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 99px; cursor: pointer; font-weight: 600; }
-      .nq-btn-ghost { background: transparent; color: var(--text-dim); border: none; padding: 0.75rem 1.5rem; cursor: pointer; }
-      .nq-pitch-control { display: flex; align-items: center; margin-bottom: 1rem; }
-      .nq-btn-icon { background: #e2e8f0; border: none; padding: 0.5rem 1rem; border-radius: 99px; cursor: pointer; font-weight: 600; color: var(--text); margin-right: 1rem; }
-      .nq-btn-icon.active { background: #ef4444; color: white; }
-      .nq-value { font-weight: 700; color: var(--primary); margin-left: auto; }
+      .nq-btn-tiny { padding: 0.25rem 0.75rem; font-size: 0.75rem; background: #0f172a; color: white; border-radius: 99px; border: none; cursor: pointer; font-weight: 600; }
+      .nq-btn-tiny.active { background: #ef4444; }
     `}</style>
   );
 }
