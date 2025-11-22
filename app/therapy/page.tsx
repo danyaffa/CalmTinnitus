@@ -7,10 +7,9 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
 // --- ⚙️ FIREBASE CONFIGURATION ---
-// 1. Go to Firebase Console > Project Settings
-// 2. Copy your "firebaseConfig" object and paste the values here:
+// 🔴 TODO: Paste your actual Firebase keys here
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
+  apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
   projectId: "YOUR_PROJECT_ID",
   storageBucket: "YOUR_PROJECT_ID.appspot.com",
@@ -18,7 +17,7 @@ const firebaseConfig = {
   appId: "YOUR_APP_ID"
 };
 
-// Initialize Firebase (Singleton pattern to prevent re-initialization errors)
+// Initialize Firebase (Singleton)
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 
@@ -261,10 +260,10 @@ export default function TherapyPage() {
     if (sessionStatus === 'running') audio.updateVolumes(noiseVol, toneVol);
   }, [noiseVol, toneVol, sessionStatus, audio]);
 
-  // --- ☁️ LOAD PROFILE FROM FIRESTORE ---
+  // --- ☁️ LOAD PROFILE FROM FIREBASE ---
   useEffect(() => {
     const loadProfile = async () => {
-        // 1. Get or Create a unique Guest ID for this device
+        // Get or create a user ID stored in browser so we know who this is
         let uid = localStorage.getItem("calmtinnitus_uid");
         if (!uid) {
             uid = 'guest_' + Math.random().toString(36).substr(2, 9);
@@ -272,7 +271,6 @@ export default function TherapyPage() {
         }
         setUserId(uid);
 
-        // 2. Try to load from Firestore
         try {
             const docRef = doc(db, "profiles", uid);
             const docSnap = await getDoc(docRef);
@@ -284,18 +282,15 @@ export default function TherapyPage() {
                     setCurrentPitch(data.pitch);
                 }
                 if (data.soundId) {
-                    const sound = SOUND_PROFILES.find(s => s.id === data.soundId);
-                    if (sound) setSelectedSound(sound);
+                    const s = SOUND_PROFILES.find(p => p.id === data.soundId);
+                    if(s) setSelectedSound(s);
                 }
-                console.log("Profile loaded from Cloud!");
-            } else {
-                console.log("No profile found, using defaults.");
+                console.log("Loaded profile from Cloud");
             }
         } catch (e) {
-            console.error("Error loading from Firestore (Check your API Keys):", e);
+            console.error("Error loading profile (Check API Keys):", e);
         }
     };
-    
     loadProfile();
   }, []);
 
@@ -310,20 +305,18 @@ export default function TherapyPage() {
 
   // --- Handlers ---
   
-  // --- ☁️ SAVE PROFILE TO FIRESTORE ---
+  // --- ☁️ SAVE TO FIREBASE ---
   const saveProfile = async () => {
       if (!userId) return;
-      
       setSaveBtnText("Saving...");
       
       try {
           await setDoc(doc(db, "profiles", userId), {
               pitch: tinnitusPitch,
               soundId: selectedSound.id,
-              updatedAt: new Date().toISOString()
+              lastUpdated: new Date().toISOString()
           });
           
-          // Visual Feedback
           setSaveBtnText("✅ Saved to Cloud!");
           setSaveBtnClass("nq-btn-save saved");
           
@@ -332,9 +325,9 @@ export default function TherapyPage() {
               setSaveBtnClass("nq-btn-save");
           }, 2000);
       } catch (e) {
-          console.error("Error saving to Firestore:", e);
-          setSaveBtnText("❌ Error (Check Console)");
-          setTimeout(() => setSaveBtnText("Save Profile"), 3000);
+          console.error("Error saving:", e);
+          setSaveBtnText("❌ Error");
+          setTimeout(() => setSaveBtnText("Save Profile"), 2000);
       }
   };
 
@@ -480,13 +473,13 @@ export default function TherapyPage() {
             <span className="nq-range-label">High</span>
         </div>
 
-        {/* SAVE PROFILE BUTTON (ADDED HERE) */}
+        {/* SAVE PROFILE BUTTON */}
         <div style={{marginTop: '1.5rem', textAlign: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '1rem'}}>
             <button onClick={saveProfile} className={saveBtnClass}>
                 {saveBtnText}
             </button>
             <p style={{fontSize:'0.8rem', color:'#94a3b8', marginTop:'0.5rem'}}>
-                Save this pitch to your profile (Firestore).
+                Save this pitch to your Cloud Profile.
             </p>
         </div>
       </div>
