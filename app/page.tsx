@@ -1,3 +1,4 @@
+// /app/page.tsx
 "use client";
 
 import Image from "next/image";
@@ -373,19 +374,21 @@ export default function HomePage() {
           margin-bottom: 2.75rem;
         }
 
-        /* --- UPDATED BLUE BOX --- */
+        /* --- PASTEL BOX --- */
         .nq-card-dark {
-          background: linear-gradient(135deg, #0f5c85, #0c3b5e);
+          /* Pastel Blue Gradient */
+          background: linear-gradient(135deg, #bae6fd, #e0f2fe);
           border-radius: 1.2rem;
           padding: 1.7rem 1.6rem;
-          color: #e5e7eb;
-          box-shadow: 0 22px 50px rgba(15, 23, 42, 0.25);
+          /* Text flipped to dark for contrast */
+          color: #334155; 
+          box-shadow: 0 22px 50px rgba(148, 163, 184, 0.25);
         }
 
         .nq-card-dark h2 {
           margin-top: 0;
           margin-bottom: 0.9rem;
-          color: #ffffff;
+          color: #0f172a;
         }
 
         .nq-card-dark ul {
@@ -401,7 +404,7 @@ export default function HomePage() {
 
         .nq-note {
           font-size: 0.8rem;
-          color: #cbd5e1;
+          color: #64748b;
         }
 
         /* FOOTER */
