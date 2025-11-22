@@ -2,6 +2,26 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+// --- 🔥 FIREBASE IMPORTS ---
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+
+// --- ⚙️ FIREBASE CONFIGURATION ---
+// 1. Go to Firebase Console > Project Settings
+// 2. Copy your "firebaseConfig" object and paste the values here:
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY_HERE",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+// Initialize Firebase (Singleton pattern to prevent re-initialization errors)
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const db = getFirestore(app);
+
 // --- TYPES ---
 type TherapyMode = "standard" | "relief" | "sleep";
 type SessionStatus = "idle" | "running" | "paused";
@@ -217,8 +237,9 @@ export default function TherapyPage() {
   const [selectedMode, setSelectedMode] = useState<TherapyMode>("standard");
   const [sessionDuration, setSessionDuration] = useState(30);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [userId, setUserId] = useState<string>("");
   
-  // NEW: Save Button State
+  // Save Button State
   const [saveBtnText, setSaveBtnText] = useState("Save Profile");
   const [saveBtnClass, setSaveBtnClass] = useState("nq-btn-save");
 
@@ -240,13 +261,42 @@ export default function TherapyPage() {
     if (sessionStatus === 'running') audio.updateVolumes(noiseVol, toneVol);
   }, [noiseVol, toneVol, sessionStatus, audio]);
 
-  // Load Settings once on Mount
+  // --- ☁️ LOAD PROFILE FROM FIRESTORE ---
   useEffect(() => {
-    const saved = localStorage.getItem("calmtinnitus_settings");
-    if (saved) {
-      const s = JSON.parse(saved);
-      if (s.pitch) { setTinnitusPitch(s.pitch); setCurrentPitch(s.pitch); }
-    }
+    const loadProfile = async () => {
+        // 1. Get or Create a unique Guest ID for this device
+        let uid = localStorage.getItem("calmtinnitus_uid");
+        if (!uid) {
+            uid = 'guest_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem("calmtinnitus_uid", uid);
+        }
+        setUserId(uid);
+
+        // 2. Try to load from Firestore
+        try {
+            const docRef = doc(db, "profiles", uid);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.pitch) {
+                    setTinnitusPitch(data.pitch);
+                    setCurrentPitch(data.pitch);
+                }
+                if (data.soundId) {
+                    const sound = SOUND_PROFILES.find(s => s.id === data.soundId);
+                    if (sound) setSelectedSound(sound);
+                }
+                console.log("Profile loaded from Cloud!");
+            } else {
+                console.log("No profile found, using defaults.");
+            }
+        } catch (e) {
+            console.error("Error loading from Firestore (Check your API Keys):", e);
+        }
+    };
+    
+    loadProfile();
   }, []);
 
   // Auto-fill link when sound changes
@@ -260,17 +310,32 @@ export default function TherapyPage() {
 
   // --- Handlers ---
   
-  // NEW: Save Profile Handler
-  const saveProfile = () => {
-      localStorage.setItem("calmtinnitus_settings", JSON.stringify({ pitch: tinnitusPitch }));
-      // Visual Feedback
-      setSaveBtnText("✅ Saved!");
-      setSaveBtnClass("nq-btn-save saved");
+  // --- ☁️ SAVE PROFILE TO FIRESTORE ---
+  const saveProfile = async () => {
+      if (!userId) return;
       
-      setTimeout(() => {
-          setSaveBtnText("Save Profile");
-          setSaveBtnClass("nq-btn-save");
-      }, 2000);
+      setSaveBtnText("Saving...");
+      
+      try {
+          await setDoc(doc(db, "profiles", userId), {
+              pitch: tinnitusPitch,
+              soundId: selectedSound.id,
+              updatedAt: new Date().toISOString()
+          });
+          
+          // Visual Feedback
+          setSaveBtnText("✅ Saved to Cloud!");
+          setSaveBtnClass("nq-btn-save saved");
+          
+          setTimeout(() => {
+              setSaveBtnText("Save Profile");
+              setSaveBtnClass("nq-btn-save");
+          }, 2000);
+      } catch (e) {
+          console.error("Error saving to Firestore:", e);
+          setSaveBtnText("❌ Error (Check Console)");
+          setTimeout(() => setSaveBtnText("Save Profile"), 3000);
+      }
   };
 
   const toggleTestTone = () => {
@@ -421,7 +486,7 @@ export default function TherapyPage() {
                 {saveBtnText}
             </button>
             <p style={{fontSize:'0.8rem', color:'#94a3b8', marginTop:'0.5rem'}}>
-                Save this pitch to your profile.
+                Save this pitch to your profile (Firestore).
             </p>
         </div>
       </div>
