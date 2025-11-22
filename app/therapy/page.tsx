@@ -21,7 +21,7 @@ const SOUND_PROFILES: SoundProfile[] = [
   { 
     id: "spotify", 
     label: "Spotify", 
-    description: "Music & Playlists", 
+    description: "Best for Music & Playlists", 
     type: "external", 
     color: "#1DB954", 
     icon: "🟢",
@@ -209,7 +209,6 @@ function useTinnitusAudio() {
 
 // --- 🎨 COMPONENT ---
 export default function TherapyPage() {
-  // State
   const [tinnitusPitch, setTinnitusPitch] = useState<number>(8000);
   const [currentPitch, setCurrentPitch] = useState<number>(8000);
   const [selectedSound, setSelectedSound] = useState<SoundProfile>(SOUND_PROFILES[4]); // Default Pink
@@ -219,6 +218,10 @@ export default function TherapyPage() {
   const [sessionDuration, setSessionDuration] = useState(30);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   
+  // NEW: Save Button State
+  const [saveBtnText, setSaveBtnText] = useState("Save Profile");
+  const [saveBtnClass, setSaveBtnClass] = useState("nq-btn-save");
+
   // Volumes
   const [masterVol, setMasterVol] = useState(0.5);
   const [noiseVol, setNoiseVol] = useState(0.3);
@@ -237,7 +240,7 @@ export default function TherapyPage() {
     if (sessionStatus === 'running') audio.updateVolumes(noiseVol, toneVol);
   }, [noiseVol, toneVol, sessionStatus, audio]);
 
-  // Load Settings once
+  // Load Settings once on Mount
   useEffect(() => {
     const saved = localStorage.getItem("calmtinnitus_settings");
     if (saved) {
@@ -246,12 +249,7 @@ export default function TherapyPage() {
     }
   }, []);
 
-  // Save Pitch automatically
-  useEffect(() => {
-    localStorage.setItem("calmtinnitus_settings", JSON.stringify({ pitch: tinnitusPitch }));
-  }, [tinnitusPitch]);
-
-  // When provider changes, auto-fill the default link if empty
+  // Auto-fill link when sound changes
   useEffect(() => {
     if (selectedSound.type === 'external' && selectedSound.defaultLink) {
         setExternalLink(selectedSound.defaultLink);
@@ -261,6 +259,20 @@ export default function TherapyPage() {
   }, [selectedSound]);
 
   // --- Handlers ---
+  
+  // NEW: Save Profile Handler
+  const saveProfile = () => {
+      localStorage.setItem("calmtinnitus_settings", JSON.stringify({ pitch: tinnitusPitch }));
+      // Visual Feedback
+      setSaveBtnText("✅ Saved!");
+      setSaveBtnClass("nq-btn-save saved");
+      
+      setTimeout(() => {
+          setSaveBtnText("Save Profile");
+          setSaveBtnClass("nq-btn-save");
+      }, 2000);
+  };
+
   const toggleTestTone = () => {
     if (isPlayingTest) {
       audio.stopAll();
@@ -281,7 +293,7 @@ export default function TherapyPage() {
     }
   }, [tinnitusPitch, toneVol]);
 
-  // When dragging the slider, update the TinnitusPitch state as well
+  // When dragging the slider
   const handlePitchChange = (val: number) => {
       setCurrentPitch(val);
       setTinnitusPitch(val); 
@@ -338,7 +350,7 @@ export default function TherapyPage() {
     return null;
   };
 
-  // --- MAIN VIEW (COMBINED) ---
+  // --- MAIN VIEW ---
   return (
     <main className="nq-container">
       {/* Header */}
@@ -360,7 +372,7 @@ export default function TherapyPage() {
       <div className="nq-guide">
         <strong>Quick Start:</strong>
         <div className="nq-guide-steps">
-            <span>1. Match your tinnitus pitch below.</span>
+            <span>1. Match your tinnitus pitch below & Save.</span>
             <span>2. Select a therapy mode.</span>
             <span>3. Choose music/noise & start.</span>
         </div>
@@ -377,7 +389,7 @@ export default function TherapyPage() {
         </div>
       )}
 
-      {/* STEP 1: PITCH MATCHING */}
+      {/* STEP 1: PITCH MATCHING (With Save Button) */}
       <div className="nq-panel nq-step-1">
         <div className="nq-panel-header">
             <h3>Step 1: Match Your Tinnitus Pitch</h3>
@@ -391,15 +403,26 @@ export default function TherapyPage() {
                 </button>
             </div>
         </div>
+        
         <div className="nq-range-wrap">
-            <span className="nq-range-label">Low (200Hz)</span>
+            <span className="nq-range-label">Low</span>
             <input 
                 type="range" min="200" max="12000" step="50" 
                 value={tinnitusPitch} 
                 onChange={e => setTinnitusPitch(Number(e.target.value))}
                 className="nq-main-slider" 
             />
-            <span className="nq-range-label">High (12kHz)</span>
+            <span className="nq-range-label">High</span>
+        </div>
+
+        {/* SAVE PROFILE BUTTON (ADDED HERE) */}
+        <div style={{marginTop: '1.5rem', textAlign: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '1rem'}}>
+            <button onClick={saveProfile} className={saveBtnClass}>
+                {saveBtnText}
+            </button>
+            <p style={{fontSize:'0.8rem', color:'#94a3b8', marginTop:'0.5rem'}}>
+                Save this pitch to your profile.
+            </p>
         </div>
       </div>
 
@@ -430,7 +453,7 @@ export default function TherapyPage() {
             <span style={{fontSize:'1.2rem', marginRight:'0.5rem'}}>ℹ️</span>
             <div>
                 <strong>About Therapy Sounds:</strong><br/>
-                If you hear clicks or rhythmic pulses in <em>Relief Mode</em>, this is intentional. It is a technique called <strong>"making a hole in the pitch"</strong> (Neuromodulation) to disrupt tinnitus synchrony.
+                Clicks or rhythmic pulses in <em>Relief Mode</em> are intentional (Neuromodulation). They are designed to disrupt tinnitus synchrony.
             </div>
           </div>
         </div>
@@ -581,6 +604,11 @@ function Style() {
       .nq-range-label { font-size: 0.8rem; color: var(--text-dim); white-space: nowrap; }
       .nq-main-slider { flex: 1; height: 8px; border-radius: 4px; appearance: none; background: #e2e8f0; }
       .nq-main-slider::-webkit-slider-thumb { appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--primary); cursor: pointer; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+      /* SAVE BUTTON */
+      .nq-btn-save { background: #e2e8f0; color: #334155; border: none; padding: 0.6rem 2rem; border-radius: 99px; cursor: pointer; font-weight: 700; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+      .nq-btn-save:hover { background: #cbd5e1; }
+      .nq-btn-save.saved { background: #22c55e; color: white; transform: scale(1.05); box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4); }
 
       /* Step 2 & 3 Grid */
       .nq-controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
