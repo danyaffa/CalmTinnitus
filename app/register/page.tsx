@@ -14,7 +14,7 @@ const DEVELOPER_EMAIL = "leffleryd@gmail.com";
 // -----------------------------------------
 
 const STRIPE_LINK =
-  "https://buy.stripe.com/4gM5kD6cC0PK2YP39i4F20b"; // your live payment link
+  "https://buy.stripe.com/fZu4gz44u2XS1UL9xG4F20e"; // your live payment link
 
 const RegisterPage: React.FC = () => {
   const router = useRouter();
