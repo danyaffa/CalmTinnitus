@@ -20,6 +20,7 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
   feedbackEndpoint = "/api/review-feedback",
   onFeedbackSubmitted,
   primaryColor = "#2563eb",
+  toEmail = "leffleryd@gmail.com", // ✅ default to you
 }) => {
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState<number | null>(null);
