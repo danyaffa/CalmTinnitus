@@ -3,9 +3,8 @@
 
 import React, { useState, useEffect } from "react";
 
-// ✅ FIREBASE IMPORTS
-import { db } from "../lib/firebaseClient"; // make sure this path is correct in your project
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+// ✅ FIREBASE IMPORTS – FIXED
+import { db, collection, addDoc, serverTimestamp } from "../lib/firebase";
 
 export type ReviewWidgetProps = {
   appName: string;
