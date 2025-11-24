@@ -2,8 +2,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { db, doc, getDoc, setDoc } from "@/lib/firebase"; // Ensure path matches your project
-import { ReviewWidget } from "@/components/ReviewWidgets"; // Import your widget for testing
+// ✅ FIXED: Relative paths to match your folder structure
+import { db, doc, getDoc, setDoc } from "../lib/firebase"; 
+import { ReviewWidget } from "../components/ReviewWidgets"; 
 
 // --- CHECKLIST DATA STRATEGY ---
 const STRATEGY_ITEMS = [
