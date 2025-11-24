@@ -3,6 +3,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { ReviewWidget } from "../components/ReviewWidgets";
 
 export default function HomePage() {
   const year = new Date().getFullYear();
@@ -495,6 +496,14 @@ export default function HomePage() {
           }
         }
       `}</style>
+
+      {/* Floating review widget: button + feedback panel */}
+      <ReviewWidget
+        appName="CalmTinnitus"
+        appStoreUrl="https://apps.apple.com" // optional: link to public store reviews
+        feedbackEndpoint="/api/feedback" // optional: internal API to capture feedback
+      />
     </main>
   );
 }
+
