@@ -1,4 +1,5 @@
 // /lib/firebase.ts
+
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,
@@ -7,7 +8,9 @@ import {
   signInWithPopup,
   signOut,
 } from "firebase/auth";
+
 import type { User } from "firebase/auth";
+
 import {
   getFirestore,
   collection,
@@ -16,10 +19,11 @@ import {
   where,
   orderBy,
   getDocs,
+  serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
 
-// Use env vars but DON'T force non-null – avoid crashes if not set
+// Firebase config via environment variables
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -29,21 +33,22 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// ✅ Important: do NOT initialize Firebase on the server (build time)
+// Avoid SSR initialization crash
 const isBrowser = typeof window !== "undefined";
 
+// Initialize app safely
 const app = isBrowser
   ? !getApps().length
     ? initializeApp(firebaseConfig)
     : getApp()
   : null;
 
-// These will be real instances in the browser, and harmless placeholders on the server
+// Export usable Firebase services
 export const auth = app ? getAuth(app) : (null as any);
 export const googleProvider = app ? new GoogleAuthProvider() : (null as any);
 export const db = app ? getFirestore(app) : (null as any);
 
-// Re-export auth + firestore helpers used in AuthProvider and pages
+// Re-export helpers
 export {
   onAuthStateChanged,
   collection,
@@ -52,17 +57,16 @@ export {
   where,
   orderBy,
   getDocs,
+  serverTimestamp,
   Timestamp,
 };
 
-// ✅ Type-only re-export
 export type { User };
 
-// Small helper functions used in pages (login, therapy, etc.)
+// Optional UI helpers
 export const firebaseGoogleSignIn = async () => {
   if (!auth || !googleProvider) {
-    // Should never happen in the browser, but protects build/server
-    throw new Error("Firebase Auth not initialized in this environment.");
+    throw new Error("Firebase Auth not initialized.");
   }
   await signInWithPopup(auth, googleProvider);
 };
