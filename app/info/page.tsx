@@ -7,109 +7,139 @@ export default function InfoSafetyPage() {
   return (
     <main className="info-page">
       <h1>Information &amp; Safety</h1>
+
       <p className="intro">
-        CalmTinnitus uses tinnitus neuromodulation sound approaches (Notch Therapy
-        and Coordinated Reset, “CR”). This page explains in plain language what
-        they mean and how to use them safely.
+        CalmTinnitus uses modern tinnitus neuromodulation approaches:
+        <strong> Notch Therapy</strong> and
+        <strong> Coordinated Reset (CR Therapy)</strong>.
+        Below is a simple explanation of what each method does, why you may hear
+        “ticks” or “holes,” and how to use the therapy safely.
       </p>
 
+      {/* --- 1. NOTCH THERAPY --- */}
       <section>
-        <h2>1. What does “a narrow hole at your tinnitus pitch” mean?</h2>
+        <h2>1. What does the “hole around your tinnitus pitch” mean?</h2>
+
         <p>
-          Your tinnitus usually has a specific frequency (pitch). Notch Therapy
-          plays continuous sound (typically pink noise) but removes a very small
-          band of sound exactly around that pitch.
+          Notch Therapy plays a continuous sound (usually pink noise) but
+          <strong> removes a very narrow band</strong> of sound exactly where
+          your tinnitus pitch is located. This removed band is the “hole.”
         </p>
+
         <ul>
-          <li>Full pink noise = all frequencies together.</li>
+          <li>Pink noise = all frequencies blended together.</li>
           <li>
-            We remove (mute) a tiny band around your tinnitus pitch — this is
-            the “hole”.
+            We mute a tiny slice of sound around your tinnitus frequency.
           </li>
           <li>
-            The missing band tells your brain to reduce the hyperactive neurons
-            that are locked onto that pitch.
+            This reduction tells the auditory brain to weaken the overactive
+            neurons stuck on that pitch.
           </li>
         </ul>
+
         <p>
-          Over time, this can help the brain “turn down the gain” on that
-          frequency so the tinnitus signal becomes less dominant. It is a
-          research-based sound approach, not a guaranteed cure.
+          Over time, this helps reduce the “gain” of that specific frequency,
+          so the tinnitus signal becomes less dominant.  
+          <strong>Notch Therapy does not replace medical care, but it is a
+          researched sound tool that may help reduce loudness over time.</strong>
         </p>
       </section>
 
+      {/* --- 2. CR THERAPY --- */}
       <section>
-        <h2>2. What does CR (Coordinated Reset) mean?</h2>
+        <h2>2. Why does Relief (CR) Therapy produce ticks, knocks, or gaps?</h2>
+
         <p>
-          CR Therapy does not remove sound. Instead, it uses short tone pulses
-          at several frequencies close to your tinnitus pitch (some slightly
-          below, some slightly above).
+          CR (Coordinated Reset) Therapy uses short pulses of sound at several
+          slightly different frequencies near your tinnitus pitch. These pulses
+          happen in patterns — this is why you hear:
         </p>
+
         <ul>
-          <li>Quick pulses stimulate different areas of the auditory cortex.</li>
-          <li>
-            The aim is to “scramble” the over-synchronised firing pattern that
-            keeps tinnitus going.
-          </li>
-          <li>
-            By disturbing this abnormal rhythm, the brain is encouraged to
-            reorganise and reduce the tinnitus signal.
-          </li>
+          <li>Gentle “ticks”</li>
+          <li>Soft “knocks”</li>
+          <li>Very short interruptions (“holes”)</li>
         </ul>
+
         <p>
-          You can think of CR as knocking several times on the brain&apos;s door
-          from different angles to reset the pattern.
+          These are <strong>normal and fully intentional</strong>.  
+          Nothing is broken. Nothing is wrong with your speaker or headphones.
+        </p>
+
+        <p>
+          CR pulses “disrupt” abnormal synchronous firing in the auditory cortex
+          — the mechanism believed to sustain tinnitus.  
+        </p>
+
+        <p>
+          You can think of CR Therapy as:
+          <strong> “tapping the brain from different angles”</strong> to break
+          the locked-in tinnitus rhythm and allow it to reset.
+        </p>
+
+        <p>
+          <strong>Standard and Sleep modes do NOT include ticks.</strong>  
+          Only Relief (CR) mode includes them because it is the neuromodulation
+          mode for long-term improvement.
         </p>
       </section>
 
+      {/* --- 3. BACKGROUND SOUND --- */}
       <section>
         <h2>3. Choosing your background sound</h2>
+
         <p>
-          You can change the background sound to{" "}
-          <strong>white noise, pink noise, ocean, wind, rain, or soft music</strong>.
-          Simply open the Sound Library in the app and pick what feels most
-          comfortable for you.
+          CalmTinnitus allows you to pick from{" "}
+          <strong>pink noise, white noise, brown noise, rain, ocean waves, wind, or Spotify music</strong>.
         </p>
+
         <p>
-          The most important rule: keep the volume{" "}
-          <strong>low and comfortable</strong>. You should always be able to
-          hear the sound clearly, but it must never feel loud or painful.
+          Choose what feels most comfortable — and keep the volume
+          <strong> low and pleasant.</strong>
+        </p>
+
+        <p>
+          You should ALWAYS be able to talk comfortably without raising your
+          voice. If you must shout over the sound, it is too loud.
         </p>
       </section>
 
+      {/* --- 4. SAFETY --- */}
       <section>
-        <h2>4. General safety guidelines</h2>
+        <h2>4. Safety Guidelines</h2>
+
         <ul>
           <li>Use headphones or earphones you find comfortable.</li>
+          <li>Keep therapy volume low — comfort is the priority.</li>
+          <li>Do not run back-to-back long sessions without breaks.</li>
           <li>
-            Keep sessions at a low, pleasant volume. If you have to raise your
-            voice to talk over the sound, it is too loud.
-          </li>
-          <li>Take breaks. Do not run long sessions back-to-back.</li>
-          <li>
-            If your tinnitus becomes more intrusive or uncomfortable, stop and
-            rest for the day.
+            If your tinnitus becomes sharper or uncomfortable, pause the session
+            and return later.
           </li>
           <li>
-            For sudden changes in hearing, dizziness, pain, or strong distress,
-            seek urgent professional medical care.
+            For sudden hearing changes, ear pain, dizziness, or worsening
+            tinnitus, seek medical help.
           </li>
         </ul>
       </section>
 
+      {/* --- 5. DISCLAIMER --- */}
       <section>
-        <h2>5. Important note</h2>
+        <h2>5. Important Note</h2>
         <p>
-          CalmTinnitus is a self-help sound tool based on tinnitus neuromodulation
-          research. It does not diagnose, treat, cure, or prevent any disease
-          and does not replace professional medical advice or care.
+          CalmTinnitus is a self-help sound tool based on tinnitus
+          neuromodulation research. It does NOT diagnose, cure, or treat any
+          medical condition and is not a substitute for professional medical
+          care.
         </p>
       </section>
 
+      {/* --- BACK LINK --- */}
       <p className="back-link">
         <Link href="/therapy">← Back to therapy screen</Link>
       </p>
 
+      {/* --- STYLES --- */}
       <style jsx>{`
         .info-page {
           max-width: 900px;
