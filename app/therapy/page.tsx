@@ -1,4 +1,4 @@
-// FILE: app/therapy/page.tsx
+// FILE: app/page.tsx   (or app/therapy/page.tsx if that's your route)
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -84,8 +84,8 @@ function useTinnitusAudio() {
   const toneOscRef = useRef<OscillatorNode | null>(null);
   const toneGainRef = useRef<GainNode | null>(null);
 
-  const crOscillatorsRef = useRef<OscillatorNode[]>([]); // kept for type, not used now
-  const crGainsRef = useRef<GainNode[]>([]); // kept for type, not used now
+  const crOscillatorsRef = useRef<OscillatorNode[]>([]);
+  const crGainsRef = useRef<GainNode[]>([]);
   const crIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const initAudio = useCallback(() => {
@@ -231,7 +231,7 @@ function useTinnitusAudio() {
     [initAudio],
   );
 
-  // 🔊 NEW: Strong tick / hole CR therapy
+  // 🔊 Strong tick / hole CR therapy
   const playCR = useCallback(
     (baseFreq: number, volume: number) => {
       const ctx = initAudio();
@@ -243,8 +243,7 @@ function useTinnitusAudio() {
 
       osc.type = "sine";
       osc.frequency.value = baseFreq;
-      // start from silence; we will gate it on/off
-      gain.gain.value = 0;
+      gain.gain.value = 0; // start silent; we gate it
 
       osc.connect(gain);
       gain.connect(masterGainRef.current!);
@@ -253,19 +252,17 @@ function useTinnitusAudio() {
       toneOscRef.current = osc;
       toneGainRef.current = gain;
 
-      // clear any old CR interval
       if (crIntervalRef.current) {
         clearInterval(crIntervalRef.current);
         crIntervalRef.current = null;
       }
 
-      // hard on/off gate ~1.5 ticks per second (ON 350ms / OFF 350ms)
+      // hard on/off gate ~1.5 ticks per second
       let on = false;
       crIntervalRef.current = setInterval(() => {
         if (!ctxRef.current || !toneGainRef.current) return;
         const now = ctxRef.current.currentTime;
         on = !on;
-        // very fast attack to make the tick very clear
         toneGainRef.current.gain.setTargetAtTime(
           on ? volume : 0,
           now,
@@ -558,10 +555,10 @@ export default function TherapyPage() {
             borderTop: "1px solid rgba(0,0,0,0.05)",
           }}
         >
-          <strong>📅 Recommended:</strong> Use Relief (CR) Therapy 2 sessions/day for 3–6 months.{" "}
+          <strong>📅 Recommended:</strong> Use Relief (CR) Therapy 2 sessions/day for 3–6 months.
           <br />
           <span style={{ opacity: 0.8 }}>
-            Standard & Sleep modes are for comfort and relaxation.
+            Standard &amp; Sleep modes are for comfort and relaxation.
           </span>
         </div>
       </div>
@@ -597,7 +594,8 @@ export default function TherapyPage() {
             </button>
           </div>
           <div className="nq-banner-tip">
-            Tip: If a phone call comes in, pause the session, take the call, then resume.
+            Tip: If a phone call comes in, pause the session, take the call, then
+            resume.
           </div>
         </div>
       )}
@@ -687,7 +685,7 @@ export default function TherapyPage() {
               </button>
             ))}
           </div>
-          {/* EXPLANATION BOX – UPDATED FOR TICKS / HOLES */}
+          {/* EXPLANATION BOX – TICKS / HOLES */}
           <div className="nq-info-box">
             <span
               style={{
@@ -713,7 +711,7 @@ export default function TherapyPage() {
               to reduce tinnitus over time.
               <br />
               <br />
-              <strong>Standard & Sleep modes</strong> do not have ticks – they
+              <strong>Standard &amp; Sleep modes</strong> do not have ticks – they
               are comfort / relaxation modes for masking, not primary treatment.
             </div>
           </div>
@@ -725,7 +723,7 @@ export default function TherapyPage() {
 
           {/* GLOBAL AUDIO INFO */}
           <div className="nq-global-audio-info">
-            <strong>Using your own music & calls:</strong>
+            <strong>Using your own music &amp; calls:</strong>
             <br />
             You can play any music or audio app on your phone (Spotify, YouTube,
             radio, etc.) while CalmTinnitus is running. The therapy continues
