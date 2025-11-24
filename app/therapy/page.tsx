@@ -1,4 +1,5 @@
 // FILE: app/therapy/page.tsx
+
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -51,7 +52,6 @@ const SOUND_PROFILES: SoundProfile[] = [
   { id: "ocean", label: "Ocean Waves", description: "Rolling surf", type: "nature" },
 ];
 
-// 👉 CR first, then Standard, then Sleep
 const THERAPY_MODES = [
   {
     key: "relief" as TherapyMode,
@@ -88,16 +88,33 @@ function useTinnitusAudio() {
   const crGainsRef = useRef<GainNode[]>([]);
   const crIntervalRef = useRef<number | null>(null);
 
+  // 🔵 Noise Reduction DSP (ADDED)
+  const filterRef = useRef<BiquadFilterNode | null>(null);
+  const compressorRef = useRef<DynamicsCompressorNode | null>(null);
+
   const initAudio = useCallback(() => {
     if (!ctxRef.current || ctxRef.current.state === "closed") {
       ctxRef.current = new (window.AudioContext ||
         (window as any).webkitAudioContext)();
       masterGainRef.current = ctxRef.current.createGain();
-      masterGainRef.current.connect(ctxRef.current.destination);
+
+      // 🔵 High-pass filter (removes low rumble)
+      filterRef.current = ctxRef.current.createBiquadFilter();
+      filterRef.current.type = "highpass";
+      filterRef.current.frequency.value = 180;
+
+      // 🔵 Compressor (smoothes harshness)
+      compressorRef.current = ctxRef.current.createDynamicsCompressor();
+      compressorRef.current.threshold.value = -24;
+      compressorRef.current.ratio.value = 2;
+
+      // Chain:
+      // noise/tone → master → filter → compressor → speakers
+      masterGainRef.current.connect(filterRef.current);
+      filterRef.current.connect(compressorRef.current);
+      compressorRef.current.connect(ctxRef.current.destination);
     }
-    if (ctxRef.current.state === "suspended") {
-      ctxRef.current.resume();
-    }
+    if (ctxRef.current.state === "suspended") ctxRef.current.resume();
     return ctxRef.current;
   }, []);
 
@@ -161,22 +178,16 @@ function useTinnitusAudio() {
     );
 
     setTimeout(() => {
-      if (noiseNodeRef.current) {
-        noiseNodeRef.current.stop();
-        noiseNodeRef.current.disconnect();
-      }
-      if (toneOscRef.current) {
-        toneOscRef.current.stop();
-        toneOscRef.current.disconnect();
-      }
-      crOscillatorsRef.current.forEach((o) => {
-        o.stop();
-        o.disconnect();
-      });
+      noiseNodeRef.current?.stop();
+      noiseNodeRef.current?.disconnect();
+      toneOscRef.current?.stop();
+      toneOscRef.current?.disconnect();
+      crOscillatorsRef.current.forEach((o) => o.stop());
       noiseNodeRef.current = null;
       toneOscRef.current = null;
       crOscillatorsRef.current = [];
-      if (crIntervalRef.current !== null) {
+
+      if (crIntervalRef.current) {
         clearInterval(crIntervalRef.current);
         crIntervalRef.current = null;
       }
@@ -230,7 +241,7 @@ function useTinnitusAudio() {
     [initAudio],
   );
 
-  // CR therapy: rotating pulses around the tinnitus pitch
+  // 🔵 CR therapy
   const playCR = useCallback(
     (baseFreq: number, volume: number) => {
       const ctx = initAudio();
@@ -271,10 +282,8 @@ function useTinnitusAudio() {
 
   const updateVolumes = (noiseVol: number, toneVol: number) => {
     const now = ctxRef.current?.currentTime || 0;
-    if (noiseGainRef.current)
-      noiseGainRef.current.gain.setTargetAtTime(noiseVol, now, 0.1);
-    if (toneGainRef.current)
-      toneGainRef.current.gain.setTargetAtTime(toneVol, now, 0.1);
+    noiseGainRef.current?.gain.setTargetAtTime(noiseVol, now, 0.1);
+    toneGainRef.current?.gain.setTargetAtTime(toneVol, now, 0.1);
   };
 
   return {
@@ -295,44 +304,41 @@ export default function TherapyPage() {
   const [currentPitch, setCurrentPitch] = useState<number>(8000);
   const [selectedSound, setSelectedSound] = useState<SoundProfile>(
     SOUND_PROFILES[2],
-  ); // Default Pink
+  );
   const [externalLink, setExternalLink] = useState("");
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("idle");
   const [selectedMode, setSelectedMode] =
-    useState<TherapyMode>("relief"); // CR as default
+    useState<TherapyMode>("relief");
   const [sessionDuration, setSessionDuration] = useState(30);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(
     null,
   );
   const [userId, setUserId] = useState<string>("");
 
-  // Save Button State
   const [saveBtnText, setSaveBtnText] = useState("Save Profile");
   const [saveBtnClass, setSaveBtnClass] = useState("nq-btn-save");
 
-  // Volumes
   const [masterVol, setMasterVol] = useState(0.5);
   const [noiseVol, setNoiseVol] = useState(0.3);
-  const [toneVol, setToneVol] = useState(0.6); // a bit louder default for therapy tone
+  const [toneVol, setToneVol] = useState(0.6);
 
   const [isPlayingTest, setIsPlayingTest] = useState(false);
   const sessionTimerRef = useRef<number | null>(null);
 
-  // Hook
   const audio = useTinnitusAudio();
 
-  // --- Effects ---
+  // MASTER VOL
   useEffect(() => {
     audio.setMasterVolume(masterVol);
-  }, [masterVol, audio]);
+  }, [masterVol]);
 
   useEffect(() => {
     if (sessionStatus === "running")
       audio.updateVolumes(noiseVol, toneVol);
-  }, [noiseVol, toneVol, sessionStatus, audio]);
+  }, [noiseVol, toneVol, sessionStatus]);
 
-  // --- ☁️ LOAD PROFILE FROM FIRESTORE ---
+  // LOAD PROFILE
   useEffect(() => {
     const loadProfile = async () => {
       let uid = localStorage.getItem("calmtinnitus_uid");
@@ -358,7 +364,6 @@ export default function TherapyPage() {
             );
             if (s) setSelectedSound(s);
           }
-          console.log("Loaded profile from Cloud");
         }
       } catch (e) {
         console.error("Error loading profile:", e);
@@ -367,7 +372,6 @@ export default function TherapyPage() {
     loadProfile();
   }, []);
 
-  // Auto-fill link when sound changes
   useEffect(() => {
     if (selectedSound.type === "external" && selectedSound.defaultLink) {
       setExternalLink(selectedSound.defaultLink);
@@ -376,9 +380,6 @@ export default function TherapyPage() {
     }
   }, [selectedSound]);
 
-  // --- Handlers ---
-
-  // --- ☁️ SAVE TO FIREBASE ---
   const saveProfile = async () => {
     if (!userId) return;
     setSaveBtnText("Saving...");
@@ -398,7 +399,6 @@ export default function TherapyPage() {
         setSaveBtnClass("nq-btn-save");
       }, 2000);
     } catch (e) {
-      console.error("Error saving:", e);
       setSaveBtnText("❌ Error");
       setTimeout(() => setSaveBtnText("Save Profile"), 2000);
     }
@@ -416,15 +416,13 @@ export default function TherapyPage() {
     }
   };
 
-  // Real-time pitch adjustment during test
   useEffect(() => {
     if (isPlayingTest) {
       const testVol = Math.max(toneVol, 0.5);
       audio.playTone(tinnitusPitch, testVol);
     }
-  }, [tinnitusPitch, toneVol, isPlayingTest, audio]);
+  }, [tinnitusPitch, toneVol, isPlayingTest]);
 
-  // When dragging the slider
   const handlePitchChange = (val: number) => {
     setCurrentPitch(val);
     setTinnitusPitch(val);
@@ -455,9 +453,28 @@ export default function TherapyPage() {
     }, 1000);
   };
 
+  // 🔵 PAUSE SESSION
+  const pauseSession = () => {
+    audio.ctxRef.current?.suspend();
+    if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
+    setSessionStatus("paused");
+  };
+
+  // 🔵 RESUME SESSION
+  const resumeSession = () => {
+    audio.ctxRef.current?.resume();
+    const end = Date.now() + timeRemaining! * 60000;
+    sessionTimerRef.current = window.setInterval(() => {
+      const left = (end - Date.now()) / 60000;
+      if (left <= 0) stopSession();
+      else setTimeRemaining(left);
+    }, 1000);
+    setSessionStatus("running");
+  };
+
   const stopSession = () => {
     audio.stopAll();
-    if (sessionTimerRef.current !== null) {
+    if (sessionTimerRef.current) {
       clearInterval(sessionTimerRef.current);
       sessionTimerRef.current = null;
     }
@@ -487,7 +504,6 @@ export default function TherapyPage() {
     return null;
   };
 
-  // --- MAIN VIEW ---
   return (
     <main className="nq-container">
       {/* Header */}
@@ -509,7 +525,7 @@ export default function TherapyPage() {
         </div>
       </header>
 
-      {/* GUIDE SECTION – updated text */}
+      {/* GUIDE */}
       <div className="nq-guide">
         <div style={{ marginBottom: "1rem" }}>
           <strong>Quick Start:</strong>
@@ -525,7 +541,7 @@ export default function TherapyPage() {
             borderTop: "1px solid rgba(0,0,0,0.05)",
           }}
         >
-          <strong>📅 Recommended:</strong> Use Relief (CR) Therapy 2 sessions/day for 3–6 months.{" "}
+          <strong>📅 Recommended:</strong> Use Relief (CR) Therapy 2 sessions/day for 3–6 months.
           <br />
           <span style={{ opacity: 0.8 }}>
             Standard & Sleep modes are mainly for comfort and relaxation.
@@ -533,32 +549,42 @@ export default function TherapyPage() {
         </div>
       </div>
 
-      {/* Status Banner */}
+      {/* STATUS */}
       {sessionStatus !== "idle" && (
         <div className="nq-banner">
           <div className="nq-timer">{formatTime(timeRemaining)}</div>
           <div className="nq-status-text">
             {THERAPY_MODES.find((m) => m.key === selectedMode)?.label} is Active
           </div>
+
+          {/* 🔵 PAUSE / RESUME BUTTONS */}
+          {sessionStatus === "running" && (
+            <button onClick={pauseSession} className="nq-btn-stop" style={{ background: "#f59e0b" }}>
+              ⏸ Pause Session
+            </button>
+          )}
+
+          {sessionStatus === "paused" && (
+            <button onClick={resumeSession} className="nq-btn-stop" style={{ background: "#10b981" }}>
+              ⏯ Resume Session
+            </button>
+          )}
+
           <button onClick={stopSession} className="nq-btn-stop">
             ⏹ Stop Session
           </button>
         </div>
       )}
 
-      {/* STEP 1: PITCH MATCHING (With Save Button) */}
+      {/* STEP 1 */}
       <div className="nq-panel nq-step-1">
         <div className="nq-panel-header">
           <h3>Step 1: Match Your Tinnitus Pitch</h3>
           <div className="nq-pitch-display">
-            <span className="nq-hz">
-              {Math.round(tinnitusPitch)} Hz
-            </span>
+            <span className="nq-hz">{Math.round(tinnitusPitch)} Hz</span>
             <button
               onClick={toggleTestTone}
-              className={`nq-btn-test ${
-                isPlayingTest ? "active" : ""
-              }`}
+              className={`nq-btn-test ${isPlayingTest ? "active" : ""}`}
             >
               {isPlayingTest ? "⏹ Stop Tone" : "▶ Test Tone"}
             </button>
@@ -573,41 +599,24 @@ export default function TherapyPage() {
             max="12000"
             step="50"
             value={tinnitusPitch}
-            onChange={(e) =>
-              handlePitchChange(Number(e.target.value))
-            }
+            onChange={(e) => handlePitchChange(Number(e.target.value))}
             className="nq-main-slider"
           />
           <span className="nq-range-label">High</span>
         </div>
 
-        {/* SAVE PROFILE BUTTON */}
-        <div
-          style={{
-            marginTop: "1.5rem",
-            textAlign: "center",
-            borderTop: "1px solid #e2e8f0",
-            paddingTop: "1rem",
-          }}
-        >
+        <div style={{ marginTop: "1.5rem", textAlign: "center", borderTop: "1px solid #e2e8f0", paddingTop: "1rem" }}>
           <button onClick={saveProfile} className={saveBtnClass}>
             {saveBtnText}
           </button>
-          <p
-            style={{
-              fontSize: "0.8rem",
-              color: "#94a3b8",
-              marginTop: "0.5rem",
-            }}
-          >
+          <p style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: "0.5rem" }}>
             Save this pitch to your Cloud Profile.
           </p>
         </div>
       </div>
 
-      {/* STEP 2 & 3 GRID */}
+      {/* STEP 2 */}
       <div className="nq-controls-grid">
-        {/* Step 2: Mode */}
         <div className="nq-panel">
           <h3>Step 2: Therapy Mode</h3>
           <div className="nq-list">
@@ -616,9 +625,7 @@ export default function TherapyPage() {
                 key={m.key}
                 onClick={() => setSelectedMode(m.key)}
                 disabled={sessionStatus !== "idle"}
-                className={`nq-list-item ${
-                  selectedMode === m.key ? "active" : ""
-                }`}
+                className={`nq-list-item ${selectedMode === m.key ? "active" : ""}`}
               >
                 <span className="nq-icon">{m.icon}</span>
                 <div>
@@ -628,68 +635,47 @@ export default function TherapyPage() {
               </button>
             ))}
           </div>
-          {/* EXPLANATION BOX – ticks / holes */}
+
+          {/* TICKS EXPLANATION */}
           <div className="nq-info-box">
-            <span
-              style={{
-                fontSize: "1.2rem",
-                marginRight: "0.5rem",
-              }}
-            >
-              ℹ️
-            </span>
+            <span style={{ fontSize: "1.2rem", marginRight: "0.5rem" }}>ℹ️</span>
             <div>
-              <strong>For tinnitus treatment (Relief – CR):</strong>
+              <strong>Why you hear ticks / holes / clicks in CR mode:</strong>
               <br />
-              In Relief (CR) Therapy (option 1) you will hear clear, regular{" "}
-              <strong>ticks</strong> or tiny <strong>holes / gaps</strong> in the
-              tone – roughly once or twice per second.{" "}
-              <strong>This is intentional and normal.</strong> It is not a
-              speaker problem and nothing is broken.
+              In Relief (CR) Therapy you will hear gentle “knocks”, “ticks” or small gaps.
               <br />
+              <strong>This is intentional and normal.</strong> Nothing is broken.
               <br />
-              These short interruptions are part of the{" "}
-              <em>neuromodulation therapy</em>. They briefly interrupt the
-              tinnitus pattern in the brain and are the main treatment designed
-              to reduce tinnitus over time.
+              These interruptions help desynchronise tinnitus signals and reduce tinnitus over time.
               <br />
-              <br />
-              <strong>Standard & Sleep modes</strong> do not have ticks – they
-              are comfort / relaxation modes for masking, not primary treatment.
+              Standard & Sleep modes do not contain ticks.
             </div>
           </div>
         </div>
 
-        {/* Step 3: Sound & Mixer */}
+        {/* STEP 3 */}
         <div className="nq-panel">
           <h3>Step 3: Sound & Mixer</h3>
 
-          {/* SOUND SELECTOR */}
           <div className="nq-slider-group">
             <label>Background Sound</label>
             <select
               className="nq-select"
               value={selectedSound.id}
               onChange={(e) => {
-                const s = SOUND_PROFILES.find(
-                  (p) => p.id === e.target.value,
-                );
+                const s = SOUND_PROFILES.find((p) => p.id === e.target.value);
                 if (s) setSelectedSound(s);
               }}
             >
               <optgroup label="Music Apps">
-                {SOUND_PROFILES.filter(
-                  (p) => p.type === "external",
-                ).map((p) => (
+                {SOUND_PROFILES.filter((p) => p.type === "external").map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.label}
                   </option>
                 ))}
               </optgroup>
               <optgroup label="Noise & Nature">
-                {SOUND_PROFILES.filter(
-                  (p) => p.type !== "external",
-                ).map((p) => (
+                {SOUND_PROFILES.filter((p) => p.type !== "external").map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.label}
                   </option>
@@ -698,24 +684,16 @@ export default function TherapyPage() {
             </select>
           </div>
 
-          {/* Spotify info box */}
           {selectedSound.id === "spotify" && (
             <div className="nq-spotify-info">
               <strong>Spotify Info:</strong>
               <br />
-              Copy &amp; paste any Spotify music link and start playing.
+              Paste any Spotify link and play your music.
               <br />
-              Seconds later Spotify may ask you to join/login.
-              <br />
-              Play any music you like — your therapy continues in the
-              background.
-              <br />
-              Spotify will open the full player; your therapy tone keeps
-              playing normally.
+              Therapy continues in the background regardless.
             </div>
           )}
 
-          {/* Mixer Sliders */}
           <div className="nq-mixer">
             {selectedSound.type !== "external" && (
               <div className="nq-slider-group">
@@ -726,9 +704,7 @@ export default function TherapyPage() {
                   max="0.8"
                   step="0.05"
                   value={noiseVol}
-                  onChange={(e) =>
-                    setNoiseVol(Number(e.target.value))
-                  }
+                  onChange={(e) => setNoiseVol(Number(e.target.value))}
                 />
               </div>
             )}
@@ -740,9 +716,7 @@ export default function TherapyPage() {
                 max="1.0"
                 step="0.05"
                 value={toneVol}
-                onChange={(e) =>
-                  setToneVol(Number(e.target.value))
-                }
+                onChange={(e) => setToneVol(Number(e.target.value))}
               />
             </div>
           </div>
@@ -753,9 +727,7 @@ export default function TherapyPage() {
                 key={t}
                 onClick={() => setSessionDuration(t)}
                 disabled={sessionStatus !== "idle"}
-                className={`nq-chip ${
-                  sessionDuration === t ? "active" : ""
-                }`}
+                className={`nq-chip ${sessionDuration === t ? "active" : ""}`}
               >
                 {t}m
               </button>
@@ -764,17 +736,11 @@ export default function TherapyPage() {
         </div>
       </div>
 
-      {/* EXTERNAL PLAYER (Conditional) */}
+      {/* EXTERNAL PLAYER */}
       {selectedSound.type === "external" && (
-        <div
-          className="nq-embed-card"
-          style={{ borderColor: selectedSound.color || "#333" }}
-        >
+        <div className="nq-embed-card" style={{ borderColor: selectedSound.color || "#333" }}>
           <div className="nq-embed-header">
-            <span
-              className="nq-badge"
-              style={{ background: selectedSound.color }}
-            >
+            <span className="nq-badge" style={{ background: selectedSound.color }}>
               {selectedSound.label}
             </span>
             <input
@@ -787,36 +753,23 @@ export default function TherapyPage() {
 
           {getEmbedUrl(selectedSound.id, externalLink) ? (
             <iframe
-              src={getEmbedUrl(
-                selectedSound.id,
-                externalLink,
-              )!}
+              src={getEmbedUrl(selectedSound.id, externalLink)!}
               className="nq-iframe"
               allow="encrypted-media; autoplay; clipboard-write; picture-in-picture"
             />
           ) : (
             <div className="nq-empty-embed">
-              <p>
-                Paste your music link below to listen to your preferred
-                tracks.
-              </p>
+              <p>Paste your music link.</p>
             </div>
           )}
 
-          <div
-            style={{
-              textAlign: "center",
-              fontSize: "0.85rem",
-              color: "#94a3b8",
-              marginTop: "0.75rem",
-            }}
-          >
+          <div style={{ textAlign: "center", fontSize: "0.85rem", color: "#94a3b8", marginTop: "0.75rem" }}>
             ⚠️ Control music volume inside the player above
           </div>
         </div>
       )}
 
-      {/* START BUTTON */}
+      {/* START / STOP */}
       {sessionStatus === "idle" && (
         <button onClick={startSession} className="nq-btn-big">
           ▶ Start Session
@@ -824,10 +777,7 @@ export default function TherapyPage() {
       )}
 
       <div className="nq-footer">
-        <p>
-          Medical Disclaimer: This is a wellness tool. Consult a doctor
-          for hearing health issues.
-        </p>
+        <p>Medical Disclaimer: This is a wellness tool. Consult a doctor for hearing health issues.</p>
       </div>
 
       <Style />
@@ -854,8 +804,6 @@ function Style() {
         font-family: system-ui, sans-serif;
         color: var(--text);
       }
-
-      /* Header & Guide */
       .nq-header {
         display: flex;
         justify-content: space-between;
@@ -899,7 +847,6 @@ function Style() {
         font-weight: 500;
       }
 
-      /* Step 1: Pitch Matcher (Special Panel) */
       .nq-panel.nq-step-1 {
         border: 2px solid #e2e8f0;
         margin-bottom: 1.5rem;
@@ -967,7 +914,6 @@ function Style() {
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
       }
 
-      /* SAVE BUTTON */
       .nq-btn-save {
         background: #e2e8f0;
         color: #334155;
@@ -979,9 +925,6 @@ function Style() {
         transition: 0.3s;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
       }
-      .nq-btn-save:hover {
-        background: #cbd5e1;
-      }
       .nq-btn-save.saved {
         background: #22c55e;
         color: white;
@@ -989,7 +932,6 @@ function Style() {
         box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
       }
 
-      /* Step 2 & 3 Grid */
       .nq-controls-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1033,8 +975,6 @@ function Style() {
         display: flex;
         align-items: center;
         gap: 1rem;
-        text-align: left;
-        width: 100%;
         background: white;
         border: 1px solid #e2e8f0;
         padding: 0.75rem;
@@ -1089,7 +1029,6 @@ function Style() {
         border-color: var(--primary);
       }
 
-      /* Spotify info box */
       .nq-spotify-info {
         margin-top: 0.75rem;
         margin-bottom: 0.5rem;
@@ -1098,11 +1037,9 @@ function Style() {
         padding: 0.75rem 0.9rem;
         font-size: 0.85rem;
         color: #1e293b;
-        line-height: 1.4;
         border: 1px solid #dbeafe;
       }
 
-      /* External Player */
       .nq-embed-card {
         background: #0f172a;
         color: white;
@@ -1110,7 +1047,6 @@ function Style() {
         padding: 1.5rem;
         margin-bottom: 2rem;
         border-left: 4px solid;
-        transition: 0.3s;
       }
 
       .nq-embed-header {
@@ -1123,9 +1059,6 @@ function Style() {
         border-radius: 4px;
         font-size: 0.75rem;
         font-weight: 700;
-        text-transform: uppercase;
-        display: flex;
-        align-items: center;
       }
       .nq-input-dark {
         flex: 1;
@@ -1149,7 +1082,6 @@ function Style() {
         border-radius: 12px;
       }
 
-      /* Status & Footer */
       .nq-banner {
         background: linear-gradient(135deg, var(--primary), var(--success));
         color: white;
@@ -1164,7 +1096,6 @@ function Style() {
       .nq-timer {
         font-size: 2.5rem;
         font-weight: 800;
-        line-height: 1;
       }
       .nq-status-text {
         font-size: 0.95rem;
@@ -1178,7 +1109,6 @@ function Style() {
         border-radius: 99px;
         cursor: pointer;
         font-weight: 600;
-        margin-top: 0.5rem;
       }
       .nq-btn-big {
         width: 100%;
@@ -1189,8 +1119,6 @@ function Style() {
         border-radius: 1rem;
         font-size: 1.2rem;
         font-weight: 700;
-        cursor: pointer;
-        box-shadow: 0 10px 20px rgba(14, 165, 233, 0.2);
       }
       .nq-footer {
         text-align: center;
@@ -1201,3 +1129,5 @@ function Style() {
     `}</style>
   );
 }
+
+// ⚡⚡⚡ FULL UPDATED FILE ENDS HERE ⚡⚡⚡
