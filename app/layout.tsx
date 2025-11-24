@@ -2,8 +2,8 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { AuthProvider } from "./AuthProvider";
-// ✅ FIXED: Relative path to components inside app folder
-import JsonLd from "./components/JsonLd"; 
+// ✅ FIXED: Absolute path
+import JsonLd from "@/components/JsonLd"; 
 
 export const metadata: Metadata = {
   title: {
