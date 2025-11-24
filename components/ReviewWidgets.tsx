@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-// Ensure this path matches your project structure (e.g. /lib/firebase or /utils/firebase)
 import { db, collection, addDoc, serverTimestamp } from "../lib/firebase";
 
 export type ReviewWidgetProps = {
@@ -12,15 +11,17 @@ export type ReviewWidgetProps = {
   onFeedbackSubmitted?: () => void;
   primaryColor?: string;
   toEmail?: string;
+  forceOpen?: boolean; // ✅ NEW: Allows you to open it programmatically
 };
 
 export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
-  appName = "CalmTinnitus", // ✅ Default for this app
+  appName = "CalmTinnitus",
   appStoreUrl,
   feedbackEndpoint,
   onFeedbackSubmitted,
   primaryColor = "#2563eb",
   toEmail = "leffleryd@gmail.com",
+  forceOpen = false, // ✅ Default to closed
 }) => {
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState<number | null>(null);
@@ -31,6 +32,14 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
   // ✅ Force correct endpoint
   const FINAL_ENDPOINT = "/api/review-feedback";
 
+  // ✅ WATCH FOR FORCE OPEN (The "Happy Moment" Trigger)
+  useEffect(() => {
+    if (forceOpen && !submitted) {
+      setOpen(true);
+    }
+  }, [forceOpen, submitted]);
+
+  // Auto-close popup after submit
   useEffect(() => {
     if (!submitted) return;
     const timer = setTimeout(() => setOpen(false), 3000);
@@ -54,7 +63,7 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
           source: "calmtinnitus-widget",
         });
       } catch (e) {
-        console.warn("Firestore save failed (check rules):", e);
+        console.warn("Firestore save failed:", e);
       }
     }
 
