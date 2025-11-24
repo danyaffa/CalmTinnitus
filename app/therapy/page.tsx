@@ -51,13 +51,13 @@ const SOUND_PROFILES: SoundProfile[] = [
   { id: "ocean", label: "Ocean Waves", description: "Rolling surf", type: "nature" },
 ];
 
-// 🔁 NEW ORDER: CR first, then Standard, then Sleep
+// NEW ORDER: CR first, then Standard, then Sleep
 const THERAPY_MODES = [
   {
     key: "relief" as TherapyMode,
     label: "1) Relief (CR) Therapy – Recommended",
     description:
-      "Best for long-term tinnitus reduction. Uses pulsing / tick-like modulation to desynchronise tinnitus activity.",
+      "Best for long-term tinnitus reduction. Creates clear ticks / short gaps in the tone to desynchronise tinnitus activity.",
     icon: "✨",
   },
   {
@@ -84,8 +84,8 @@ function useTinnitusAudio() {
   const toneOscRef = useRef<OscillatorNode | null>(null);
   const toneGainRef = useRef<GainNode | null>(null);
 
-  const crOscillatorsRef = useRef<OscillatorNode[]>([]);
-  const crGainsRef = useRef<GainNode[]>([]);
+  const crOscillatorsRef = useRef<OscillatorNode[]>([]); // kept for type, not used now
+  const crGainsRef = useRef<GainNode[]>([]); // kept for type, not used now
   const crIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const initAudio = useCallback(() => {
@@ -160,6 +160,11 @@ function useTinnitusAudio() {
       g.gain.setTargetAtTime(0, now, 0.05),
     );
 
+    if (crIntervalRef.current) {
+      clearInterval(crIntervalRef.current);
+      crIntervalRef.current = null;
+    }
+
     setTimeout(() => {
       if (noiseNodeRef.current) {
         noiseNodeRef.current.stop();
@@ -176,7 +181,6 @@ function useTinnitusAudio() {
       noiseNodeRef.current = null;
       toneOscRef.current = null;
       crOscillatorsRef.current = [];
-      if (crIntervalRef.current) clearInterval(crIntervalRef.current);
     }, 200);
   }, []);
 
@@ -227,40 +231,47 @@ function useTinnitusAudio() {
     [initAudio],
   );
 
+  // 🔊 NEW: Strong tick / hole CR therapy
   const playCR = useCallback(
     (baseFreq: number, volume: number) => {
       const ctx = initAudio();
+      // Stop any previous sound + interval
       stopAll();
 
-      const freqs = [0.9, 1.0, 1.1, 1.2].map((m) => baseFreq * m);
-      const oscillators: OscillatorNode[] = [];
-      const gains: GainNode[] = [];
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-      freqs.forEach((f) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = f;
-        gain.gain.value = 0;
-        osc.connect(gain);
-        gain.connect(masterGainRef.current!);
-        osc.start();
-        oscillators.push(osc);
-        gains.push(gain);
-      });
+      osc.type = "sine";
+      osc.frequency.value = baseFreq;
+      // start from silence; we will gate it on/off
+      gain.gain.value = 0;
 
-      crOscillatorsRef.current = oscillators;
-      crGainsRef.current = gains;
+      osc.connect(gain);
+      gain.connect(masterGainRef.current!);
+      osc.start();
 
-      let idx = 0;
+      toneOscRef.current = osc;
+      toneGainRef.current = gain;
+
+      // clear any old CR interval
+      if (crIntervalRef.current) {
+        clearInterval(crIntervalRef.current);
+        crIntervalRef.current = null;
+      }
+
+      // hard on/off gate ~1.5 ticks per second (ON 350ms / OFF 350ms)
+      let on = false;
       crIntervalRef.current = setInterval(() => {
-        const now = ctx.currentTime;
-        gains.forEach((g, i) => {
-          const target = i === idx ? volume : 0;
-          g.gain.setTargetAtTime(target, now, 0.02);
-        });
-        idx = (idx + 1) % gains.length;
-      }, 250);
+        if (!ctxRef.current || !toneGainRef.current) return;
+        const now = ctxRef.current.currentTime;
+        on = !on;
+        // very fast attack to make the tick very clear
+        toneGainRef.current.gain.setTargetAtTime(
+          on ? volume : 0,
+          now,
+          0.002,
+        );
+      }, 350);
     },
     [initAudio, stopAll],
   );
@@ -429,7 +440,10 @@ export default function TherapyPage() {
   // --- SESSION CONTROL (Start / Pause / Resume / Stop) ---
 
   const startSession = (overrideMinutes?: number) => {
-    const minutes = overrideMinutes && overrideMinutes > 0 ? overrideMinutes : sessionDuration;
+    const minutes =
+      overrideMinutes && overrideMinutes > 0
+        ? overrideMinutes
+        : sessionDuration;
 
     audio.initAudio();
     if (isPlayingTest) {
@@ -477,7 +491,10 @@ export default function TherapyPage() {
   };
 
   const resumeSession = () => {
-    const minutes = timeRemaining && timeRemaining > 0 ? timeRemaining : sessionDuration;
+    const minutes =
+      timeRemaining && timeRemaining > 0
+        ? timeRemaining
+        : sessionDuration;
     startSession(minutes);
   };
 
@@ -541,7 +558,8 @@ export default function TherapyPage() {
             borderTop: "1px solid rgba(0,0,0,0.05)",
           }}
         >
-          <strong>📅 Recommended:</strong> Use Relief (CR) Therapy 2 sessions/day for 3–6 months. <br />
+          <strong>📅 Recommended:</strong> Use Relief (CR) Therapy 2 sessions/day for 3–6 months.{" "}
+          <br />
           <span style={{ opacity: 0.8 }}>
             Standard & Sleep modes are for comfort and relaxation.
           </span>
@@ -653,7 +671,10 @@ export default function TherapyPage() {
               <button
                 key={m.key}
                 onClick={() => setSelectedMode(m.key)}
-                disabled={sessionStatus !== "idle" && sessionStatus !== "paused"}
+                disabled={
+                  sessionStatus !== "idle" &&
+                  sessionStatus !== "paused"
+                }
                 className={`nq-list-item ${
                   selectedMode === m.key ? "active" : ""
                 }`}
@@ -666,7 +687,7 @@ export default function TherapyPage() {
               </button>
             ))}
           </div>
-          {/* EXPLANATION BOX */}
+          {/* EXPLANATION BOX – UPDATED FOR TICKS / HOLES */}
           <div className="nq-info-box">
             <span
               style={{
@@ -677,16 +698,23 @@ export default function TherapyPage() {
               ℹ️
             </span>
             <div>
-              <strong>For tinnitus treatment:</strong>
+              <strong>For tinnitus treatment (Relief – CR):</strong>
               <br />
-              Relief (CR) Therapy (option 1) is the main therapeutic mode designed
-              to reduce tinnitus over time. You may hear gentle pulsing or
-              tick-like changes in the tone – this is intentional neuromodulation.
+              In Relief (CR) Therapy (option 1) you will hear clear, regular{" "}
+              <strong>ticks</strong> or tiny <strong>holes/gaps</strong> in the
+              tone – roughly once or twice per second.{" "}
+              <strong>This is intentional and normal.</strong> It is not a
+              speaker problem and nothing is broken.
               <br />
               <br />
-              <strong>Standard & Sleep modes</strong> are for masking and
-              relaxation only; they help comfort, but are not the primary
-              treatment.
+              These short interruptions are part of the{" "}
+              <em>neuromodulation therapy</em>. They briefly interrupt the
+              tinnitus pattern in the brain and are the main treatment designed
+              to reduce tinnitus over time.
+              <br />
+              <br />
+              <strong>Standard & Sleep modes</strong> do not have ticks – they
+              are comfort / relaxation modes for masking, not primary treatment.
             </div>
           </div>
         </div>
@@ -744,7 +772,7 @@ export default function TherapyPage() {
             </select>
           </div>
 
-          {/* ✅ SPOTIFY INFO BOX */}
+          {/* SPOTIFY INFO BOX */}
           {selectedSound.id === "spotify" && (
             <div className="nq-spotify-info">
               <strong>Spotify Info:</strong>
