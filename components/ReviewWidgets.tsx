@@ -3,6 +3,10 @@
 
 import React, { useState, useEffect } from "react";
 
+// ✅ FIREBASE IMPORTS
+import { db } from "../lib/firebaseClient"; // make sure this path is correct in your project
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
 export type ReviewWidgetProps = {
   appName: string;
   appStoreUrl?: string;
@@ -14,42 +18,70 @@ export type ReviewWidgetProps = {
 export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
   appName,
   appStoreUrl,
-  feedbackEndpoint,
+  feedbackEndpoint = "/api/review-feedback",
   onFeedbackSubmitted,
   primaryColor = "#2563eb",
 }) => {
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState<number | null>(null);
   const [comment, setComment] = useState("");
+  const [email, setEmail] = useState(""); // optional input for Firestore
   const [submitted, setSubmitted] = useState(false);
 
+  // Auto-close popup after submit
   useEffect(() => {
-    const timer = setTimeout(() => setOpen(false), 4000);
+    if (!submitted) return;
+    const timer = setTimeout(() => setOpen(false), 3000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [submitted]);
 
+  // MAIN SUBMISSION HANDLER
   const handleSubmit = async () => {
     if (!rating) return;
+
     try {
-      if (feedbackEndpoint) {
-        await fetch(feedbackEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ rating, comment, appName }),
-        });
-      }
+      // 1️⃣ SAVE TO FIRESTORE
+      await addDoc(collection(db, "reviews"), {
+        appName: appName || "AI Business Launcher",
+        rating,
+        comment,
+        email,
+        createdAt: serverTimestamp(),
+        source: "dashboard-widget",
+      });
+
+      // 2️⃣ SEND EMAIL
+      await fetch(feedbackEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating,
+          comment,
+          email,
+          appName,
+        }),
+      });
+
+      // 3️⃣ DONE
       setSubmitted(true);
+      setRating(null);
       setComment("");
+      setEmail("");
+
       onFeedbackSubmitted?.();
     } catch (err) {
-      console.error("ReviewWidget feedback error", err);
+      console.error("ReviewWidget submission error", err);
     }
   };
+
+  // --------------------
+  // UI STYLES
+  // --------------------
 
   const containerStyle: React.CSSProperties = {
     position: "fixed",
     right: 20,
-    bottom: 150, // ⬅️ higher again, well above cookie card
+    bottom: 150,
     zIndex: 60,
     display: "flex",
     flexDirection: "column",
@@ -65,10 +97,8 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
     fontSize: 13,
     fontWeight: 700,
     color: "#ffffff",
-    background:
-      primaryColor ||
-      "linear-gradient(135deg,#22c55e,#0ea5e9,#6366f1)",
-    boxShadow: "0 8px 20px rgba(15,23,42,0.35)",
+    background: primaryColor,
+    boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
     display: "flex",
     alignItems: "center",
     gap: 8,
@@ -81,7 +111,7 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
     color: "#e5e7eb",
     borderRadius: 16,
     padding: 14,
-    boxShadow: "0 18px 40px rgba(15,23,42,0.4)",
+    boxShadow: "0 18px 40px rgba(0,0,0,0.4)",
     width: 320,
     maxWidth: "90vw",
     fontSize: 13,
@@ -118,13 +148,16 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
 
   if (typeof window === "undefined") return null;
 
+  // --------------------
+  // RENDER
+  // --------------------
+
   return (
     <div style={containerStyle}>
       <button
         type="button"
         style={pillButtonStyle}
         onClick={() => setOpen((o) => !o)}
-        title="Tell us quickly how well AI Business Launcher is working for you."
       >
         ⭐ Rate AI Business Launcher
       </button>
@@ -133,6 +166,7 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
         <div style={panelStyle}>
           {!submitted ? (
             <>
+              {/* HEADER */}
               <div
                 style={{
                   display: "flex",
@@ -149,6 +183,7 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
                 >
                   How is {appName} working for you?
                 </div>
+
                 <button
                   onClick={() => setOpen(false)}
                   style={{
@@ -158,12 +193,12 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
                     cursor: "pointer",
                     fontSize: 14,
                   }}
-                  aria-label="Close review widget"
                 >
                   ✕
                 </button>
               </div>
 
+              {/* STARS */}
               <div style={{ marginBottom: 10 }}>
                 <span style={labelStyle}>Quick rating</span>
                 <div>
@@ -180,22 +215,43 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
                 </div>
               </div>
 
+              {/* COMMENT */}
               <div style={{ marginBottom: 10 }}>
                 <div style={labelStyle}>Anything we can improve?</div>
                 <textarea
                   style={textareaStyle}
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="This helps us make the AI Business Launcher better for you."
+                  placeholder="This helps us make AI Business Launcher better for you."
                 />
               </div>
 
+              {/* EMAIL (optional) */}
+              <div style={{ marginBottom: 10 }}>
+                <div style={labelStyle}>Your email (optional)</div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{
+                    width: "100%",
+                    borderRadius: 10,
+                    border: "1px solid #334155",
+                    padding: 8,
+                    fontSize: 12,
+                    background: "#020617",
+                    color: "#e5e7eb",
+                  }}
+                  placeholder="So we can follow up if needed."
+                />
+              </div>
+
+              {/* ACTION BUTTONS */}
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  gap: 8,
                 }}
               >
                 <button
@@ -233,6 +289,7 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
               </div>
             </>
           ) : (
+            // THANK YOU SCREEN
             <div style={{ fontSize: 13 }}>
               <div
                 style={{
@@ -244,8 +301,7 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
                 Thank you!
               </div>
               <p style={{ margin: 0, marginBottom: 8 }}>
-                Your feedback helps us improve <strong>{appName}</strong> for
-                you and other business owners.
+                Your feedback helps us improve <strong>{appName}</strong>.
               </p>
               {appStoreUrl && (
                 <p style={{ margin: 0, fontSize: 12 }}>
