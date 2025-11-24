@@ -2,7 +2,8 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { AuthProvider } from "./AuthProvider";
-import JsonLd from "@/components/JsonLd"; // ✅ Import the new Schema component
+// ✅ FIXED: Relative path to components inside app folder
+import JsonLd from "./components/JsonLd"; 
 
 export const metadata: Metadata = {
   title: {
@@ -27,7 +28,6 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://calmtinnitus.com",
   },
-  // ✅ Google & Bing Verification (Moved here for better Next.js support)
   verification: {
     google: "1-hMw5VR5fPWM2BohUpP3BBUCgc3f_tuqvOjuV2Fnl0",
     other: {
@@ -38,7 +38,6 @@ export const metadata: Metadata = {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
-  // ✅ Optimized for Social Sharing (Facebook/LinkedIn)
   openGraph: {
     title: "Find Quiet with CalmTinnitus",
     description:
@@ -56,7 +55,6 @@ export const metadata: Metadata = {
       },
     ],
   },
-  // ✅ Optimized for Twitter Cards
   twitter: {
     card: "summary_large_image",
     title: "CalmTinnitus - Tinnitus Relief App",
@@ -80,12 +78,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Viewport is best handled here in older Next versions, or in metadata export for newer ones. 
-            Leaving here for safety based on your setup. */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body>
-        {/* ✅ Inject JSON-LD for Google Search Results */}
         <JsonLd />
         <AuthProvider>{children}</AuthProvider>
       </body>
