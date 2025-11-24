@@ -2,10 +2,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-// ✅ FIXED: Relative paths to match your folder structure
-import { db, doc, getDoc, setDoc } from "../lib/firebase"; 
-import { ReviewWidget } from "../components/ReviewWidgets"; 
+// ✅ FIXED: Using absolute paths (requires tsconfig update above)
+import { db, doc, getDoc, setDoc } from "@/lib/firebase"; 
+import { ReviewWidget } from "@/components/ReviewWidgets"; 
 
+// ... (rest of the file remains exactly the same)
 // --- CHECKLIST DATA STRATEGY ---
 const STRATEGY_ITEMS = [
   {
@@ -56,7 +57,6 @@ export default function GrowthDashboard() {
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
-  // Load progress from Firebase
   useEffect(() => {
     const loadData = async () => {
       if (!db) return;
@@ -75,7 +75,6 @@ export default function GrowthDashboard() {
     loadData();
   }, []);
 
-  // Save progress to Firebase
   const toggleItem = async (id: string) => {
     const newState = { ...completed, [id]: !completed[id] };
     setCompleted(newState);
@@ -94,7 +93,6 @@ export default function GrowthDashboard() {
     return Math.round((done / STRATEGY_ITEMS.length) * 100);
   };
 
-  // Styles
   const styles = {
     page: { padding: 40, fontFamily: "sans-serif", background: "#f8fafc", minHeight: "100vh" },
     container: { maxWidth: 900, margin: "0 auto" },
@@ -115,14 +113,11 @@ export default function GrowthDashboard() {
   return (
     <div style={styles.page}>
       <div style={styles.container}>
-        
-        {/* HEADER */}
         <div style={styles.header}>
           <h1 style={styles.title}>🚀 Growth & AI Command Center</h1>
           <p style={styles.subtitle}>Track your path to #1 in App Stores and AI Search.</p>
         </div>
 
-        {/* PROGRESS BAR */}
         <div style={styles.progressCard}>
           <h3 style={styles.progressTitle}>Launch Readiness</h3>
           <div style={styles.progressValue}>{loading ? "..." : `${calculateProgress()}%`}</div>
@@ -131,7 +126,6 @@ export default function GrowthDashboard() {
           </div>
         </div>
 
-        {/* CHECKLIST */}
         {["ASO (App Store Optimization)", "Web SEO (Google Search)", "AI Visibility (ChatGPT/Gemini)"].map((cat) => (
           <div key={cat}>
             <h2 style={styles.sectionTitle}>{cat}</h2>
@@ -155,19 +149,16 @@ export default function GrowthDashboard() {
           </div>
         ))}
 
-        {/* WIDGET TESTER */}
         <div style={{ marginTop: 60, padding: 30, background: "#fff", borderRadius: 20, border: "1px dashed #cbd5e1", textAlign: "center" }}>
           <h3>Review Widget Tester</h3>
           <p style={{ color: "#64748b", fontSize: 14 }}>
             This is how your widget looks to users. Test it here to ensure emails are firing.
           </p>
-          {/* We mount the widget here so you can test it directly from the dashboard */}
           <ReviewWidget 
             appName="CalmTinnitus" 
             feedbackEndpoint="/api/review-feedback"
           />
         </div>
-
       </div>
     </div>
   );
