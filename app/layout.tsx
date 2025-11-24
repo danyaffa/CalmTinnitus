@@ -1,88 +1,92 @@
-// /app/layout.tsx
+// FILE: app/layout.tsx
 import "./globals.css";
 import type { Metadata } from "next";
 import { AuthProvider } from "./AuthProvider";
+import JsonLd from "@/components/JsonLd"; // ✅ Import the new Schema component
 
 export const metadata: Metadata = {
-  title: "CalmTinnitus – Train your brain toward quieter days",
+  title: {
+    default: "CalmTinnitus | #1 Tinnitus Relief & Neuromodulation App",
+    template: "%s | CalmTinnitus",
+  },
   description:
-    "A calm, at-home neuromodulation sound tool created by someone who has lived with persistent tinnitus for over 50 years. Safe daily sound training based on tinnitus neuromodulation research.",
+    "Stop the ringing. CalmTinnitus uses clinically backed neuromodulation therapy to reduce tinnitus frequency. Created by a 50-year tinnitus veteran.",
   keywords: [
-    "tinnitus",
-    "tinnitus therapy",
-    "tinnitus relief",
-    "neuromodulation",
+    "tinnitus cure",
+    "stop ear ringing",
+    "neuromodulation therapy",
+    "tinnitus relief app",
+    "white noise for tinnitus",
     "sound therapy",
-    "tinnitus training",
-    "CalmTinnitus"
+    "CalmTinnitus",
   ],
-  themeColor: "#087a93",
+  authors: [{ name: "CalmTinnitus Team" }],
+  creator: "CalmTinnitus",
+  publisher: "CalmTinnitus",
   metadataBase: new URL("https://calmtinnitus.com"),
   alternates: {
-    canonical: "https://calmtinnitus.com"
+    canonical: "https://calmtinnitus.com",
+  },
+  // ✅ Google & Bing Verification (Moved here for better Next.js support)
+  verification: {
+    google: "1-hMw5VR5fPWM2BohUpP3BBUCgc3f_tuqvOjuV2Fnl0",
+    other: {
+      "msvalidate.01": "1A5F9E495867B41926D6E2C113347122",
+    },
   },
   icons: {
     icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png"
+    apple: "/apple-touch-icon.png",
   },
+  // ✅ Optimized for Social Sharing (Facebook/LinkedIn)
   openGraph: {
-    title: "CalmTinnitus – Train your brain toward quieter days",
+    title: "Find Quiet with CalmTinnitus",
     description:
-      "At-home sound therapy based on tinnitus neuromodulation research. Safe, simple daily training built by someone who has lived with tinnitus for over 50 years.",
+      "The AI-powered therapy app to reduce ear ringing naturally. Safe daily training.",
     url: "https://calmtinnitus.com",
     siteName: "CalmTinnitus",
     type: "website",
+    locale: "en_US",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "CalmTinnitus"
-      }
-    ]
+        alt: "CalmTinnitus App Preview",
+      },
+    ],
   },
+  // ✅ Optimized for Twitter Cards
   twitter: {
     card: "summary_large_image",
-    title: "CalmTinnitus – Tinnitus Relief Companion",
-    description:
-      "Neuromodulation-based tinnitus sound training. Calm your tinnitus with safe daily sound therapy.",
-    images: ["/og-image.png"]
-  }
+    title: "CalmTinnitus - Tinnitus Relief App",
+    description: "Stop the ringing with AI-powered sound therapy.",
+    images: ["/og-image.png"],
+  },
+  manifest: "/manifest.json",
+  themeColor: "#087a93",
+  appleWebApp: {
+    capable: true,
+    title: "CalmTinnitus",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({
-  children
+  children,
 }: {
   children: React.ReactNode;
 }) {
   return (
     <html lang="en">
       <head>
-        {/* ✅ Google Verification */}
-        <meta
-          name="google-site-verification"
-          content="1-hMw5VR5fPWM2BohUpP3BBUCgc3f_tuqvOjuV2Fnl0"
-        />
-
-        {/* ✅ Bing / Microsoft Verification */}
-        <meta
-          name="msvalidate.01"
-          content="1A5F9E495867B41926D6E2C113347122"
-        />
-
-        {/* Canonical URL */}
-        <link rel="canonical" href="https://calmtinnitus.com" />
-
-        {/* PWA + Theme */}
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#087a93" />
+        {/* Viewport is best handled here in older Next versions, or in metadata export for newer ones. 
+            Leaving here for safety based on your setup. */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-        {/* Favicon + Icons */}
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body>
+        {/* ✅ Inject JSON-LD for Google Search Results */}
+        <JsonLd />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
