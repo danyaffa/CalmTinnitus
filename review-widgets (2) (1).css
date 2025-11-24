@@ -1,0 +1,340 @@
+/* FILE: /styles/review-widgets.css */
+
+/* =========================================
+   1. FLOATING BUTTON (Trigger)
+   ========================================= */
+.rw-floating-button {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 2147483647; /* Max safe integer to ensure it's on top of everything */
+  border-radius: 999px;
+  padding: 0.8rem 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #2563eb, #22c55e);
+  color: #ffffff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+.rw-floating-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 35px rgba(15, 23, 42, 0.45);
+}
+
+/* =========================================
+   2. MODAL OVERLAY & CARD
+   ========================================= */
+.rw-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px); /* Modern glass effect */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2147483646;
+  padding: 1rem;
+  animation: rw-fadeIn 0.2s ease-out forwards;
+}
+
+.rw-card {
+  position: relative;
+  max-width: 420px;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 2rem 1.5rem 1.8rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  animation: rw-slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Animations */
+@keyframes rw-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rw-slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rw-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 1.2rem;
+  font-weight: 400;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.rw-close-btn:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+/* =========================================
+   3. TYPOGRAPHY & GENERAL
+   ========================================= */
+.rw-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.rw-subtitle {
+  margin: 0 0 1.5rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #4b5563;
+}
+
+/* =========================================
+   4. BUTTONS & ACTIONS
+   ========================================= */
+.rw-actions,
+.rw-actions-column {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.rw-actions {
+  justify-content: flex-end;
+}
+
+.rw-actions-column {
+  flex-direction: column;
+}
+
+.rw-btn {
+  border-radius: 999px;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rw-btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.rw-btn-primary:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.rw-btn-primary:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.rw-btn-ghost {
+  background: transparent;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+.rw-btn-ghost:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+/* =========================================
+   5. STARS & FORM
+   ========================================= */
+.rw-stars {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  justify-content: center; /* Center stars */
+}
+
+.rw-star {
+  background: transparent;
+  border: none;
+  font-size: 2rem; /* Larger tap target */
+  cursor: pointer;
+  color: #e5e7eb;
+  transition: color 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+
+.rw-star-active {
+  color: #facc15;
+}
+
+.rw-small-note {
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.rw-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rw-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.rw-input,
+.rw-textarea {
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  box-sizing: border-box; /* Important for padding */
+}
+
+.rw-input:focus,
+.rw-textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.rw-error {
+  font-size: 0.85rem;
+  color: #dc2626;
+  background-color: #fef2f2;
+  padding: 0.5rem;
+  border-radius: 6px;
+}
+
+/* =========================================
+   6. SOCIAL PROOF BLOCK
+   ========================================= */
+.rw-social-section {
+  padding: 2.5rem 1.5rem;
+  border-radius: 24px;
+  background: radial-gradient(circle at top, #f0f9ff, #ffffff);
+  border: 1px solid #e5e7eb;
+  margin-top: 2rem;
+}
+
+.rw-social-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.rw-rating-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rw-rating-stars {
+  color: #f59e0b;
+  letter-spacing: 0.1em;
+  font-size: 1.1rem;
+}
+
+.rw-rating-score {
+  font-weight: 800;
+  color: #111827;
+  font-size: 1.1rem;
+}
+
+.rw-rating-details {
+  font-size: 0.95rem;
+  color: #4b5563;
+  margin-top: 0.25rem;
+}
+
+.rw-highlight-text {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #0369a1;
+  background: #e0f2fe;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+/* Grid Logic */
+.rw-testimonials-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* Mobile default: 1 column */
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .rw-testimonials-grid {
+    grid-template-columns: repeat(3, 1fr); /* Desktop: 3 columns */
+  }
+}
+
+.rw-testimonial-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  border: 1px solid #f3f4f6;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  height: 100%; /* make cards equal height */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.rw-testimonial-text {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #1f2937;
+  font-style: italic;
+}
+
+.rw-testimonial-meta {
+  font-size: 0.85rem;
+  color: #6b7280;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 0.75rem;
+}
+
+.rw-testimonial-name {
+  font-weight: 700;
+  color: #111827;
+}
