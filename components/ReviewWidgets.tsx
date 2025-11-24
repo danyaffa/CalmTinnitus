@@ -12,6 +12,7 @@ export type ReviewWidgetProps = {
   feedbackEndpoint?: string;
   onFeedbackSubmitted?: () => void;
   primaryColor?: string;
+  toEmail?: string; // ✅ NEW: where to send feedback
 };
 
 export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
@@ -42,7 +43,7 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
     try {
       // 1️⃣ SAVE TO FIRESTORE
       await addDoc(collection(db, "reviews"), {
-        appName: appName || "AI Business Launcher",
+        appName: appName || "CalmTinnitus",
         rating,
         comment,
         email,
@@ -50,7 +51,7 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
         source: "dashboard-widget",
       });
 
-      // 2️⃣ SEND EMAIL
+      // 2️⃣ SEND EMAIL (to you)
       await fetch(feedbackEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -59,6 +60,7 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
           comment,
           email,
           appName,
+          toEmail, // ✅ send your address to the API
         }),
       });
 
@@ -73,10 +75,6 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
       console.error("ReviewWidget submission error", err);
     }
   };
-
-  // --------------------
-  // UI STYLES
-  // --------------------
 
   const containerStyle: React.CSSProperties = {
     position: "fixed",
@@ -148,10 +146,6 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
 
   if (typeof window === "undefined") return null;
 
-  // --------------------
-  // RENDER
-  // --------------------
-
   return (
     <div style={containerStyle}>
       <button
@@ -159,7 +153,7 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
         style={pillButtonStyle}
         onClick={() => setOpen((o) => !o)}
       >
-        ⭐ Rate AI Business Launcher
+        ⭐ Rate CalmTinnitus
       </button>
 
       {open && (
@@ -222,7 +216,7 @@ export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
                   style={textareaStyle}
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="This helps us make AI Business Launcher better for you."
+                  placeholder={`This helps us make ${appName} better for you.`}
                 />
               </div>
 
