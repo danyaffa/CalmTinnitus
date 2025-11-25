@@ -2,72 +2,58 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { AuthProvider } from "./AuthProvider";
-// ✅ FIXED: Absolute path
-import JsonLd from "@/components/JsonLd"; 
+import JsonLd from "@/components/JsonLd";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://calmtinnitus.com"),
   title: {
-    default: "CalmTinnitus | #1 Tinnitus Relief & Neuromodulation App",
+    default: "CalmTinnitus | Tinnitus Relief & Neuromodulation App",
     template: "%s | CalmTinnitus",
   },
   description:
-    "Stop the ringing. CalmTinnitus uses clinically backed neuromodulation therapy to reduce tinnitus frequency. Created by a 50-year tinnitus veteran.",
+    "CalmTinnitus is an AI-guided tinnitus relief and neuromodulation app that helps you match your tinnitus pitch, create sound therapy, and relax with masking sounds like white noise, rain, and ocean waves.",
   keywords: [
+    "tinnitus",
+    "tinnitus relief",
+    "tinnitus treatment",
     "tinnitus cure",
-    "stop ear ringing",
-    "neuromodulation therapy",
-    "tinnitus relief app",
-    "white noise for tinnitus",
-    "sound therapy",
+    "stop ringing in ears",
+    "ringing in the ears",
+    "tinnitus masker",
+    "tinnitus sound therapy",
+    "notch therapy",
+    "acoustic neuromodulation",
+    "coordinated reset",
+    "tinnitus neuromodulation app",
     "CalmTinnitus",
   ],
-  authors: [{ name: "CalmTinnitus Team" }],
-  creator: "CalmTinnitus",
-  publisher: "CalmTinnitus",
-  metadataBase: new URL("https://calmtinnitus.com"),
   alternates: {
-    canonical: "https://calmtinnitus.com",
-  },
-  verification: {
-    google: "1-hMw5VR5fPWM2BohUpP3BBUCgc3f_tuqvOjuV2Fnl0",
-    other: {
-      "msvalidate.01": "1A5F9E495867B41926D6E2C113347122",
-    },
-  },
-  icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    canonical: "/",
   },
   openGraph: {
-    title: "Find Quiet with CalmTinnitus",
-    description:
-      "The AI-powered therapy app to reduce ear ringing naturally. Safe daily training.",
-    url: "https://calmtinnitus.com",
-    siteName: "CalmTinnitus",
     type: "website",
-    locale: "en_US",
+    url: "https://calmtinnitus.com",
+    title: "CalmTinnitus | Tinnitus Relief & Neuromodulation App",
+    description:
+      "Match your tinnitus pitch, generate neuromodulation therapy and relax with masking sounds. Built by a 50-year tinnitus veteran for real-world relief.",
+    siteName: "CalmTinnitus",
     images: [
       {
-        url: "/og-image.png",
+        url: "https://calmtinnitus.com/CalmTinnitus-Logo.png",
         width: 1200,
         height: 630,
-        alt: "CalmTinnitus App Preview",
+        alt: "CalmTinnitus – Tinnitus Relief & Neuromodulation App",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "CalmTinnitus - Tinnitus Relief App",
-    description: "Stop the ringing with AI-powered sound therapy.",
-    images: ["/og-image.png"],
+    title: "CalmTinnitus | Tinnitus Relief & Neuromodulation App",
+    description:
+      "AI-guided tinnitus sound therapy, masking and neuromodulation to help reduce the impact of ringing in your ears.",
+    images: ["https://calmtinnitus.com/CalmTinnitus-Logo.png"],
   },
   manifest: "/manifest.json",
-  themeColor: "#087a93",
-  appleWebApp: {
-    capable: true,
-    title: "CalmTinnitus",
-    statusBarStyle: "default",
-  },
 };
 
 export default function RootLayout({
@@ -78,10 +64,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Mobile friendly */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body>
+        {/* JSON-LD schema for AI / search */}
         <JsonLd />
+        {/* Auth + app content */}
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
