@@ -74,7 +74,7 @@ const THERAPY_MODES = [
   },
 ];
 
-// --- 🧠 AUDIO ENGINE HOOK ---
+// --- 🧠 AUDIO ENGINE HOOK (STABLE VERSION – NO DSP) ---
 function useTinnitusAudio() {
   const ctxRef = useRef<AudioContext | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
@@ -88,31 +88,12 @@ function useTinnitusAudio() {
   const crGainsRef = useRef<GainNode[]>([]);
   const crIntervalRef = useRef<number | null>(null);
 
-  // 🔵 Noise Reduction DSP (ADDED)
-  const filterRef = useRef<BiquadFilterNode | null>(null);
-  const compressorRef = useRef<DynamicsCompressorNode | null>(null);
-
   const initAudio = useCallback(() => {
     if (!ctxRef.current || ctxRef.current.state === "closed") {
       ctxRef.current = new (window.AudioContext ||
         (window as any).webkitAudioContext)();
       masterGainRef.current = ctxRef.current.createGain();
-
-      // 🔵 High-pass filter (removes low rumble)
-      filterRef.current = ctxRef.current.createBiquadFilter();
-      filterRef.current.type = "highpass";
-      filterRef.current.frequency.value = 180;
-
-      // 🔵 Compressor (smoothes harshness)
-      compressorRef.current = ctxRef.current.createDynamicsCompressor();
-      compressorRef.current.threshold.value = -24;
-      compressorRef.current.ratio.value = 2;
-
-      // Chain:
-      // noise/tone → master → filter → compressor → speakers
-      masterGainRef.current.connect(filterRef.current);
-      filterRef.current.connect(compressorRef.current);
-      compressorRef.current.connect(ctxRef.current.destination);
+      masterGainRef.current.connect(ctxRef.current.destination);
     }
     if (ctxRef.current.state === "suspended") ctxRef.current.resume();
     return ctxRef.current;
@@ -463,7 +444,7 @@ export default function TherapyPage() {
   // 🔵 RESUME SESSION
   const resumeSession = () => {
     audio.ctxRef.current?.resume();
-    const end = Date.now() + timeRemaining! * 60000;
+    const end = Date.now() + (timeRemaining ?? 0) * 60000;
     sessionTimerRef.current = window.setInterval(() => {
       const left = (end - Date.now()) / 60000;
       if (left <= 0) stopSession();
@@ -1129,5 +1110,3 @@ function Style() {
     `}</style>
   );
 }
-
-// ⚡⚡⚡ FULL UPDATED FILE ENDS HERE ⚡⚡⚡
