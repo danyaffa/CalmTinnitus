@@ -105,45 +105,60 @@ function useTinnitusAudio() {
   const crGainsRef = useRef<GainNode[]>([]);
   const crIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Tracks volume for CR mode so slider works in real-time
   const latestToneVolRef = useRef(0.5);
-
   const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- FIX: Updated initAudio to be TypeScript safe ---
   const initAudio = useCallback(() => {
     if (typeof window === "undefined") return null;
 
-    let ctx = ctxRef.current;
+    try {
+      let ctx = ctxRef.current;
 
-    if (!ctx || ctx.state === "closed") {
-      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (!Ctx) return null;
-      
-      // Assign to local variable 'newCtx' so TypeScript knows it's not null
-      const newCtx = new Ctx();
-      ctxRef.current = newCtx;
-      ctx = newCtx;
+      const hasAudioContext =
+        typeof (window as any).AudioContext !== "undefined" ||
+        typeof (window as any).webkitAudioContext !== "undefined";
 
-      // Create master gain using the local non-null variable
-      const masterGain = newCtx.createGain();
-      masterGain.connect(newCtx.destination);
-      masterGainRef.current = masterGain;
+      if (!hasAudioContext) {
+        console.warn("Web Audio API not supported in this browser.");
+        return null;
+      }
+
+      if (!ctx || ctx.state === "closed") {
+        const Ctx =
+          (window as any).AudioContext || (window as any).webkitAudioContext;
+        const newCtx: AudioContext = new Ctx();
+        ctxRef.current = newCtx;
+        ctx = newCtx;
+
+        const masterGain = newCtx.createGain();
+        masterGain.connect(newCtx.destination);
+        masterGainRef.current = masterGain;
+      }
+
+      if (ctx && ctx.state === "suspended") {
+        ctx.resume().catch((err) => {
+          console.error("AudioContext resume failed:", err);
+        });
+      }
+
+      return ctx;
+    } catch (err) {
+      console.error("initAudio failed:", err);
+      return null;
     }
-
-    if (ctx && ctx.state === "suspended") {
-      ctx.resume();
-    }
-    return ctx;
   }, []);
 
   const setMasterVolume = useCallback((vol: number) => {
-    if (masterGainRef.current && ctxRef.current) {
-      masterGainRef.current.gain.setTargetAtTime(
-        vol,
-        ctxRef.current.currentTime,
-        0.1
-      );
+    try {
+      if (masterGainRef.current && ctxRef.current) {
+        masterGainRef.current.gain.setTargetAtTime(
+          vol,
+          ctxRef.current.currentTime,
+          0.1
+        );
+      }
+    } catch (err) {
+      console.error("setMasterVolume failed:", err);
     }
   }, []);
 
@@ -186,30 +201,81 @@ function useTinnitusAudio() {
   };
 
   const stopAll = useCallback(() => {
-    if (stopTimeoutRef.current) {
-      clearTimeout(stopTimeoutRef.current);
-      stopTimeoutRef.current = null;
+    try {
+      if (stopTimeoutRef.current) {
+        clearTimeout(stopTimeoutRef.current);
+        stopTimeoutRef.current = null;
+      }
+
+      const now = ctxRef.current?.currentTime || 0;
+
+      if (noiseGainRef.current) {
+        noiseGainRef.current.gain.setTargetAtTime(0, now, 0.05);
+      }
+      if (toneGainRef.current) {
+        toneGainRef.current.gain.setTargetAtTime(0, now, 0.05);
+      }
+      crGainsRef.current.forEach((g) =>
+        g.gain.setTargetAtTime(0, now, 0.05)
+      );
+
+      stopTimeoutRef.current = setTimeout(() => {
+        try {
+          if (noiseNodeRef.current) {
+            try {
+              noiseNodeRef.current.stop();
+            } catch {}
+            noiseNodeRef.current.disconnect();
+          }
+          if (toneOscRef.current) {
+            try {
+              toneOscRef.current.stop();
+            } catch {}
+            toneOscRef.current.disconnect();
+          }
+          crOscillatorsRef.current.forEach((o) => {
+            try {
+              o.stop();
+            } catch {}
+            o.disconnect();
+          });
+          noiseNodeRef.current = null;
+          toneOscRef.current = null;
+          crOscillatorsRef.current = [];
+          if (crIntervalRef.current) clearInterval(crIntervalRef.current);
+        } catch (err) {
+          console.error("stopAll inner cleanup error:", err);
+        }
+      }, 200);
+    } catch (err) {
+      console.error("stopAll failed:", err);
     }
+  }, []);
 
-    const now = ctxRef.current?.currentTime || 0;
-    if (noiseGainRef.current)
-      noiseGainRef.current.gain.setTargetAtTime(0, now, 0.05);
-    if (toneGainRef.current)
-      toneGainRef.current.gain.setTargetAtTime(0, now, 0.05);
-    crGainsRef.current.forEach((g) => g.gain.setTargetAtTime(0, now, 0.05));
+  const hardStopAll = useCallback(() => {
+    try {
+      if (stopTimeoutRef.current) {
+        clearTimeout(stopTimeoutRef.current);
+        stopTimeoutRef.current = null;
+      }
+      if (crIntervalRef.current) {
+        clearInterval(crIntervalRef.current);
+        crIntervalRef.current = null;
+      }
 
-    stopTimeoutRef.current = setTimeout(() => {
       if (noiseNodeRef.current) {
         try {
           noiseNodeRef.current.stop();
         } catch {}
         noiseNodeRef.current.disconnect();
+        noiseNodeRef.current = null;
       }
       if (toneOscRef.current) {
         try {
           toneOscRef.current.stop();
         } catch {}
         toneOscRef.current.disconnect();
+        toneOscRef.current = null;
       }
       crOscillatorsRef.current.forEach((o) => {
         try {
@@ -217,150 +283,140 @@ function useTinnitusAudio() {
         } catch {}
         o.disconnect();
       });
-      noiseNodeRef.current = null;
-      toneOscRef.current = null;
       crOscillatorsRef.current = [];
-      if (crIntervalRef.current) clearInterval(crIntervalRef.current);
-    }, 200);
-  }, []);
-
-  const hardStopAll = useCallback(() => {
-    if (stopTimeoutRef.current) {
-      clearTimeout(stopTimeoutRef.current);
-      stopTimeoutRef.current = null;
+      crGainsRef.current = [];
+    } catch (err) {
+      console.error("hardStopAll failed:", err);
     }
-    if (crIntervalRef.current) {
-      clearInterval(crIntervalRef.current);
-      crIntervalRef.current = null;
-    }
-
-    if (noiseNodeRef.current) {
-      try {
-        noiseNodeRef.current.stop();
-      } catch {}
-      noiseNodeRef.current.disconnect();
-      noiseNodeRef.current = null;
-    }
-    if (toneOscRef.current) {
-      try {
-        toneOscRef.current.stop();
-      } catch {}
-      toneOscRef.current.disconnect();
-      toneOscRef.current = null;
-    }
-    crOscillatorsRef.current.forEach((o) => {
-      try {
-        o.stop();
-      } catch {}
-      o.disconnect();
-    });
-    crOscillatorsRef.current = [];
-    crGainsRef.current = [];
   }, []);
 
   const playNoise = useCallback(
     (type: string, volume: number) => {
-      const ctx = initAudio();
-      if (!ctx || !masterGainRef.current) return;
+      try {
+        const ctx = initAudio();
+        if (!ctx) return;
+        if (!masterGainRef.current) return;
 
-      if (noiseNodeRef.current) {
-        try {
-          noiseNodeRef.current.stop();
-        } catch {}
+        if (noiseNodeRef.current) {
+          try {
+            noiseNodeRef.current.stop();
+          } catch {}
+        }
+        const buffer = generateNoiseBuffer(ctx, type);
+        const source = ctx.createBufferSource();
+        const gain = ctx.createGain();
+        source.buffer = buffer;
+        source.loop = true;
+        gain.gain.value = 0;
+        gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.1);
+        source.connect(gain);
+        gain.connect(masterGainRef.current);
+        source.start();
+        noiseNodeRef.current = source;
+        noiseGainRef.current = gain;
+      } catch (err) {
+        console.error("playNoise failed:", err);
       }
-      const buffer = generateNoiseBuffer(ctx, type);
-      const source = ctx.createBufferSource();
-      const gain = ctx.createGain();
-      source.buffer = buffer;
-      source.loop = true;
-      gain.gain.value = 0;
-      gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.1);
-      source.connect(gain);
-      gain.connect(masterGainRef.current);
-      source.start();
-      noiseNodeRef.current = source;
-      noiseGainRef.current = gain;
     },
     [initAudio]
   );
 
   const playTone = useCallback(
     (freq: number, volume: number) => {
-      const ctx = initAudio();
-      if (!ctx || !masterGainRef.current) return;
+      try {
+        const ctx = initAudio();
+        if (!ctx) return;
+        if (!masterGainRef.current) return;
 
-      if (toneOscRef.current) {
-        try {
-          toneOscRef.current.stop();
-        } catch {}
+        if (toneOscRef.current) {
+          try {
+            toneOscRef.current.stop();
+          } catch {}
+        }
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.value = 0;
+        gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
+        osc.connect(gain);
+        gain.connect(masterGainRef.current);
+        osc.start();
+        toneOscRef.current = osc;
+        toneGainRef.current = gain;
+      } catch (err) {
+        console.error("playTone failed:", err);
       }
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gain.gain.value = 0;
-      gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
-      osc.connect(gain);
-      gain.connect(masterGainRef.current);
-      osc.start();
-      toneOscRef.current = osc;
-      toneGainRef.current = gain;
     },
     [initAudio]
   );
 
   const playCR = useCallback(
     (baseFreq: number, volume: number) => {
-      const ctx = initAudio();
-      if (!ctx || !masterGainRef.current) return;
-      hardStopAll();
-
-      latestToneVolRef.current = volume;
-      const freqs = [0.9, 1.0, 1.1, 1.2].map((m) => baseFreq * m);
-      const oscillators: OscillatorNode[] = [];
-      const gains: GainNode[] = [];
-
-      freqs.forEach((f) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = f;
-        gain.gain.value = 0;
-        osc.connect(gain);
-        gain.connect(masterGainRef.current!);
-        osc.start();
-        oscillators.push(osc);
-        gains.push(gain);
-      });
-
-      crOscillatorsRef.current = oscillators;
-      crGainsRef.current = gains;
-
-      let idx = 0;
-      crIntervalRef.current = setInterval(() => {
+      try {
+        const ctx = initAudio();
         if (!ctx) return;
-        const now = ctx.currentTime;
-        const currentVol = latestToneVolRef.current;
-        gains.forEach((g, i) => {
-          const target = i === idx ? currentVol : 0;
-          g.gain.setTargetAtTime(target, now, 0.02);
+        if (!masterGainRef.current) return;
+
+        hardStopAll();
+
+        latestToneVolRef.current = volume;
+        const freqs = [0.9, 1.0, 1.1, 1.2].map((m) => baseFreq * m);
+        const oscillators: OscillatorNode[] = [];
+        const gains: GainNode[] = [];
+
+        freqs.forEach((f) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = f;
+          gain.gain.value = 0;
+          osc.connect(gain);
+          gain.connect(masterGainRef.current!);
+          osc.start();
+          oscillators.push(osc);
+          gains.push(gain);
         });
-        idx = (idx + 1) % gains.length;
-      }, 250);
+
+        crOscillatorsRef.current = oscillators;
+        crGainsRef.current = gains;
+
+        let idx = 0;
+        crIntervalRef.current = setInterval(() => {
+          try {
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            const currentVol = latestToneVolRef.current;
+            gains.forEach((g, i) => {
+              const target = i === idx ? currentVol : 0;
+              g.gain.setTargetAtTime(target, now, 0.02);
+            });
+            idx = (idx + 1) % gains.length;
+          } catch (err) {
+            console.error("CR interval tick failed:", err);
+          }
+        }, 250);
+      } catch (err) {
+        console.error("playCR failed:", err);
+      }
     },
     [initAudio, hardStopAll]
   );
 
   const updateVolumes = useCallback((noiseVol: number, toneVol: number) => {
-    const now = ctxRef.current?.currentTime || 0;
+    try {
+      const now = ctxRef.current?.currentTime || 0;
 
-    if (noiseGainRef.current) {
-      noiseGainRef.current.gain.setTargetAtTime(noiseVol, now, 0.1);
+      if (noiseGainRef.current) {
+        noiseGainRef.current.gain.setTargetAtTime(noiseVol, now, 0.1);
+      }
+      if (toneGainRef.current) {
+        toneGainRef.current.gain.setTargetAtTime(toneVol, now, 0.1);
+      }
+      latestToneVolRef.current = toneVol;
+    } catch (err) {
+      console.error("updateVolumes failed:", err);
     }
-    if (toneGainRef.current) {
-      toneGainRef.current.gain.setTargetAtTime(toneVol, now, 0.1);
-    }
-    latestToneVolRef.current = toneVol;
   }, []);
 
   const api = useMemo(
@@ -384,18 +440,16 @@ function useTinnitusAudio() {
 export default function TherapyPage() {
   const [tinnitusPitch, setTinnitusPitch] = useState(8000);
   const [currentPitch, setCurrentPitch] = useState(8000);
-  const [selectedSound, setSelectedSound] = useState(SOUND_PROFILES[2]); // default white noise
+  const [selectedSound, setSelectedSound] = useState(SOUND_PROFILES[2]);
   const [externalLink, setExternalLink] = useState("");
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("idle");
   const [selectedMode, setSelectedMode] = useState<TherapyMode>("relief");
   const [sessionDuration, setSessionDuration] = useState(30);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
 
-  // Save Button State
   const [saveBtnText, setSaveBtnText] = useState("Save Profile");
   const [saveBtnClass, setSaveBtnClass] = useState("nq-btn-save");
 
-  // Volumes
   const [masterVol, setMasterVol] = useState(0.5);
   const [noiseVol, setNoiseVol] = useState(0.3);
   const [toneVol, setToneVol] = useState(0.5);
@@ -404,7 +458,6 @@ export default function TherapyPage() {
 
   const audio = useTinnitusAudio();
 
-  // --- Effects ---
   useEffect(() => {
     audio.setMasterVolume(masterVol);
   }, [masterVol, audio]);
@@ -415,7 +468,6 @@ export default function TherapyPage() {
     }
   }, [noiseVol, toneVol, sessionStatus, audio]);
 
-  // --- LOAD / SAVE LOCAL PROFILE (NO FIREBASE) ---
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -523,38 +575,54 @@ export default function TherapyPage() {
   };
 
   const pauseSession = () => {
-    if (audio.ctxRef.current?.state === "running") {
-      audio.ctxRef.current.suspend();
+    try {
+      if (audio.ctxRef.current?.state === "running") {
+        audio.ctxRef.current.suspend().catch((err: any) => {
+          console.error("suspend failed:", err);
+        });
+      }
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+      }
+      setSessionStatus("paused");
+    } catch (err) {
+      console.error("pauseSession failed:", err);
     }
-    if (sessionTimerRef.current) {
-      clearInterval(sessionTimerRef.current);
-    }
-    setSessionStatus("paused");
   };
 
   const resumeSession = () => {
-    if (audio.ctxRef.current?.state === "suspended") {
-      audio.ctxRef.current.resume();
+    try {
+      if (audio.ctxRef.current?.state === "suspended") {
+        audio.ctxRef.current.resume().catch((err: any) => {
+          console.error("resume failed:", err);
+        });
+      }
+      if (timeRemaining != null) {
+        const end = Date.now() + timeRemaining * 60000;
+        sessionTimerRef.current = setInterval(() => {
+          const left = (end - Date.now()) / 60000;
+          if (left <= 0) stopSession();
+          else setTimeRemaining(left);
+        }, 1000);
+      }
+      setSessionStatus("running");
+    } catch (err) {
+      console.error("resumeSession failed:", err);
     }
-    if (timeRemaining != null) {
-      const end = Date.now() + timeRemaining * 60000;
-      sessionTimerRef.current = setInterval(() => {
-        const left = (end - Date.now()) / 60000;
-        if (left <= 0) stopSession();
-        else setTimeRemaining(left);
-      }, 1000);
-    }
-    setSessionStatus("running");
   };
 
   const stopSession = () => {
-    audio.stopAll();
-    if (sessionTimerRef.current) {
-      clearInterval(sessionTimerRef.current);
-      sessionTimerRef.current = null;
+    try {
+      audio.stopAll();
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+        sessionTimerRef.current = null;
+      }
+      setSessionStatus("idle");
+      setTimeRemaining(null);
+    } catch (err) {
+      console.error("stopSession failed:", err);
     }
-    setSessionStatus("idle");
-    setTimeRemaining(null);
   };
 
   const formatTime = (m: number | null) => {
@@ -569,7 +637,9 @@ export default function TherapyPage() {
     if (type === "spotify") {
       if (url.includes("/embed/")) return url;
       const cleanUrl = url.split("?")[0];
-      const m = cleanUrl.match(/spotify\.com\/(track|playlist|album)\/([a-zA-Z0-9]+)/);
+      const m = cleanUrl.match(
+        /spotify\.com\/(track|playlist|album)\/([a-zA-Z0-9]+)/
+      );
       return m
         ? `https://open.spotify.com/embed/${m[1]}/${m[2]}?utm_source=generator&theme=0`
         : null;
