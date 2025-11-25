@@ -24,21 +24,9 @@ type SoundProfile = {
 // --- CONSTANTS ---
 const SOUND_PROFILES: SoundProfile[] = [
   {
-    id: "pink",
-    label: "Pink Noise",
-    description: "Soft, gentle sound",
-    type: "noise",
-  },
-  {
     id: "white",
     label: "White Noise",
     description: "Classic masking sound",
-    type: "noise",
-  },
-  {
-    id: "brown",
-    label: "Brown Noise",
-    description: "Deep, rumbling sound",
     type: "noise",
   },
   {
@@ -151,18 +139,49 @@ function useTinnitusAudio() {
     }
   }, []);
 
-  // stronger, clearly audible buffers
+  // stronger, clearly audible buffers with more realistic RAIN
   const generateNoiseBuffer = (ctx: AudioContext, id: string) => {
-    const bufferSize = ctx.sampleRate * 2;
+    const bufferSize = ctx.sampleRate * 2; // ~2 seconds, looped
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
 
     if (id === "white") {
+      // Classic white noise
       for (let i = 0; i < bufferSize; i++) {
         data[i] = (Math.random() * 2 - 1) * 0.7;
       }
-    } else if (id === "pink" || id === "rain" || id === "ocean") {
-      // pink-style noise – softer high end
+    } else if (id === "rain") {
+      // Realistic “rain” style noise:
+      // 1) Pink-ish base (softer high end)
+      // 2) Slow changing envelope to create natural “rain gusts”
+
+      let b0 = 0,
+        b1 = 0,
+        b2 = 0,
+        b3 = 0;
+      let envelope = 0.6; // base level
+
+      for (let i = 0; i < bufferSize; i++) {
+        const w = Math.random() * 2 - 1; // white
+
+        // Pink-ish filter (smoothed noise – less harsh)
+        b0 = 0.99886 * b0 + w * 0.0555179;
+        b1 = 0.99332 * b1 + w * 0.0750759;
+        b2 = 0.969 * b2 + w * 0.153852;
+        b3 = 0.8665 * b3 + w * 0.3104856;
+
+        let pink = (b0 + b1 + b2 + b3 + w * 0.5362) * 0.4;
+
+        // Every ~2–3 ms, slightly change the envelope
+        // This creates soft “waves” in loudness like real rain
+        if (i % 2000 === 0) {
+          envelope = 0.3 + Math.random() * 0.7; // 0.3 – 1.0
+        }
+
+        data[i] = pink * envelope;
+      }
+    } else if (id === "ocean") {
+      // Pink-style noise for ocean base
       let b0 = 0,
         b1 = 0,
         b2 = 0,
@@ -182,7 +201,7 @@ function useTinnitusAudio() {
         b6 = w * 0.115926;
       }
     } else {
-      // brown + default
+      // Fallback (Brown-ish)
       let lastOut = 0;
       for (let i = 0; i < bufferSize; i++) {
         const w = Math.random() * 2 - 1;
@@ -191,6 +210,7 @@ function useTinnitusAudio() {
         data[i] *= 1.0;
       }
     }
+
     return buffer;
   };
 
@@ -513,6 +533,78 @@ export default function TherapyPage() {
     }
   }, [tinnitusPitch, toneVol, isPlayingTest, audio]);
 
+  // --- 1️⃣ ALERT HELPER (SHORTENED) ---
+  const playSessionEndAlert = () => {
+    if (typeof window === "undefined") return;
+
+    // 1) Try voice message
+    try {
+      const w = window as any;
+      const synth = w.speechSynthesis as any;
+      const U = w.SpeechSynthesisUtterance as any;
+
+      const message = "Your session ended";
+
+      if (synth && typeof U === "function") {
+        const utterance = new U(message);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        synth.speak(utterance);
+        return;
+      }
+    } catch (err) {
+      console.error("speech synthesis failed:", err);
+    }
+
+    // 2) Fallback: short beep
+    try {
+      const w = window as any;
+      const AudioCtx = w.AudioContext || w.webkitAudioContext;
+      if (!AudioCtx) return;
+
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.value = 0;
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      const now = ctx.currentTime;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.4, now + 0.1);
+      gain.gain.linearRampToValueAtTime(0, now + 0.8);
+
+      osc.start(now);
+      osc.stop(now + 0.8);
+    } catch (err) {
+      console.error("fallback beep failed:", err);
+    }
+  };
+
+  // --- 2️⃣ UPDATED STOP SESSION (Handles Auto) ---
+  const stopSession = (reason: "user" | "auto" = "user") => {
+    try {
+      audio.stopAll();
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+        sessionTimerRef.current = null;
+      }
+      setSessionStatus("idle");
+      setTimeRemaining(null);
+
+      // Only speak/beep when timer ends naturally
+      if (reason === "auto") {
+        playSessionEndAlert();
+      }
+    } catch (err) {
+      console.error("stopSession failed:", err);
+    }
+  };
+
   const startSession = () => {
     audio.initAudio();
 
@@ -534,10 +626,12 @@ export default function TherapyPage() {
 
       setSessionStatus("running");
       setTimeRemaining(sessionDuration);
+
+      // 3️⃣ TIMER: Calls stopSession("auto")
       const end = Date.now() + sessionDuration * 60000;
       sessionTimerRef.current = setInterval(() => {
         const left = (end - Date.now()) / 60000;
-        if (left <= 0) stopSession();
+        if (left <= 0) stopSession("auto");
         else setTimeRemaining(left);
       }, 1000);
     }, startDelay);
@@ -564,31 +658,18 @@ export default function TherapyPage() {
           console.error("resume failed:", err);
         });
       }
+      // 3️⃣ TIMER (Resume): Calls stopSession("auto")
       if (timeRemaining != null) {
         const end = Date.now() + timeRemaining * 60000;
         sessionTimerRef.current = setInterval(() => {
           const left = (end - Date.now()) / 60000;
-          if (left <= 0) stopSession();
+          if (left <= 0) stopSession("auto");
           else setTimeRemaining(left);
         }, 1000);
       }
       setSessionStatus("running");
     } catch (err) {
       console.error("resumeSession failed:", err);
-    }
-  };
-
-  const stopSession = () => {
-    try {
-      audio.stopAll();
-      if (sessionTimerRef.current) {
-        clearInterval(sessionTimerRef.current);
-        sessionTimerRef.current = null;
-      }
-      setSessionStatus("idle");
-      setTimeRemaining(null);
-    } catch (err) {
-      console.error("stopSession failed:", err);
     }
   };
 
@@ -661,7 +742,8 @@ export default function TherapyPage() {
               ▶ Resume Session
             </button>
           )}
-          <button onClick={stopSession} className="nq-btn-stop">
+          {/* Manual Stop */}
+          <button onClick={() => stopSession("user")} className="nq-btn-stop">
             ⏹ Stop Session
           </button>
         </div>
