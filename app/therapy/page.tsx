@@ -27,15 +27,6 @@ type SoundProfile = {
 // --- CONSTANTS ---
 const SOUND_PROFILES: SoundProfile[] = [
   {
-    id: "spotify",
-    label: "Spotify",
-    description: "Best for Music & Playlists",
-    type: "external",
-    color: "#1DB954",
-    icon: "🟢",
-    defaultLink: "",
-  },
-  {
     id: "pink",
     label: "Pink Noise",
     description: "Soft, gentle sound",
@@ -305,10 +296,11 @@ function useTinnitusAudio() {
         const buffer = generateNoiseBuffer(ctx, type);
         const source = ctx.createBufferSource();
         const gain = ctx.createGain();
+        const effective = Math.max(0, Math.min(1, volume * volume)); // stronger reduction curve
         source.buffer = buffer;
         source.loop = true;
         gain.gain.value = 0;
-        gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.1);
+        gain.gain.setTargetAtTime(effective, ctx.currentTime, 0.1);
         source.connect(gain);
         gain.connect(masterGainRef.current);
         source.start();
@@ -406,9 +398,13 @@ function useTinnitusAudio() {
   const updateVolumes = useCallback((noiseVol: number, toneVol: number) => {
     try {
       const now = ctxRef.current?.currentTime || 0;
+      const effectiveNoise = Math.max(
+        0,
+        Math.min(1, noiseVol * noiseVol) // square = bigger change when you move slider
+      );
 
       if (noiseGainRef.current) {
-        noiseGainRef.current.gain.setTargetAtTime(noiseVol, now, 0.1);
+        noiseGainRef.current.gain.setTargetAtTime(effectiveNoise, now, 0.1);
       }
       if (toneGainRef.current) {
         toneGainRef.current.gain.setTargetAtTime(toneVol, now, 0.1);
@@ -441,7 +437,6 @@ export default function TherapyPage() {
   const [tinnitusPitch, setTinnitusPitch] = useState(8000);
   const [currentPitch, setCurrentPitch] = useState(8000);
   const [selectedSound, setSelectedSound] = useState(SOUND_PROFILES[2]);
-  const [externalLink, setExternalLink] = useState("");
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("idle");
   const [selectedMode, setSelectedMode] = useState<TherapyMode>("relief");
   const [sessionDuration, setSessionDuration] = useState(30);
@@ -489,14 +484,6 @@ export default function TherapyPage() {
       console.error("Error loading local profile:", e);
     }
   }, []);
-
-  useEffect(() => {
-    if (selectedSound.type === "external" && selectedSound.defaultLink) {
-      setExternalLink(selectedSound.defaultLink);
-    } else {
-      setExternalLink("");
-    }
-  }, [selectedSound]);
 
   const saveProfile = async () => {
     if (typeof window === "undefined") return;
@@ -555,14 +542,14 @@ export default function TherapyPage() {
       startDelay = 250;
     }
     setTimeout(() => {
-      if (selectedSound.type !== "external") {
-        audio.playNoise(selectedSound.id, noiseVol);
-      }
+      audio.playNoise(selectedSound.id, noiseVol);
       if (selectedMode === "relief") {
         audio.playCR(tinnitusPitch, toneVol);
-      } else if (selectedMode === "standard") {
+      } else if (selectedMode === "standard" || selectedMode === "sleep") {
         audio.playTone(tinnitusPitch, toneVol);
       }
+      audio.updateVolumes(noiseVol, toneVol);
+
       setSessionStatus("running");
       setTimeRemaining(sessionDuration);
       const end = Date.now() + sessionDuration * 60000;
@@ -632,21 +619,6 @@ export default function TherapyPage() {
     return `${min}:${sec.toString().padStart(2, "0")}`;
   };
 
-  const getEmbedUrl = (type: string, url: string) => {
-    if (!url) return null;
-    if (type === "spotify") {
-      if (url.includes("/embed/")) return url;
-      const cleanUrl = url.split("?")[0];
-      const m = cleanUrl.match(
-        /spotify\.com\/(track|playlist|album)\/([a-zA-Z0-9]+)/
-      );
-      return m
-        ? `https://open.spotify.com/embed/${m[1]}/${m[2]}?utm_source=generator&theme=0`
-        : null;
-    }
-    return null;
-  };
-
   return (
     <main className="nq-container">
       {/* Header */}
@@ -675,7 +647,7 @@ export default function TherapyPage() {
           <div className="nq-guide-steps">
             <span>1. Match your tinnitus pitch below & Save.</span>
             <span>2. Select a therapy mode.</span>
-            <span>3. Choose music/noise & start.</span>
+            <span>3. Choose noise / nature sound & start.</span>
           </div>
         </div>
         <div
@@ -846,50 +818,41 @@ export default function TherapyPage() {
                 if (s) setSelectedSound(s);
               }}
             >
-              <optgroup label="Music Apps">
-                {SOUND_PROFILES.filter((p) => p.type === "external").map(
-                  (p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label}
-                    </option>
-                  )
-                )}
-              </optgroup>
-              <optgroup label="Noise & Nature">
-                {SOUND_PROFILES.filter((p) => p.type !== "external").map(
-                  (p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label}
-                    </option>
-                  )
-                )}
-              </optgroup>
+              {SOUND_PROFILES.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
             </select>
           </div>
 
-          {selectedSound.id === "spotify" && (
-            <div className="nq-spotify-info">
-              <strong>Spotify Info:</strong> <br />
-              Copy & paste any Spotify music link and start playing. <br />
-              Seconds later Spotify may ask you to login. Play any music you
-              like — your therapy continues in the background.
-            </div>
-          )}
+          {/* INFO BOX "INSIDE" SOUND AREA */}
+          <div className="nq-info-inline">
+            <strong>Good to know:</strong>
+            <p>
+              While the therapy is running you can{" "}
+              <strong>play any music, watch videos, or even talk on the phone</strong>{" "}
+              on your device. The treatment tone keeps working quietly in the
+              background, even if you change apps or use other sounds.
+            </p>
+          </div>
 
           <div className="nq-mixer">
-            {selectedSound.type !== "external" && (
-              <div className="nq-slider-group">
-                <label>Background Vol</label>
-                <input
-                  type="range"
-                  min="0"
-                  max="0.8"
-                  step="0.05"
-                  value={noiseVol}
-                  onChange={(e) => setNoiseVol(Number(e.target.value))}
-                />
+            <div className="nq-slider-group">
+              <label>Background Vol</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={noiseVol}
+                onChange={(e) => setNoiseVol(Number(e.target.value))}
+              />
+              <div className="nq-mixer-hint">
+                Turn this all the way down if you want{" "}
+                <strong>only the therapy tone</strong> without noise.
               </div>
-            )}
+            </div>
             <div className="nq-slider-group">
               <label>Therapy Tone Vol</label>
               <input
@@ -917,50 +880,6 @@ export default function TherapyPage() {
           </div>
         </div>
       </div>
-
-      {/* EXTERNAL PLAYER */}
-      {selectedSound.type === "external" && (
-        <div
-          className="nq-embed-card"
-          style={{ borderColor: selectedSound.color || "#333" }}
-        >
-          <div className="nq-embed-header">
-            <span
-              className="nq-badge"
-              style={{ background: selectedSound.color }}
-            >
-              {selectedSound.label}
-            </span>
-            <input
-              placeholder={`Paste your ${selectedSound.label} link here...`}
-              value={externalLink}
-              onChange={(e) => setExternalLink(e.target.value)}
-              className="nq-input-dark"
-            />
-          </div>
-          {getEmbedUrl(selectedSound.id, externalLink) ? (
-            <iframe
-              src={getEmbedUrl(selectedSound.id, externalLink)!}
-              className="nq-iframe"
-              allow="encrypted-media; autoplay; clipboard-write; picture-in-picture"
-            />
-          ) : (
-            <div className="nq-empty-embed">
-              <p>Paste your music link above to listen to your tracks.</p>
-            </div>
-          )}
-          <div
-            style={{
-              textAlign: "center",
-              fontSize: "0.85rem",
-              color: "#94a3b8",
-              marginTop: "0.75rem",
-            }}
-          >
-            ⚠️ Control music volume inside the player above
-          </div>
-        </div>
-      )}
 
       {/* START BUTTON */}
       {sessionStatus === "idle" && (
@@ -1221,60 +1140,20 @@ function Style() {
         color: white;
         border-color: var(--primary);
       }
-      .nq-spotify-info {
+      .nq-info-inline {
         margin-top: 0.75rem;
-        margin-bottom: 0.5rem;
-        background: #f8fafe;
+        margin-bottom: 0.25rem;
+        background: #ecfeff;
         border-radius: 0.75rem;
-        padding: 0.75rem 0.9rem;
+        padding: 0.7rem 0.9rem;
         font-size: 0.85rem;
-        color: #1e293b;
-        line-height: 1.4;
-        border: 1px solid #dbeafe;
+        color: #0f172a;
+        border: 1px solid #a5f3fc;
       }
-      .nq-embed-card {
-        background: #0f172a;
-        color: white;
-        border-radius: 1rem;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        border-left: 4px solid;
-        transition: 0.3s;
-      }
-      .nq-embed-header {
-        display: flex;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-      }
-      .nq-badge {
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        display: flex;
-        align-items: center;
-      }
-      .nq-input-dark {
-        flex: 1;
-        background: #1e293b;
-        border: 1px solid #334155;
-        color: white;
-        padding: 0.5rem;
-        border-radius: 0.5rem;
-      }
-      .nq-iframe {
-        width: 100%;
-        height: 152px;
-        border: none;
-        border-radius: 12px;
-      }
-      .nq-empty-embed {
-        text-align: center;
-        padding: 2rem;
-        color: #cbd5f5;
-        background: #1e293b;
-        border-radius: 12px;
+      .nq-mixer-hint {
+        margin-top: 0.3rem;
+        font-size: 0.8rem;
+        color: #6b7280;
       }
       .nq-banner {
         background: linear-gradient(135deg, var(--primary), var(--success));
