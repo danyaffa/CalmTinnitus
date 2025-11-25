@@ -12,8 +12,8 @@ import React, {
 
 // --- FIREBASE / STORAGE IMPORTS ---
 import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase"; // Ensure this path is correct
-import { createSavedProfile, logTherapySession } from "@/lib/therapyStorage"; // Ensure this path is correct
+import { auth } from "@/lib/firebase"; 
+import { createSavedProfile, logTherapySession } from "@/lib/therapyStorage"; 
 
 // --- TYPES ---
 type TherapyMode = "relief" | "standard" | "sleep";
@@ -689,7 +689,14 @@ export default function TherapyPage() {
             userId: user.uid,
             profileId: null, // We could track which profile ID was used if we loaded it
             mode: selectedMode,
-            backgroundSound: selectedSound.id,
+            // FIX: Ensure selectedSound.id matches the literal type
+            backgroundSound:
+              selectedSound.id === "white" ||
+              selectedSound.id === "rain" ||
+              selectedSound.id === "ocean" ||
+              selectedSound.id === "none"
+                ? selectedSound.id
+                : "none",
             durationMinutes: completedDuration,
             perceivedLoudnessBefore: 0, // Did not track
             perceivedLoudnessAfter: reportLoudness,
