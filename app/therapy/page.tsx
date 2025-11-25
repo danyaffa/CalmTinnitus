@@ -11,7 +11,7 @@ import React, {
 } from "react";
 
 // --- FIREBASE / STORAGE IMPORTS ---
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged, signInAnonymously, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { createSavedProfile, logTherapySession } from "@/lib/therapyStorage";
 
@@ -438,7 +438,18 @@ export default function TherapyPage() {
 
   useEffect(() => {
     if (!auth) return;
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (u) {
+        setUser(u);
+      } else {
+        // create anonymous user automatically
+        signInAnonymously(auth).catch((err) => {
+          console.error("Anonymous sign-in failed", err);
+        });
+      }
+    });
+
     return () => unsub();
   }, []);
 
