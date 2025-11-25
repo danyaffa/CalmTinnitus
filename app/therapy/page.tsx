@@ -652,6 +652,16 @@ export default function TherapyPage() {
     }
   };
 
+  // --- NEW: EXTERNAL AUDIO MODE FUNCTION ---
+  const enableExternalAudioMode = () => {
+    // Mute background noise but keep therapy tone running
+    setNoiseVol(0);
+
+    if (sessionStatus === "running") {
+      audio.updateVolumes(0, toneVol);
+    }
+  };
+
   const startSession = () => {
     audio.initAudio();
 
@@ -929,6 +939,17 @@ export default function TherapyPage() {
         <div className="nq-panel">
           <h3>Step 3: Sound & Mixer</h3>
 
+          {/* NEW: THERAPY VOLUME GUIDE */}
+          <div className="nq-info-inline" style={{ marginTop: "0.75rem", marginBottom: "1.5rem" }}>
+            <strong>Therapy Volume – What Is the Correct Level?</strong>
+            <p style={{ marginTop: "0.35rem" }}>
+              The therapy should be <strong>comfortable and never loud</strong>.  
+              You should still hear normal sounds around you.  
+              The ticks in Relief (CR) mode should be <strong>soft but noticeable</strong>.  
+              Best rule: <strong>“Just loud enough to hear it, but soft enough to ignore it.”</strong>
+            </p>
+          </div>
+
           <div className="nq-slider-group">
             <label>Background Sound</label>
             <select
@@ -984,6 +1005,18 @@ export default function TherapyPage() {
                 onChange={(e) => setToneVol(Number(e.target.value))}
               />
             </div>
+          </div>
+
+          {/* NEW: EXTERNAL AUDIO MODE BUTTON */}
+          <div style={{ marginTop: "0.5rem", marginBottom: "1rem" }}>
+            <button
+              type="button"
+              onClick={enableExternalAudioMode}
+              className="nq-chip"
+              style={{ width: "100%", background: '#f1f5f9', border: '1px solid #cbd5e1' }}
+            >
+              🔇 External Audio Mode – Mute Background Noise (Keep Therapy Tone)
+            </button>
           </div>
 
           <div className="nq-duration-group">
