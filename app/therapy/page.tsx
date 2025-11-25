@@ -4,7 +4,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-// --- 🔥 FIREBASE IMPORTS ---
+// --- FIREBASE IMPORTS ---
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
@@ -74,7 +74,7 @@ const THERAPY_MODES = [
   },
 ];
 
-// --- 🧠 AUDIO ENGINE HOOK (STABLE VERSION – NO DSP) ---
+// --- AUDIO ENGINE HOOK (stable) ---
 function useTinnitusAudio() {
   const ctxRef = useRef<AudioContext | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
@@ -87,6 +87,7 @@ function useTinnitusAudio() {
   const crOscillatorsRef = useRef<OscillatorNode[]>([]);
   const crGainsRef = useRef<GainNode[]>([]);
   const crIntervalRef = useRef<number | null>(null);
+  const crVolumeRef = useRef<number>(0.6); // 🔵 live CR volume
 
   const initAudio = useCallback(() => {
     if (!ctxRef.current || ctxRef.current.state === "closed") {
@@ -222,11 +223,13 @@ function useTinnitusAudio() {
     [initAudio],
   );
 
-  // 🔵 CR therapy
+  // CR therapy
   const playCR = useCallback(
     (baseFreq: number, volume: number) => {
       const ctx = initAudio();
       stopAll();
+
+      crVolumeRef.current = volume; // start with slider value
 
       const freqs = [0.9, 1.0, 1.1, 1.2].map((m) => baseFreq * m);
       const oscillators: OscillatorNode[] = [];
@@ -252,7 +255,7 @@ function useTinnitusAudio() {
       crIntervalRef.current = window.setInterval(() => {
         const now = ctx.currentTime;
         gains.forEach((g, i) => {
-          const target = i === idx ? volume : 0;
+          const target = i === idx ? crVolumeRef.current : 0;
           g.gain.setTargetAtTime(target, now, 0.02);
         });
         idx = (idx + 1) % gains.length;
@@ -263,8 +266,12 @@ function useTinnitusAudio() {
 
   const updateVolumes = (noiseVol: number, toneVol: number) => {
     const now = ctxRef.current?.currentTime || 0;
+    // Background noise
     noiseGainRef.current?.gain.setTargetAtTime(noiseVol, now, 0.1);
+    // Pure tone (Standard / Sleep)
     toneGainRef.current?.gain.setTargetAtTime(toneVol, now, 0.1);
+    // CR ticks (Relief mode)
+    crVolumeRef.current = toneVol;
   };
 
   return {
@@ -279,7 +286,7 @@ function useTinnitusAudio() {
   };
 }
 
-// --- 🎨 COMPONENT ---
+// --- PAGE COMPONENT ---
 export default function TherapyPage() {
   const [tinnitusPitch, setTinnitusPitch] = useState<number>(8000);
   const [currentPitch, setCurrentPitch] = useState<number>(8000);
@@ -302,7 +309,7 @@ export default function TherapyPage() {
 
   const [masterVol, setMasterVol] = useState(0.5);
   const [noiseVol, setNoiseVol] = useState(0.3);
-  const [toneVol, setToneVol] = useState(0.6);
+  const [toneVol, setToneVol] = useState(0.8); // a bit higher so ticks are clear
 
   const [isPlayingTest, setIsPlayingTest] = useState(false);
   const sessionTimerRef = useRef<number | null>(null);
@@ -314,10 +321,11 @@ export default function TherapyPage() {
     audio.setMasterVolume(masterVol);
   }, [masterVol]);
 
+  // When sliders move during a running session
   useEffect(() => {
-    if (sessionStatus === "running")
-      audio.updateVolumes(noiseVol, toneVol);
-  }, [noiseVol, toneVol, sessionStatus]);
+    // Only adjust live when running
+    audio.updateVolumes(noiseVol, toneVol);
+  }, [noiseVol, toneVol]);
 
   // LOAD PROFILE
   useEffect(() => {
@@ -424,6 +432,7 @@ export default function TherapyPage() {
     } else {
       audio.playTone(tinnitusPitch, toneVol);
     }
+
     setSessionStatus("running");
     setTimeRemaining(sessionDuration);
     const end = Date.now() + sessionDuration * 60000;
@@ -434,14 +443,12 @@ export default function TherapyPage() {
     }, 1000);
   };
 
-  // 🔵 PAUSE SESSION
   const pauseSession = () => {
     audio.ctxRef.current?.suspend();
     if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
     setSessionStatus("paused");
   };
 
-  // 🔵 RESUME SESSION
   const resumeSession = () => {
     audio.ctxRef.current?.resume();
     const end = Date.now() + (timeRemaining ?? 0) * 60000;
@@ -538,7 +545,6 @@ export default function TherapyPage() {
             {THERAPY_MODES.find((m) => m.key === selectedMode)?.label} is Active
           </div>
 
-          {/* 🔵 PAUSE / RESUME BUTTONS */}
           {sessionStatus === "running" && (
             <button onClick={pauseSession} className="nq-btn-stop" style={{ background: "#f59e0b" }}>
               ⏸ Pause Session
@@ -617,7 +623,6 @@ export default function TherapyPage() {
             ))}
           </div>
 
-          {/* TICKS EXPLANATION */}
           <div className="nq-info-box">
             <span style={{ fontSize: "1.2rem", marginRight: "0.5rem" }}>ℹ️</span>
             <div>
@@ -766,7 +771,7 @@ export default function TherapyPage() {
   );
 }
 
-// --- 💅 CSS-IN-JS ---
+// --- STYLES ---
 function Style() {
   return (
     <style jsx global>{`
