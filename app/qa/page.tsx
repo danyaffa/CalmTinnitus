@@ -1,8 +1,7 @@
 // /app/qa/page.tsx
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
+import React from "react";
 
 export default function QaPage() {
   const year = new Date().getFullYear();
@@ -13,8 +12,16 @@ export default function QaPage() {
       a: "No. There is currently no guaranteed cure for tinnitus. CalmTinnitus is a sound-training tool that may help some people reduce how loud or intrusive their tinnitus feels and improve focus or sleep over time.",
     },
     {
+      q: "Why do I hear 'ticking', 'clicks', or 'gaps' in the sound?",
+      a: "If you are using 'Relief (CR) Therapy' mode, this is intentional. These short, quiet interruptions are part of the neuromodulation process designed to disrupt the brain's tinnitus activity. If you find them distracting, you can switch to 'Standard Therapy' for a smooth, continuous masking sound.",
+    },
+    {
+      q: "What happens when the timer finishes?",
+      a: "The sound will stop automatically, and you will hear a gentle voice alert (or beep) confirming the session is over. For the best therapeutic results, we recommend waiting 3 to 4 hours between these focused sessions.",
+    },
+    {
       q: "How often should I use the therapy?",
-      a: "Most people benefit from short daily sessions. For example, 15–30 minutes once or twice a day, plus an extra calming session when tinnitus spikes or before sleep.",
+      a: "Most people benefit from short daily sessions. For example, 15–30 minutes once or twice a day. Consistency is key—try to stick to a routine rather than doing very long sessions all at once.",
     },
     {
       q: "Is the therapy safe for my hearing?",
@@ -34,7 +41,7 @@ export default function QaPage() {
     },
     {
       q: "Can I use CalmTinnitus while falling asleep?",
-      a: "Yes. Many users choose the sleep-support mode with softer background sound and a session timer so the sound fades after a set period. Never use headphones that could be physically uncomfortable while sleeping.",
+      a: "Yes. Many users choose the 'Sleep Support' mode, which uses softer background sounds and no ticking. Set the timer so it turns off automatically after you drift off.",
     },
     {
       q: "Who should NOT use this app?",
@@ -55,28 +62,28 @@ export default function QaPage() {
       <div className="nq-qa-shell">
         {/* HEADER STRIP */}
         <header className="nq-qa-header">
-          <Link href="/" className="nq-qa-logo-link">
-            <Image
+          <a href="/" className="nq-qa-logo-link">
+            <img
               src="/CalmTinnitus-Logo.png"
               alt="CalmTinnitus – Silence Starts Now"
               width={140}
               height={140}
               className="nq-qa-logo"
             />
-          </Link>
+          </a>
           <nav className="nq-qa-nav">
-            <Link href="/" className="nq-qa-nav-link">
+            <a href="/" className="nq-qa-nav-link">
               Home
-            </Link>
-            <Link href="/research" className="nq-qa-nav-link">
+            </a>
+            <a href="/research" className="nq-qa-nav-link">
               Research
-            </Link>
-            <Link href="/login" className="nq-qa-nav-link">
+            </a>
+            <a href="/login" className="nq-qa-nav-link">
               Log in
-            </Link>
-            <Link href="/register" className="nq-qa-nav-cta">
+            </a>
+            <a href="/register" className="nq-qa-nav-cta">
               Register
-            </Link>
+            </a>
           </nav>
         </header>
 
@@ -91,7 +98,7 @@ export default function QaPage() {
             </p>
           </div>
           <div className="nq-qa-hero-image">
-            <Image
+            <img
               src="/Therapy.png"
               alt="CalmTinnitus therapy interface"
               width={520}
@@ -132,11 +139,11 @@ export default function QaPage() {
           <span>CalmTinnitus™ – Tinnitus Relief Companion.</span>
         </div>
         <div className="nq-qa-footer-links">
-          <Link href="/about">About</Link>
-          <Link href="/research">Research</Link>
-          <Link href="/legal">Legal</Link>
-          <Link href="/disclaimers">Disclaimers</Link>
-          <Link href="/company-policy">Company Policy</Link>
+          <a href="/about">About</a>
+          <a href="/research">Research</a>
+          <a href="/legal">Legal</a>
+          <a href="/disclaimers">Disclaimers</a>
+          <a href="/company-policy">Company Policy</a>
         </div>
         <p className="nq-qa-footer-note">
           CalmTinnitus™ is a wellness sound tool and does not diagnose, treat,
