@@ -2,8 +2,7 @@
 
 "use client";
 
-import React,
-{
+import React, {
   useCallback,
   useEffect,
   useMemo,
@@ -158,7 +157,10 @@ function useTinnitusAudio() {
       }
     } else if (id === "rain") {
       // Realistic “rain” style noise:
-      let b0 = 0, b1 = 0, b2 = 0, b3 = 0;
+      let b0 = 0,
+        b1 = 0,
+        b2 = 0,
+        b3 = 0;
       let envelope = 0.6;
 
       for (let i = 0; i < bufferSize; i++) {
@@ -175,7 +177,13 @@ function useTinnitusAudio() {
         data[i] = pink * envelope;
       }
     } else if (id === "ocean") {
-      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      let b0 = 0,
+        b1 = 0,
+        b2 = 0,
+        b3 = 0,
+        b4 = 0,
+        b5 = 0,
+        b6 = 0;
       for (let i = 0; i < bufferSize; i++) {
         const w = Math.random() * 2 - 1;
         b0 = 0.99886 * b0 + w * 0.0555179;
@@ -209,22 +217,30 @@ function useTinnitusAudio() {
 
       const now = ctxRef.current?.currentTime || 0;
 
-      if (noiseGainRef.current) noiseGainRef.current.gain.setTargetAtTime(0, now, 0.05);
-      if (toneGainRef.current) toneGainRef.current.gain.setTargetAtTime(0, now, 0.05);
+      if (noiseGainRef.current)
+        noiseGainRef.current.gain.setTargetAtTime(0, now, 0.05);
+      if (toneGainRef.current)
+        toneGainRef.current.gain.setTargetAtTime(0, now, 0.05);
       crGainsRef.current.forEach((g) => g.gain.setTargetAtTime(0, now, 0.05));
 
       stopTimeoutRef.current = setTimeout(() => {
         try {
           if (noiseNodeRef.current) {
-            try { noiseNodeRef.current.stop(); } catch {}
+            try {
+              noiseNodeRef.current.stop();
+            } catch {}
             noiseNodeRef.current.disconnect();
           }
           if (toneOscRef.current) {
-            try { toneOscRef.current.stop(); } catch {}
+            try {
+              toneOscRef.current.stop();
+            } catch {}
             toneOscRef.current.disconnect();
           }
           crOscillatorsRef.current.forEach((o) => {
-            try { o.stop(); } catch {}
+            try {
+              o.stop();
+            } catch {}
             o.disconnect();
           });
           noiseNodeRef.current = null;
@@ -252,17 +268,23 @@ function useTinnitusAudio() {
       }
 
       if (noiseNodeRef.current) {
-        try { noiseNodeRef.current.stop(); } catch {}
+        try {
+          noiseNodeRef.current.stop();
+        } catch {}
         noiseNodeRef.current.disconnect();
         noiseNodeRef.current = null;
       }
       if (toneOscRef.current) {
-        try { toneOscRef.current.stop(); } catch {}
+        try {
+          toneOscRef.current.stop();
+        } catch {}
         toneOscRef.current.disconnect();
         toneOscRef.current = null;
       }
       crOscillatorsRef.current.forEach((o) => {
-        try { o.stop(); } catch {}
+        try {
+          o.stop();
+        } catch {}
         o.disconnect();
       });
       crOscillatorsRef.current = [];
@@ -278,7 +300,9 @@ function useTinnitusAudio() {
       if (!ctx || !masterGainRef.current) return;
 
       if (noiseNodeRef.current) {
-        try { noiseNodeRef.current.stop(); } catch {}
+        try {
+          noiseNodeRef.current.stop();
+        } catch {}
       }
       const buffer = generateNoiseBuffer(ctx, id);
       const source = ctx.createBufferSource();
@@ -305,7 +329,9 @@ function useTinnitusAudio() {
       if (!ctx || !masterGainRef.current) return;
 
       if (toneOscRef.current) {
-        try { toneOscRef.current.stop(); } catch {}
+        try {
+          toneOscRef.current.stop();
+        } catch {}
       }
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -391,7 +417,15 @@ function useTinnitusAudio() {
       updateVolumes,
       ctxRef,
     }),
-    [initAudio, playNoise, playTone, playCR, stopAll, setMasterVolume, updateVolumes]
+    [
+      initAudio,
+      playNoise,
+      playTone,
+      playCR,
+      stopAll,
+      setMasterVolume,
+      updateVolumes,
+    ]
   );
 
   return api;
@@ -714,22 +748,30 @@ export default function TherapyPage() {
 
   return (
     <main className="nq-container">
-      {/* HEADER */}
+      {/* HEADER - UPDATED */}
       <div className="nq-header">
         <div>
           <h1 className="nq-brand">CalmTinnitus</h1>
           <span className="nq-subtitle">Therapy Dashboard</span>
         </div>
-        <div className="nq-master-vol">
-          🔊 Master
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={masterVol}
-            onChange={(e) => setMasterVol(Number(e.target.value))}
-          />
+
+        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+          {/* HISTORY BUTTON */}
+          <a href="/history" className="nq-nav-btn">
+            History
+          </a>
+
+          <div className="nq-master-vol">
+            🔊 Master
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={masterVol}
+              onChange={(e) => setMasterVol(Number(e.target.value))}
+            />
+          </div>
         </div>
       </div>
 
@@ -822,7 +864,9 @@ export default function TherapyPage() {
           </button>
         </div>
         <p className="nq-save-hint">
-          {user ? "Saving to your cloud account." : "Not logged in - saving to device only."}
+          {user
+            ? "Saving to your cloud account."
+            : "Not logged in - saving to device only."}
         </p>
       </div>
 
@@ -855,7 +899,9 @@ export default function TherapyPage() {
               ℹ️
             </span>
             <div>
-              <strong>Why you hear ticking / holes / clicks in Relief (CR)</strong>
+              <strong>
+                Why you hear ticking / holes / clicks in Relief (CR)
+              </strong>
               <p style={{ marginTop: "0.35rem" }}>
                 In <strong>Relief (CR) Therapy</strong> you will hear gentle
                 “knocks”, “ticks”, or tiny gaps in the sound.{" "}
@@ -957,7 +1003,9 @@ export default function TherapyPage() {
           <div className="nq-modal">
             <h2>Session Complete</h2>
             <p>
-              You completed <strong>{Math.round(completedDuration)} minutes</strong> of therapy.
+              You completed{" "}
+              <strong>{Math.round(completedDuration)} minutes</strong> of
+              therapy.
             </p>
 
             <div className="nq-modal-field">
@@ -1088,6 +1136,23 @@ function Style() {
         font-size: 0.85rem;
         font-weight: 600;
       }
+      /* --- NEW NAV BUTTON STYLE --- */
+      .nq-nav-btn {
+        background: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #0f172a;
+        border: 1px solid #cbd5e1;
+        text-decoration: none;
+        display: inline-block;
+        transition: background 0.2s;
+      }
+      .nq-nav-btn:hover {
+        background: #f1f5f9;
+      }
+      /* --------------------------- */
       .nq-guide {
         background: #f0f9ff;
         border: 1px solid #bae6fd;
