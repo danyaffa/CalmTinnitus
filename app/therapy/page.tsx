@@ -13,15 +13,19 @@ import { auth } from "@/lib/firebase";
 import { createSavedProfile, logTherapySession } from "@/lib/therapyStorage";
 
 // --- CONSTANTS ---
-// [NEW] Shared key for localStorage
+// Shared key for localStorage
 const SESSION_LOG_KEY = "calmtinnitus_session_logs_v1";
 
 // --- TYPES ---
 type TherapyMode = "relief" | "standard" | "sleep";
 type SessionStatus = "idle" | "running" | "paused";
 
+// [UPDATED] Define strict type for background sounds
+type BackgroundSoundId = "white" | "none" | "rain" | "ocean";
+
+// [UPDATED] Use the strict type in SoundProfile
 type SoundProfile = {
-  id: string;
+  id: BackgroundSoundId;
   label: string;
   description: string;
   type: "noise" | "nature";
@@ -47,6 +51,7 @@ const SOUND_PROFILES: SoundProfile[] = [
     type: "nature",
   },
 ];
+
 const THERAPY_MODES = [
   {
     key: "relief" as TherapyMode,
@@ -576,7 +581,7 @@ export default function TherapyPage() {
     }
   }, [tinnitusPitch, toneVol, isPlayingTest, audio]);
 
-  // [NEW] Helper for Voice Notification
+  // Helper for Voice Notification
   const speakSessionEnded = () => {
     if (typeof window === "undefined") return;
     if (!("speechSynthesis" in window)) return;
@@ -615,7 +620,7 @@ export default function TherapyPage() {
       setTimeRemaining(null);
 
       if (reason === "auto") {
-        // [NEW] Call the new robust speech function
+        // Call the new robust speech function
         speakSessionEnded();
       }
 
@@ -663,7 +668,7 @@ export default function TherapyPage() {
 
       const end = Date.now() + sessionDuration * 60000;
 
-      // [UPDATED] Timer Interval to trigger stop and voice
+      // Timer Interval to trigger stop and voice
       sessionTimerRef.current = setInterval(() => {
         const left = (end - Date.now()) / 60000;
         if (left <= 0) {
@@ -737,7 +742,7 @@ export default function TherapyPage() {
       id: Date.now().toString(), // fallback ID
     };
 
-    // 1. [NEW] Save to LocalStorage (Guarantees history works)
+    // 1. Save to LocalStorage (Guarantees history works)
     try {
       if (typeof window !== "undefined") {
         const existingRaw = window.localStorage.getItem(SESSION_LOG_KEY);
@@ -756,7 +761,8 @@ export default function TherapyPage() {
           userId: user.uid,
           profileId: null,
           mode: logData.mode as any,
-          backgroundSound: logData.backgroundSound,
+          // [UPDATED] Cast backgroundSound to satisfy strict TS type
+          backgroundSound: logData.backgroundSound as BackgroundSoundId,
           durationMinutes: logData.durationMinutes,
           perceivedLoudnessBefore: 0,
           perceivedLoudnessAfter: logData.perceivedLoudnessAfter,
@@ -765,7 +771,6 @@ export default function TherapyPage() {
         });
       } catch (e) {
         console.error("Failed to log session to Firebase", e);
-        // We don't alert here anymore because localStorage likely succeeded
       }
     }
 
