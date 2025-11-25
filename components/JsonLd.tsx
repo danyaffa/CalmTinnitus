@@ -7,21 +7,33 @@ export default function JsonLd() {
     "@type": "SoftwareApplication",
     name: "CalmTinnitus",
     applicationCategory: "HealthApplication",
+    applicationSubCategory: "Medical",
     operatingSystem: "Web, iOS, Android",
+    url: "https://calmtinnitus.com",
     description:
-      "CalmTinnitus is an AI-guided tinnitus relief and neuromodulation web app. It helps users match their tinnitus pitch, generate sound therapy, and relax with masking sounds such as white noise, rain, and ocean waves.",
+      "CalmTinnitus is an AI-guided tinnitus relief and neuromodulation web app. It helps users match their tinnitus pitch, generate therapy tones, and relax with masking sounds such as white noise, rain and ocean waves.",
+    image: "https://calmtinnitus.com/CalmTinnitus-Logo.png",
+    keywords: [
+      "tinnitus",
+      "tinnitus relief",
+      "tinnitus therapy",
+      "neuromodulation",
+      "notch therapy",
+      "coordinated reset",
+      "tinnitus app",
+      "sound therapy",
+      "white noise",
+      "ear ringing"
+    ],
     offers: {
       "@type": "Offer",
       price: "0",
       priceCurrency: "USD",
     },
-    url: "https://calmtinnitus.com",
-    image: "https://calmtinnitus.com/CalmTinnitus-Logo.png",
-    // ⚠️ When you have real app-store links, add them here:
-    // sameAs: [
-    //   "https://apps.apple.com/app/your-app-id",
-    //   "https://play.google.com/store/apps/details?id=your.app.id"
-    // ],
+    audience: {
+      "@type": "MedicalAudience",
+      audienceType: "Tinnitus Patients",
+    },
     author: {
       "@type": "Organization",
       name: "CalmTinnitus",
@@ -30,6 +42,11 @@ export default function JsonLd() {
       "@type": "Organization",
       name: "CalmTinnitus",
     },
+    // When you have live store links, uncomment and fill:
+    // sameAs: [
+    //   "https://apps.apple.com/app/your-app-id",
+    //   "https://play.google.com/store/apps/details?id=your.app.id"
+    // ]
   };
 
   return (
