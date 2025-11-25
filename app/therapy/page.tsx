@@ -10,6 +10,11 @@ import React, {
   useState,
 } from "react";
 
+// --- FIREBASE / STORAGE IMPORTS ---
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/lib/firebase"; // Ensure this path is correct
+import { createSavedProfile, logTherapySession } from "@/lib/therapyStorage"; // Ensure this path is correct
+
 // --- TYPES ---
 type TherapyMode = "relief" | "standard" | "sleep";
 type SessionStatus = "idle" | "running" | "paused";
@@ -152,43 +157,24 @@ function useTinnitusAudio() {
       }
     } else if (id === "rain") {
       // Realistic “rain” style noise:
-      // 1) Pink-ish base (softer high end)
-      // 2) Slow changing envelope to create natural “rain gusts”
-
-      let b0 = 0,
-        b1 = 0,
-        b2 = 0,
-        b3 = 0;
-      let envelope = 0.6; // base level
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0;
+      let envelope = 0.6; 
 
       for (let i = 0; i < bufferSize; i++) {
-        const w = Math.random() * 2 - 1; // white
-
-        // Pink-ish filter (smoothed noise – less harsh)
+        const w = Math.random() * 2 - 1; 
         b0 = 0.99886 * b0 + w * 0.0555179;
         b1 = 0.99332 * b1 + w * 0.0750759;
         b2 = 0.969 * b2 + w * 0.153852;
         b3 = 0.8665 * b3 + w * 0.3104856;
 
         let pink = (b0 + b1 + b2 + b3 + w * 0.5362) * 0.4;
-
-        // Every ~2–3 ms, slightly change the envelope
-        // This creates soft “waves” in loudness like real rain
         if (i % 2000 === 0) {
-          envelope = 0.3 + Math.random() * 0.7; // 0.3 – 1.0
+          envelope = 0.3 + Math.random() * 0.7; 
         }
-
         data[i] = pink * envelope;
       }
     } else if (id === "ocean") {
-      // Pink-style noise for ocean base
-      let b0 = 0,
-        b1 = 0,
-        b2 = 0,
-        b3 = 0,
-        b4 = 0,
-        b5 = 0,
-        b6 = 0;
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
       for (let i = 0; i < bufferSize; i++) {
         const w = Math.random() * 2 - 1;
         b0 = 0.99886 * b0 + w * 0.0555179;
@@ -201,7 +187,7 @@ function useTinnitusAudio() {
         b6 = w * 0.115926;
       }
     } else {
-      // Fallback (Brown-ish)
+      // Fallback
       let lastOut = 0;
       for (let i = 0; i < bufferSize; i++) {
         const w = Math.random() * 2 - 1;
@@ -210,7 +196,6 @@ function useTinnitusAudio() {
         data[i] *= 1.0;
       }
     }
-
     return buffer;
   };
 
@@ -223,34 +208,22 @@ function useTinnitusAudio() {
 
       const now = ctxRef.current?.currentTime || 0;
 
-      if (noiseGainRef.current) {
-        noiseGainRef.current.gain.setTargetAtTime(0, now, 0.05);
-      }
-      if (toneGainRef.current) {
-        toneGainRef.current.gain.setTargetAtTime(0, now, 0.05);
-      }
-      crGainsRef.current.forEach((g) =>
-        g.gain.setTargetAtTime(0, now, 0.05)
-      );
+      if (noiseGainRef.current) noiseGainRef.current.gain.setTargetAtTime(0, now, 0.05);
+      if (toneGainRef.current) toneGainRef.current.gain.setTargetAtTime(0, now, 0.05);
+      crGainsRef.current.forEach((g) => g.gain.setTargetAtTime(0, now, 0.05));
 
       stopTimeoutRef.current = setTimeout(() => {
         try {
           if (noiseNodeRef.current) {
-            try {
-              noiseNodeRef.current.stop();
-            } catch {}
+            try { noiseNodeRef.current.stop(); } catch {}
             noiseNodeRef.current.disconnect();
           }
           if (toneOscRef.current) {
-            try {
-              toneOscRef.current.stop();
-            } catch {}
+            try { toneOscRef.current.stop(); } catch {}
             toneOscRef.current.disconnect();
           }
           crOscillatorsRef.current.forEach((o) => {
-            try {
-              o.stop();
-            } catch {}
+            try { o.stop(); } catch {}
             o.disconnect();
           });
           noiseNodeRef.current = null;
@@ -278,23 +251,17 @@ function useTinnitusAudio() {
       }
 
       if (noiseNodeRef.current) {
-        try {
-          noiseNodeRef.current.stop();
-        } catch {}
+        try { noiseNodeRef.current.stop(); } catch {}
         noiseNodeRef.current.disconnect();
         noiseNodeRef.current = null;
       }
       if (toneOscRef.current) {
-        try {
-          toneOscRef.current.stop();
-        } catch {}
+        try { toneOscRef.current.stop(); } catch {}
         toneOscRef.current.disconnect();
         toneOscRef.current = null;
       }
       crOscillatorsRef.current.forEach((o) => {
-        try {
-          o.stop();
-        } catch {}
+        try { o.stop(); } catch {}
         o.disconnect();
       });
       crOscillatorsRef.current = [];
@@ -310,9 +277,7 @@ function useTinnitusAudio() {
       if (!ctx || !masterGainRef.current) return;
 
       if (noiseNodeRef.current) {
-        try {
-          noiseNodeRef.current.stop();
-        } catch {}
+        try { noiseNodeRef.current.stop(); } catch {}
       }
       const buffer = generateNoiseBuffer(ctx, id);
       const source = ctx.createBufferSource();
@@ -320,7 +285,7 @@ function useTinnitusAudio() {
       source.buffer = buffer;
       source.loop = true;
 
-      const effectiveNoise = Math.min(1.2, volume * 1.5); // stronger
+      const effectiveNoise = Math.min(1.2, volume * 1.5); 
       gain.gain.value = 0;
       gain.gain.setTargetAtTime(effectiveNoise, ctx.currentTime, 0.1);
 
@@ -339,9 +304,7 @@ function useTinnitusAudio() {
       if (!ctx || !masterGainRef.current) return;
 
       if (toneOscRef.current) {
-        try {
-          toneOscRef.current.stop();
-        } catch {}
+        try { toneOscRef.current.stop(); } catch {}
       }
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -406,8 +369,7 @@ function useTinnitusAudio() {
 
   const updateVolumes = useCallback((noiseVol: number, toneVol: number) => {
     const now = ctxRef.current?.currentTime || 0;
-
-    const effectiveNoise = Math.min(1.2, noiseVol * 1.5); // boost and make slider “strong”
+    const effectiveNoise = Math.min(1.2, noiseVol * 1.5); 
     if (noiseGainRef.current) {
       noiseGainRef.current.gain.setTargetAtTime(effectiveNoise, now, 0.1);
     }
@@ -436,6 +398,7 @@ function useTinnitusAudio() {
 
 // --- PAGE COMPONENT ---
 export default function TherapyPage() {
+  const [user] = useAuthState(auth); // FIREBASE USER
   const [tinnitusPitch, setTinnitusPitch] = useState(8000);
   const [selectedSound, setSelectedSound] = useState(SOUND_PROFILES[0]);
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("idle");
@@ -443,16 +406,29 @@ export default function TherapyPage() {
   const [sessionDuration, setSessionDuration] = useState(30);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
 
+  // Profile Saving UI
+  const [profileName, setProfileName] = useState("");
   const [saveBtnText, setSaveBtnText] = useState("Save Profile");
   const [saveBtnClass, setSaveBtnClass] = useState("nq-btn-save");
 
+  // Volume
   const [masterVol, setMasterVol] = useState(0.8);
   const [noiseVol, setNoiseVol] = useState(0.7);
   const [toneVol, setToneVol] = useState(0.5);
   const [isPlayingTest, setIsPlayingTest] = useState(false);
+  
+  // Timing
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
-
+  const sessionStartTimeRef = useRef<number | null>(null);
   const audio = useTinnitusAudio();
+
+  // --- REPORT MODAL STATE ---
+  const [showReport, setShowReport] = useState(false);
+  const [completedDuration, setCompletedDuration] = useState(0);
+  const [reportNote, setReportNote] = useState("");
+  const [reportRelief, setReportRelief] = useState(5);
+  const [reportLoudness, setReportLoudness] = useState(5);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   // master volume
   useEffect(() => {
@@ -473,7 +449,7 @@ export default function TherapyPage() {
     }
   }, [selectedSound, sessionStatus, noiseVol, audio]);
 
-  // load local profile
+  // load local profile (legacy / fallback)
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -494,12 +470,30 @@ export default function TherapyPage() {
     }
   }, []);
 
-  const saveProfile = () => {
+  // --- SAVE PROFILE LOGIC (Firebase + Local) ---
+  const saveProfile = async () => {
     if (typeof window === "undefined") return;
     setSaveBtnText("Saving...");
+
     try {
+      // 1. Always save to LocalStorage (offline backup)
       window.localStorage.setItem("calmtinnitus_pitch", String(tinnitusPitch));
       window.localStorage.setItem("calmtinnitus_soundId", selectedSound.id);
+
+      // 2. If logged in, save to Firestore
+      if (user) {
+        await createSavedProfile({
+          userId: user.uid,
+          label: profileName || "My Tinnitus Profile",
+          earSide: "both", // Default for now, can expand later
+          frequencyHz: tinnitusPitch,
+          baseVolume: masterVol,
+        });
+      } else {
+        // Optional: Alert user they could be saving to cloud?
+        // console.log("User not logged in, saving locally only");
+      }
+
       setSaveBtnText("✅ Saved!");
       setSaveBtnClass("nq-btn-save saved");
       setTimeout(() => {
@@ -507,7 +501,7 @@ export default function TherapyPage() {
         setSaveBtnClass("nq-btn-save");
       }, 2000);
     } catch (e) {
-      console.error("Error saving local profile:", e);
+      console.error("Error saving profile:", e);
       setSaveBtnText("❌ Error");
       setTimeout(() => setSaveBtnText("Save Profile"), 2000);
     }
@@ -533,18 +527,13 @@ export default function TherapyPage() {
     }
   }, [tinnitusPitch, toneVol, isPlayingTest, audio]);
 
-  // --- 1️⃣ ALERT HELPER (SHORTENED) ---
   const playSessionEndAlert = () => {
     if (typeof window === "undefined") return;
-
-    // 1) Try voice message
     try {
       const w = window as any;
       const synth = w.speechSynthesis as any;
       const U = w.SpeechSynthesisUtterance as any;
-
       const message = "Your session ended";
-
       if (synth && typeof U === "function") {
         const utterance = new U(message);
         utterance.rate = 1.0;
@@ -556,28 +545,22 @@ export default function TherapyPage() {
       console.error("speech synthesis failed:", err);
     }
 
-    // 2) Fallback: short beep
     try {
       const w = window as any;
       const AudioCtx = w.AudioContext || w.webkitAudioContext;
       if (!AudioCtx) return;
-
       const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-
       osc.type = "sine";
       osc.frequency.value = 880;
       gain.gain.value = 0;
-
       osc.connect(gain);
       gain.connect(ctx.destination);
-
       const now = ctx.currentTime;
       gain.gain.setValueAtTime(0, now);
       gain.gain.linearRampToValueAtTime(0.4, now + 0.1);
       gain.gain.linearRampToValueAtTime(0, now + 0.8);
-
       osc.start(now);
       osc.stop(now + 0.8);
     } catch (err) {
@@ -585,7 +568,7 @@ export default function TherapyPage() {
     }
   };
 
-  // --- 2️⃣ UPDATED STOP SESSION (Handles Auto) ---
+  // --- STOP SESSION & SHOW REPORT ---
   const stopSession = (reason: "user" | "auto" = "user") => {
     try {
       audio.stopAll();
@@ -593,6 +576,14 @@ export default function TherapyPage() {
         clearInterval(sessionTimerRef.current);
         sessionTimerRef.current = null;
       }
+
+      // Calculate actual duration
+      let actualMinutes = 0;
+      if (sessionStartTimeRef.current) {
+        const diffMs = Date.now() - sessionStartTimeRef.current;
+        actualMinutes = diffMs / 60000;
+      }
+
       setSessionStatus("idle");
       setTimeRemaining(null);
 
@@ -600,6 +591,14 @@ export default function TherapyPage() {
       if (reason === "auto") {
         playSessionEndAlert();
       }
+
+      // Show Report Modal (only if session was > 0.5 mins)
+      if (actualMinutes > 0.1) {
+        setCompletedDuration(actualMinutes);
+        setReportNote("");
+        setShowReport(true);
+      }
+
     } catch (err) {
       console.error("stopSession failed:", err);
     }
@@ -626,8 +625,9 @@ export default function TherapyPage() {
 
       setSessionStatus("running");
       setTimeRemaining(sessionDuration);
+      sessionStartTimeRef.current = Date.now(); // Mark start time
 
-      // 3️⃣ TIMER: Calls stopSession("auto")
+      // Timer
       const end = Date.now() + sessionDuration * 60000;
       sessionTimerRef.current = setInterval(() => {
         const left = (end - Date.now()) / 60000;
@@ -640,9 +640,7 @@ export default function TherapyPage() {
   const pauseSession = () => {
     try {
       if (audio.ctxRef.current?.state === "running") {
-        audio.ctxRef.current.suspend().catch((err: any) => {
-          console.error("suspend failed:", err);
-        });
+        audio.ctxRef.current.suspend().catch((err: any) => console.error(err));
       }
       if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
       setSessionStatus("paused");
@@ -654,11 +652,8 @@ export default function TherapyPage() {
   const resumeSession = () => {
     try {
       if (audio.ctxRef.current?.state === "suspended") {
-        audio.ctxRef.current.resume().catch((err: any) => {
-          console.error("resume failed:", err);
-        });
+        audio.ctxRef.current.resume().catch((err: any) => console.error(err));
       }
-      // 3️⃣ TIMER (Resume): Calls stopSession("auto")
       if (timeRemaining != null) {
         const end = Date.now() + timeRemaining * 60000;
         sessionTimerRef.current = setInterval(() => {
@@ -678,6 +673,37 @@ export default function TherapyPage() {
     const min = Math.floor(m);
     const sec = Math.round((m - min) * 60);
     return `${min}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  // --- SUBMIT REPORT TO FIREBASE ---
+  const handleFinalizeSession = async () => {
+    if (!user) {
+        // Just close if not logged in
+        setShowReport(false);
+        return;
+    }
+
+    setIsSubmittingReport(true);
+    try {
+        await logTherapySession({
+            userId: user.uid,
+            profileId: null, // We could track which profile ID was used if we loaded it
+            mode: selectedMode,
+            backgroundSound: selectedSound.id,
+            durationMinutes: completedDuration,
+            perceivedLoudnessBefore: 0, // Did not track
+            perceivedLoudnessAfter: reportLoudness,
+            reliefScore: reportRelief,
+            notes: reportNote
+        });
+        // Success
+        setShowReport(false);
+    } catch (e) {
+        console.error("Failed to log session", e);
+        alert("Could not save session log. Check console.");
+    } finally {
+        setIsSubmittingReport(false);
+    }
   };
 
   return (
@@ -776,27 +802,23 @@ export default function TherapyPage() {
           />
           <span className="nq-range-label">High</span>
         </div>
-        <div
-          style={{
-            marginTop: "1.5rem",
-            textAlign: "center",
-            borderTop: "1px solid #e2e8f0",
-            paddingTop: "1rem",
-          }}
-        >
+        
+        {/* NEW SAVE SECTION */}
+        <div className="nq-save-section">
+          <input 
+            type="text" 
+            placeholder="Profile Name (e.g. Bedtime)"
+            className="nq-input-profile"
+            value={profileName}
+            onChange={(e) => setProfileName(e.target.value)}
+          />
           <button onClick={saveProfile} className={saveBtnClass}>
             {saveBtnText}
           </button>
-          <p
-            style={{
-              fontSize: "0.8rem",
-              color: "#94a3b8",
-              marginTop: "0.5rem",
-            }}
-          >
-            Saved on this device (local profile).
-          </p>
         </div>
+        <p className="nq-save-hint">
+          {user ? "Saving to your cloud account." : "Not logged in - saving to device only."}
+        </p>
       </div>
 
       {/* STEP 2 & 3 */}
@@ -837,29 +859,6 @@ export default function TherapyPage() {
                   phone.
                 </strong>
               </p>
-              <p style={{ marginTop: "0.35rem" }}>
-                These short interruptions are part of the{" "}
-                <strong>neuromodulation therapy</strong>. They briefly disrupt
-                the brain's tinnitus pattern so over-active auditory neurons
-                lose synchronisation over time.
-              </p>
-              <ul
-                style={{
-                  marginTop: "0.35rem",
-                  paddingLeft: "1.1rem",
-                  fontSize: "0.8rem",
-                }}
-              >
-                <li>
-                  <strong>Relief (CR)</strong> – active treatment mode with ticks.
-                </li>
-                <li>
-                  <strong>Standard</strong> – comfort / masking only, no ticks.
-                </li>
-                <li>
-                  <strong>Sleep</strong> – softer night profile, no ticks.
-                </li>
-              </ul>
             </div>
           </div>
         </div>
@@ -891,13 +890,7 @@ export default function TherapyPage() {
             <p>
               While the therapy is running you can{" "}
               <strong>
-                play any music, watch videos, or even talk on the phone
-              </strong>{" "}
-              on your device. The treatment tone keeps working quietly in the
-              background, even if you change apps or use other sounds.{" "}
-              <strong>
-                On most phones the therapy will even continue when your screen
-                is off, as long as the device keeps playing sound.
+                play any music, watch videos, or even talk on the phone.
               </strong>
             </p>
           </div>
@@ -951,6 +944,63 @@ export default function TherapyPage() {
         <button onClick={startSession} className="nq-btn-big">
           ▶ Start Session
         </button>
+      )}
+
+      {/* SESSION REPORT MODAL */}
+      {showReport && (
+        <div className="nq-modal-overlay">
+            <div className="nq-modal">
+                <h2>Session Complete</h2>
+                <p>You completed <strong>{Math.round(completedDuration)} minutes</strong> of therapy.</p>
+                
+                <div className="nq-modal-field">
+                    <label>Tinnitus Loudness Now (0-10)</label>
+                    <input 
+                        type="range" min="0" max="10" 
+                        value={reportLoudness} 
+                        onChange={e => setReportLoudness(Number(e.target.value))} 
+                    />
+                    <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.8rem'}}>
+                        <span>Low</span>
+                        <span>High: {reportLoudness}</span>
+                    </div>
+                </div>
+
+                <div className="nq-modal-field">
+                    <label>How much relief did you feel? (0-10)</label>
+                    <input 
+                        type="range" min="0" max="10" 
+                        value={reportRelief} 
+                        onChange={e => setReportRelief(Number(e.target.value))} 
+                    />
+                     <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.8rem'}}>
+                        <span>None</span>
+                        <span>Lots: {reportRelief}</span>
+                    </div>
+                </div>
+
+                <div className="nq-modal-field">
+                    <label>Notes (optional)</label>
+                    <textarea 
+                        className="nq-modal-textarea"
+                        placeholder="What sound worked well? How are you feeling?"
+                        value={reportNote}
+                        onChange={e => setReportNote(e.target.value)}
+                    />
+                </div>
+
+                <div className="nq-modal-actions">
+                    <button onClick={() => setShowReport(false)} className="nq-btn-cancel">Skip</button>
+                    <button 
+                        onClick={handleFinalizeSession} 
+                        className="nq-btn-confirm"
+                        disabled={isSubmittingReport}
+                    >
+                        {isSubmittingReport ? "Saving..." : "Save Log"}
+                    </button>
+                </div>
+            </div>
+        </div>
       )}
 
       <div className="nq-footer">
@@ -1097,6 +1147,33 @@ function Style() {
         border: 2px solid white;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
       }
+      
+      /* New Save Section */
+      .nq-save-section {
+        margin-top: 1.5rem;
+        text-align: center;
+        border-top: 1px solid #e2e8f0;
+        padding-top: 1rem;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .nq-input-profile {
+        padding: 0.6rem 1rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 99px;
+        font-size: 0.9rem;
+        width: 200px;
+      }
+      .nq-save-hint {
+        text-align: center;
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-top: 0.5rem;
+      }
+
       .nq-btn-save {
         background: #e2e8f0;
         color: #334155;
@@ -1263,6 +1340,58 @@ function Style() {
       .nq-status-text {
         font-size: 0.9rem;
         opacity: 0.9;
+      }
+
+      /* Modal Styles */
+      .nq-modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+        padding: 1rem;
+      }
+      .nq-modal {
+        background: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        width: 100%;
+        max-width: 500px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      }
+      .nq-modal h2 { margin-top: 0; }
+      .nq-modal-field { margin-top: 1rem; }
+      .nq-modal-textarea {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        min-height: 80px;
+        margin-top: 0.25rem;
+      }
+      .nq-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+      }
+      .nq-btn-cancel {
+        background: transparent;
+        border: none;
+        color: #64748b;
+        cursor: pointer;
+        padding: 0.5rem 1rem;
+      }
+      .nq-btn-confirm {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.5rem 1.5rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: 600;
       }
     `}</style>
   );
