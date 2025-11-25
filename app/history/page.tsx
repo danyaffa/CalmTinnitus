@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged, signInAnonymously, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import {
   getTherapySessions,
@@ -50,13 +50,23 @@ export default function HistoryPage() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
+      try {
+        if (!u) {
+          // make sure we have an anonymous user
+          const cred = await signInAnonymously(auth);
+          u = cred.user;
+        }
+
+        setUser(u);
         const data = await getTherapySessions(u.uid);
         setSessions(data);
+      } catch (err) {
+        console.error("Failed to load sessions", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
+
     return () => unsub();
   }, []);
 
