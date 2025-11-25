@@ -8,19 +8,25 @@ export default function JsonLd() {
     name: "CalmTinnitus",
     applicationCategory: "HealthApplication",
     operatingSystem: "Web, iOS, Android",
+    description:
+      "CalmTinnitus is an AI-guided tinnitus relief and neuromodulation web app. It helps users match their tinnitus pitch, generate sound therapy, and relax with masking sounds such as white noise, rain, and ocean waves.",
     offers: {
       "@type": "Offer",
       price: "0",
       priceCurrency: "USD",
     },
-    // ⚠️ UPDATE THIS: Once you have real ratings, update these numbers dynamically
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.8",
-      ratingCount: "125",
-    },
-    description: "AI-powered sound therapy for tinnitus relief and neuromodulation.",
+    url: "https://calmtinnitus.com",
+    image: "https://calmtinnitus.com/CalmTinnitus-Logo.png",
+    // ⚠️ When you have real app-store links, add them here:
+    // sameAs: [
+    //   "https://apps.apple.com/app/your-app-id",
+    //   "https://play.google.com/store/apps/details?id=your.app.id"
+    // ],
     author: {
+      "@type": "Organization",
+      name: "CalmTinnitus",
+    },
+    publisher: {
       "@type": "Organization",
       name: "CalmTinnitus",
     },
