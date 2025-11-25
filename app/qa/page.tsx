@@ -16,6 +16,10 @@ export default function QaPage() {
       a: "If you are using 'Relief (CR) Therapy' mode, this is intentional. These short, quiet interruptions are part of the neuromodulation process designed to disrupt the brain's tinnitus activity. If you find them distracting, you can switch to 'Standard Therapy' for a smooth, continuous masking sound.",
     },
     {
+      q: "What is the correct volume level for the therapy?",
+      a: "Keep the therapy sound comfortable and never loud. You should still hear normal sounds around you. The ticks in Relief (CR) mode should be soft but noticeable. The best rule is: 'Just loud enough to hear it, but soft enough to ignore it.' Loud volume does not make the treatment stronger, so keep it gentle.",
+    },
+    {
       q: "What happens when the timer finishes?",
       a: "The sound will stop automatically, and you will hear a gentle voice alert (or beep) confirming the session is over. For the best therapeutic results, we recommend waiting 3 to 4 hours between these focused sessions.",
     },
