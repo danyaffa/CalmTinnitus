@@ -9,10 +9,13 @@ import {
   TherapySession,
 } from "@/lib/therapyStorage";
 
+// [NEW] Shared key for localStorage
+const SESSION_LOG_KEY = "calmtinnitus_session_logs_v1";
 
 // Helpers
-function formatDate(ts: Date) {
-  return ts.toLocaleDateString(undefined, {
+function formatDate(ts: Date | string) {
+  const dateObj = typeof ts === "string" ? new Date(ts) : ts;
+  return dateObj.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -24,13 +27,11 @@ function buildChartPoints(sessions: TherapySession[]) {
   const values = sessions
     .map((s) => s.perceivedLoudnessAfter ?? s.perceivedLoudnessBefore)
     .filter((v) => typeof v === "number") as number[];
-
   if (!values.length) return points;
 
   const minVal = Math.min(...values);
   const maxVal = Math.max(...values);
   const range = maxVal - minVal || 1;
-
   sessions.forEach((s, index) => {
     const v =
       (s.perceivedLoudnessAfter ?? s.perceivedLoudnessBefore ?? minVal) as number;
@@ -39,7 +40,6 @@ function buildChartPoints(sessions: TherapySession[]) {
     const y = 100 - normalized * 100;
     points.push({ x, y });
   });
-
   return points;
 }
 
@@ -49,6 +49,23 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // [NEW] 1. Load from localStorage immediately (Fixes "Log not showing" issue)
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem(SESSION_LOG_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSessions(parsed);
+            setLoading(false);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load session logs from storage", err);
+      }
+    }
+
+    // 2. Auth & Firebase check (Optional / Background sync)
     const unsub = onAuthStateChanged(auth, async (u) => {
       try {
         if (!u) {
@@ -56,12 +73,19 @@ export default function HistoryPage() {
           const cred = await signInAnonymously(auth);
           u = cred.user;
         }
-
         setUser(u);
-        const data = await getTherapySessions(u.uid);
-        setSessions(data);
+
+        // Only try fetching firebase if we don't have local logs yet
+        // or you can merge them. For now, we prioritize local logs
+        // to ensure the user sees their data instantly.
+        if (sessions.length === 0) {
+            const data = await getTherapySessions(u.uid);
+            if(data && data.length > 0) {
+                setSessions(data);
+            }
+        }
       } catch (err) {
-        console.error("Failed to load sessions", err);
+        console.error("Failed to load sessions from Firebase", err);
       } finally {
         setLoading(false);
       }
@@ -197,10 +221,16 @@ export default function HistoryPage() {
                     .slice()
                     .reverse()
                     .map((s) => {
-                      const d =
-                        (s.createdAt as any).toDate
-                          ? (s.createdAt as any).toDate()
-                          : new Date((s.createdAt as any).seconds * 1000);
+                      // [UPDATED] Robust date handling for both Firestore Timestamps and LocalStorage ISO Strings
+                      let d: Date;
+                      if(typeof s.createdAt === 'string') {
+                          d = new Date(s.createdAt);
+                      } else if ((s.createdAt as any).toDate) {
+                          d = (s.createdAt as any).toDate();
+                      } else {
+                          d = new Date((s.createdAt as any).seconds * 1000);
+                      }
+
                       return (
                         <tr key={s.id}>
                           <td>{formatDate(d)}</td>
