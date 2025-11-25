@@ -1,5 +1,4 @@
 // FILE: app/therapy/page.tsx
-
 "use client";
 
 import React, {
@@ -9,11 +8,13 @@ import React, {
   useRef,
   useState,
 } from "react";
-
-// --- FIREBASE / STORAGE IMPORTS ---
 import { onAuthStateChanged, signInAnonymously, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { createSavedProfile, logTherapySession } from "@/lib/therapyStorage";
+
+// --- CONSTANTS ---
+// [NEW] Shared key for localStorage
+const SESSION_LOG_KEY = "calmtinnitus_session_logs_v1";
 
 // --- TYPES ---
 type TherapyMode = "relief" | "standard" | "sleep";
@@ -26,7 +27,6 @@ type SoundProfile = {
   type: "noise" | "nature";
 };
 
-// --- CONSTANTS ---
 const SOUND_PROFILES: SoundProfile[] = [
   {
     id: "white",
@@ -47,7 +47,6 @@ const SOUND_PROFILES: SoundProfile[] = [
     type: "nature",
   },
 ];
-
 const THERAPY_MODES = [
   {
     key: "relief" as TherapyMode,
@@ -85,7 +84,6 @@ function useTinnitusAudio() {
   const crOscillatorsRef = useRef<OscillatorNode[]>([]);
   const crGainsRef = useRef<GainNode[]>([]);
   const crIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
   const latestToneVolRef = useRef(0.5);
   const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -169,7 +167,6 @@ function useTinnitusAudio() {
         b1 = 0.99332 * b1 + w * 0.0750759;
         b2 = 0.969 * b2 + w * 0.153852;
         b3 = 0.8665 * b3 + w * 0.3104856;
-
         let pink = (b0 + b1 + b2 + b3 + w * 0.5362) * 0.4;
         if (i % 2000 === 0) {
           envelope = 0.3 + Math.random() * 0.7;
@@ -515,6 +512,7 @@ export default function TherapyPage() {
           setTinnitusPitch(val);
         }
       }
+
       if (soundId) {
         const s = SOUND_PROFILES.find((p) => p.id === soundId);
         if (s) setSelectedSound(s);
@@ -578,44 +576,22 @@ export default function TherapyPage() {
     }
   }, [tinnitusPitch, toneVol, isPlayingTest, audio]);
 
-  const playSessionEndAlert = () => {
+  // [NEW] Helper for Voice Notification
+  const speakSessionEnded = () => {
     if (typeof window === "undefined") return;
-    try {
-      const w = window as any;
-      const synth = w.speechSynthesis as any;
-      const U = w.SpeechSynthesisUtterance as any;
-      const message = "Your session ended";
-      if (synth && typeof U === "function") {
-        const utterance = new U(message);
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        synth.speak(utterance);
-        return;
-      }
-    } catch (err) {
-      console.error("speech synthesis failed:", err);
-    }
+    if (!("speechSynthesis" in window)) return;
 
     try {
-      const w = window as any;
-      const AudioCtx = w.AudioContext || w.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = 880;
-      gain.gain.value = 0;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      const now = ctx.currentTime;
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.4, now + 0.1);
-      gain.gain.linearRampToValueAtTime(0, now + 0.8);
-      osc.start(now);
-      osc.stop(now + 0.8);
+      const utter = new SpeechSynthesisUtterance(
+        "Your Calm Tinnitus session has finished."
+      );
+      utter.lang = "en-US";
+      utter.rate = 1.0;
+      utter.pitch = 1.0;
+      window.speechSynthesis.cancel(); // clear previous
+      window.speechSynthesis.speak(utter);
     } catch (err) {
-      console.error("fallback beep failed:", err);
+      console.error("speechSynthesis failed", err);
     }
   };
 
@@ -639,7 +615,8 @@ export default function TherapyPage() {
       setTimeRemaining(null);
 
       if (reason === "auto") {
-        playSessionEndAlert();
+        // [NEW] Call the new robust speech function
+        speakSessionEnded();
       }
 
       if (actualMinutes > 0.1) {
@@ -656,7 +633,6 @@ export default function TherapyPage() {
   const enableExternalAudioMode = () => {
     // Mute background noise but keep therapy tone running
     setNoiseVol(0);
-
     if (sessionStatus === "running") {
       audio.updateVolumes(0, toneVol);
     }
@@ -686,10 +662,15 @@ export default function TherapyPage() {
       sessionStartTimeRef.current = Date.now();
 
       const end = Date.now() + sessionDuration * 60000;
+
+      // [UPDATED] Timer Interval to trigger stop and voice
       sessionTimerRef.current = setInterval(() => {
         const left = (end - Date.now()) / 60000;
-        if (left <= 0) stopSession("auto");
-        else setTimeRemaining(left);
+        if (left <= 0) {
+          stopSession("auto"); // This triggers the voice in stopSession
+        } else {
+          setTimeRemaining(left);
+        }
       }, 1000);
     }, startDelay);
   };
@@ -732,39 +713,64 @@ export default function TherapyPage() {
     return `${min}:${sec.toString().padStart(2, "0")}`;
   };
 
-  // --- SUBMIT REPORT TO FIREBASE ---
+  // --- SUBMIT REPORT TO FIREBASE & LOCALSTORAGE ---
   const handleFinalizeSession = async () => {
-    if (!user) {
-      setShowReport(false);
-      return;
+    // Note: We proceed even if no user, to save to localStorage
+    setIsSubmittingReport(true);
+
+    // Prepare log data (same structure for both)
+    const logData = {
+      mode: selectedMode,
+      backgroundSound:
+        selectedSound.id === "white" ||
+        selectedSound.id === "rain" ||
+        selectedSound.id === "ocean" ||
+        selectedSound.id === "none"
+          ? selectedSound.id
+          : "none",
+      durationMinutes: completedDuration,
+      perceivedLoudnessBefore: 0,
+      perceivedLoudnessAfter: reportLoudness,
+      reliefScore: reportRelief,
+      notes: reportNote,
+      createdAt: new Date().toISOString(),
+      id: Date.now().toString(), // fallback ID
+    };
+
+    // 1. [NEW] Save to LocalStorage (Guarantees history works)
+    try {
+      if (typeof window !== "undefined") {
+        const existingRaw = window.localStorage.getItem(SESSION_LOG_KEY);
+        const existing = existingRaw ? JSON.parse(existingRaw) : [];
+        const updated = [logData, ...existing];
+        window.localStorage.setItem(SESSION_LOG_KEY, JSON.stringify(updated));
+      }
+    } catch (e) {
+      console.error("Failed to save to localStorage", e);
     }
 
-    setIsSubmittingReport(true);
-    try {
-      await logTherapySession({
-        userId: user.uid,
-        profileId: null,
-        mode: selectedMode,
-        backgroundSound:
-          selectedSound.id === "white" ||
-          selectedSound.id === "rain" ||
-          selectedSound.id === "ocean" ||
-          selectedSound.id === "none"
-            ? selectedSound.id
-            : "none",
-        durationMinutes: completedDuration,
-        perceivedLoudnessBefore: 0,
-        perceivedLoudnessAfter: reportLoudness,
-        reliefScore: reportRelief,
-        notes: reportNote,
-      });
-      setShowReport(false);
-    } catch (e) {
-      console.error("Failed to log session", e);
-      alert("Could not save session log. Check console.");
-    } finally {
-      setIsSubmittingReport(false);
+    // 2. Save to Firebase (if logged in)
+    if (user) {
+      try {
+        await logTherapySession({
+          userId: user.uid,
+          profileId: null,
+          mode: logData.mode as any,
+          backgroundSound: logData.backgroundSound,
+          durationMinutes: logData.durationMinutes,
+          perceivedLoudnessBefore: 0,
+          perceivedLoudnessAfter: logData.perceivedLoudnessAfter,
+          reliefScore: logData.reliefScore,
+          notes: logData.notes,
+        });
+      } catch (e) {
+        console.error("Failed to log session to Firebase", e);
+        // We don't alert here anymore because localStorage likely succeeded
+      }
     }
+
+    setIsSubmittingReport(false);
+    setShowReport(false);
   };
 
   return (
@@ -813,7 +819,8 @@ export default function TherapyPage() {
           }}
         >
           <strong>📅 Recommended:</strong> Use 2 sessions/day for 3–6 months for
-          habituation. <br />
+          habituation.
+          <br />
           <span style={{ opacity: 0.8 }}>
             Or simply use it whenever you are looking for peace.
           </span>
@@ -827,6 +834,7 @@ export default function TherapyPage() {
           <div className="nq-status-text">
             {THERAPY_MODES.find((m) => m.key === selectedMode)?.label} is Active
           </div>
+
           {sessionStatus === "running" && (
             <button onClick={pauseSession} className="nq-btn-stop">
               ⏸ Pause Session
@@ -940,13 +948,19 @@ export default function TherapyPage() {
           <h3>Step 3: Sound & Mixer</h3>
 
           {/* NEW: THERAPY VOLUME GUIDE */}
-          <div className="nq-info-inline" style={{ marginTop: "0.75rem", marginBottom: "1.5rem" }}>
+          <div
+            className="nq-info-inline"
+            style={{ marginTop: "0.75rem", marginBottom: "1.5rem" }}
+          >
             <strong>Therapy Volume – What Is the Correct Level?</strong>
             <p style={{ marginTop: "0.35rem" }}>
-              The therapy should be <strong>comfortable and never loud</strong>.  
-              You should still hear normal sounds around you.  
-              The ticks in Relief (CR) mode should be <strong>soft but noticeable</strong>.  
-              Best rule: <strong>“Just loud enough to hear it, but soft enough to ignore it.”</strong>
+              The therapy should be <strong>comfortable and never loud</strong>.
+              You should still hear normal sounds around you. The ticks in
+              Relief (CR) mode should be <strong>soft but noticeable</strong>.
+              Best rule:{" "}
+              <strong>
+                “Just loud enough to hear it, but soft enough to ignore it.”
+              </strong>
             </p>
           </div>
 
@@ -1013,7 +1027,11 @@ export default function TherapyPage() {
               type="button"
               onClick={enableExternalAudioMode}
               className="nq-chip"
-              style={{ width: "100%", background: '#f1f5f9', border: '1px solid #cbd5e1' }}
+              style={{
+                width: "100%",
+                background: "#f1f5f9",
+                border: "1px solid #cbd5e1",
+              }}
             >
               🔇 External Audio Mode – Mute Background Noise (Keep Therapy Tone)
             </button>
@@ -1496,8 +1514,10 @@ function Style() {
         max-width: 500px;
         box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
       }
-      .nq-modal h2 { margin-top: 0; }
-      .nq-modal-field { margin-top: 1rem; }
+      .nq-modal h2 { margin-top: 0;
+      }
+      .nq-modal-field { margin-top: 1rem;
+      }
       .nq-modal-textarea {
         width: 100%;
         border: 1px solid #cbd5e1;
