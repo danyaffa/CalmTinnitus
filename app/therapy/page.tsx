@@ -822,7 +822,7 @@ export default function TherapyPage() {
 
           <div className="nq-mixer">
             <div className="nq-slider-group">
-              <label>Background Vol</label>
+              <label>Background Sound Vol</label>
               <input
                 type="range"
                 min="0"
