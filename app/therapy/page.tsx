@@ -626,4 +626,562 @@ export default function TherapyPage() {
           <strong>Quick Start:</strong>
           <div className="nq-guide-steps">
             <span>1. Match your tinnitus pitch below & Save.</span>
-            <span>2. Select a therapy
+            <span>2. Select a therapy mode.</span>
+            <span>3. Choose a background sound & start.</span>
+          </div>
+        </div>
+        <div
+          style={{
+            paddingTop: "1rem",
+            borderTop: "1px solid rgba(0,0,0,0.05)",
+          }}
+        >
+          <strong>📅 Recommended:</strong> Use 2 sessions/day for 3–6 months for
+          habituation. <br />
+          <span style={{ opacity: 0.8 }}>
+            Or simply use it whenever you are looking for peace.
+          </span>
+        </div>
+      </div>
+
+      {/* STATUS BANNER */}
+      {sessionStatus !== "idle" && (
+        <div className="nq-banner">
+          <div className="nq-timer">{formatTime(timeRemaining)}</div>
+          <div className="nq-status-text">
+            {THERAPY_MODES.find((m) => m.key === selectedMode)?.label} is Active
+          </div>
+          {sessionStatus === "running" && (
+            <button onClick={pauseSession} className="nq-btn-stop">
+              ⏸ Pause Session
+            </button>
+          )}
+          {sessionStatus === "paused" && (
+            <button onClick={resumeSession} className="nq-btn-stop">
+              ▶ Resume Session
+            </button>
+          )}
+          <button onClick={stopSession} className="nq-btn-stop">
+            ⏹ Stop Session
+          </button>
+        </div>
+      )}
+
+      {/* STEP 1 */}
+      <div className="nq-panel nq-step-1">
+        <div className="nq-panel-header">
+          <h3>Step 1: Match Your Tinnitus Pitch</h3>
+          <div className="nq-pitch-display">
+            <span className="nq-hz">{Math.round(tinnitusPitch)} Hz</span>
+            <button
+              onClick={toggleTestTone}
+              className={`nq-btn-test ${isPlayingTest ? "active" : ""}`}
+            >
+              {isPlayingTest ? "⏹ Stop Tone" : "▶ Test Tone"}
+            </button>
+          </div>
+        </div>
+        <div className="nq-range-wrap">
+          <span className="nq-range-label">Low</span>
+          <input
+            type="range"
+            min="200"
+            max="12000"
+            step="50"
+            value={tinnitusPitch}
+            onChange={(e) => setTinnitusPitch(Number(e.target.value))}
+            className="nq-main-slider"
+          />
+          <span className="nq-range-label">High</span>
+        </div>
+        <div
+          style={{
+            marginTop: "1.5rem",
+            textAlign: "center",
+            borderTop: "1px solid #e2e8f0",
+            paddingTop: "1rem",
+          }}
+        >
+          <button onClick={saveProfile} className={saveBtnClass}>
+            {saveBtnText}
+          </button>
+          <p
+            style={{
+              fontSize: "0.8rem",
+              color: "#94a3b8",
+              marginTop: "0.5rem",
+            }}
+          >
+            Saved on this device (local profile).
+          </p>
+        </div>
+      </div>
+
+      {/* STEP 2 & 3 */}
+      <div className="nq-controls-grid">
+        {/* Step 2: Mode */}
+        <div className="nq-panel">
+          <h3>Step 2: Therapy Mode</h3>
+          <div className="nq-list">
+            {THERAPY_MODES.map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setSelectedMode(m.key)}
+                disabled={sessionStatus !== "idle"}
+                className={`nq-list-item ${
+                  selectedMode === m.key ? "active" : ""
+                }`}
+              >
+                <span className="nq-icon">{m.icon}</span>
+                <div>
+                  <strong>{m.label}</strong>
+                  <p>{m.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="nq-info-box">
+            <span style={{ fontSize: "1.2rem", marginRight: "0.5rem" }}>
+              ℹ️
+            </span>
+            <div>
+              <strong>Why you hear ticking / holes / clicks in Relief (CR)</strong>
+              <p style={{ marginTop: "0.35rem" }}>
+                In <strong>Relief (CR) Therapy</strong> you will hear gentle
+                “knocks”, “ticks”, or tiny gaps in the sound.{" "}
+                <strong>
+                  This is intentional – nothing is wrong with your speakers or
+                  phone.
+                </strong>
+              </p>
+              <p style={{ marginTop: "0.35rem" }}>
+                These short interruptions are part of the{" "}
+                <strong>neuromodulation therapy</strong>. They briefly disrupt
+                the brain's tinnitus pattern so over-active auditory neurons
+                lose synchronisation over time.
+              </p>
+              <ul
+                style={{
+                  marginTop: "0.35rem",
+                  paddingLeft: "1.1rem",
+                  fontSize: "0.8rem",
+                }}
+              >
+                <li>
+                  <strong>Relief (CR)</strong> – active treatment mode with ticks.
+                </li>
+                <li>
+                  <strong>Standard</strong> – comfort / masking only, no ticks.
+                </li>
+                <li>
+                  <strong>Sleep</strong> – softer night profile, no ticks.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Step 3: Sound & Mixer */}
+        <div className="nq-panel">
+          <h3>Step 3: Sound & Mixer</h3>
+
+          <div className="nq-slider-group">
+            <label>Background Sound</label>
+            <select
+              className="nq-select"
+              value={selectedSound.id}
+              onChange={(e) => {
+                const s = SOUND_PROFILES.find((p) => p.id === e.target.value);
+                if (s) setSelectedSound(s);
+              }}
+            >
+              {SOUND_PROFILES.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="nq-info-inline">
+            <strong>Good to know:</strong>
+            <p>
+              While the therapy is running you can{" "}
+              <strong>
+                play any music, watch videos, or even talk on the phone
+              </strong>{" "}
+              on your device. The treatment tone keeps working quietly in the
+              background, even if you change apps or use other sounds.{" "}
+              <strong>
+                On most phones the therapy will even continue when your screen
+                is off, as long as the device keeps playing sound.
+              </strong>
+            </p>
+          </div>
+
+          <div className="nq-mixer">
+            <div className="nq-slider-group">
+              <label>Background Vol</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={noiseVol}
+                onChange={(e) => setNoiseVol(Number(e.target.value))}
+              />
+              <div className="nq-mixer-hint">
+                Turn this all the way down if you want{" "}
+                <strong>only the therapy tone</strong> without noise.
+              </div>
+            </div>
+            <div className="nq-slider-group">
+              <label>Therapy Tone Vol</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={toneVol}
+                onChange={(e) => setToneVol(Number(e.target.value))}
+              />
+            </div>
+          </div>
+
+          <div className="nq-duration-group">
+            {[15, 30, 45, 60].map((t) => (
+              <button
+                key={t}
+                onClick={() => setSessionDuration(t)}
+                disabled={sessionStatus !== "idle"}
+                className={`nq-chip ${sessionDuration === t ? "active" : ""}`}
+              >
+                {t}m
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* START BUTTON */}
+      {sessionStatus === "idle" && (
+        <button onClick={startSession} className="nq-btn-big">
+          ▶ Start Session
+        </button>
+      )}
+
+      <div className="nq-footer">
+        <p>
+          Medical Disclaimer: This is a wellness tool. Consult a doctor for
+          hearing health issues.
+        </p>
+      </div>
+
+      <Style />
+    </main>
+  );
+}
+
+// --- STYLES ---
+function Style() {
+  return (
+    <style>{`
+      :root {
+        --primary: #0ea5e9;
+        --success: #22c55e;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --text: #0f172a;
+        --text-dim: #64748b;
+      }
+      .nq-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        font-family: system-ui, sans-serif;
+        color: var(--text);
+        background: #f8fafc;
+      }
+      .nq-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+      .nq-brand {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+      .nq-subtitle {
+        font-size: 0.9rem;
+        color: var(--text-dim);
+      }
+      .nq-master-vol {
+        background: white;
+        padding: 0.5rem 1rem;
+        border-radius: 99px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .nq-guide {
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        margin-bottom: 2rem;
+        font-size: 0.9rem;
+        color: #0369a1;
+      }
+      .nq-guide-steps {
+        display: flex;
+        flex-direction: column;
+        margin-top: 0.5rem;
+        gap: 0.25rem;
+        font-weight: 500;
+      }
+      .nq-panel {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      }
+      .nq-step-1 {
+        border: 2px solid #e2e8f0;
+        margin-bottom: 1.5rem;
+      }
+      .nq-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+      .nq-panel-header h3 {
+        margin: 0;
+      }
+      .nq-pitch-display {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .nq-hz {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--primary);
+        min-width: 80px;
+        text-align: right;
+      }
+      .nq-btn-test {
+        background: #0f172a;
+        color: white;
+        border: none;
+        padding: 0.5rem 1.2rem;
+        border-radius: 99px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: 0.2s;
+      }
+      .nq-btn-test.active {
+        background: #ef4444;
+      }
+      .nq-range-wrap {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .nq-range-label {
+        font-size: 0.8rem;
+        color: var(--text-dim);
+        white-space: nowrap;
+      }
+      .nq-main-slider {
+        flex: 1;
+        height: 8px;
+        border-radius: 4px;
+        appearance: none;
+        background: #e2e8f0;
+      }
+      .nq-main-slider::-webkit-slider-thumb {
+        appearance: none;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--primary);
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+      .nq-btn-save {
+        background: #e2e8f0;
+        color: #334155;
+        border: none;
+        padding: 0.6rem 2rem;
+        border-radius: 99px;
+        cursor: pointer;
+        font-weight: 700;
+        transition: 0.3s;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      }
+      .nq-btn-save:hover {
+        background: #cbd5e1;
+      }
+      .nq-btn-save.saved {
+        background: #22c55e;
+        color: white;
+        transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
+      }
+      .nq-controls-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
+      @media (max-width: 768px) {
+        .nq-controls-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .nq-info-box {
+        margin-top: 1.5rem;
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        font-size: 0.8rem;
+        color: #92400e;
+        display: flex;
+        align-items: flex-start;
+        line-height: 1.4;
+      }
+      .nq-list {
+        display: grid;
+        gap: 0.5rem;
+      }
+      .nq-list-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        text-align: left;
+        width: 100%;
+        background: white;
+        border: 1px solid #e2e8f0;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        cursor: pointer;
+      }
+      .nq-list-item.active {
+        border: 2px solid var(--primary);
+        background: #f0f9ff;
+      }
+      .nq-slider-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+      }
+      .nq-select {
+        width: 100%;
+        padding: 0.6rem;
+        border-radius: 0.5rem;
+        border: 1px solid #e2e8f0;
+        font-size: 1rem;
+      }
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--primary);
+      }
+      .nq-mixer {
+        display: grid;
+        gap: 1rem;
+        margin-top: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      .nq-mixer-hint {
+        margin-top: 0.3rem;
+        font-size: 0.8rem;
+        color: #6b7280;
+      }
+      .nq-duration-group {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .nq-chip {
+        flex: 1;
+        border: 1px solid #e2e8f0;
+        background: white;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: 500;
+      }
+      .nq-chip.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+      }
+      .nq-info-inline {
+        margin-top: 0.75rem;
+        margin-bottom: 0.25rem;
+        background: #ecfeff;
+        border-radius: 0.75rem;
+        padding: 0.7rem 0.9rem;
+        font-size: 0.85rem;
+        color: #0f172a;
+        border: 1px solid #a5f3fc;
+      }
+      .nq-banner {
+        background: linear-gradient(135deg, var(--primary), var(--success));
+        color: white;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+      }
+      .nq-timer {
+        font-size: 2.5rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+      .nq-btn-stop {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        padding: 0.5rem 1.25rem;
+        border-radius: 99px;
+        cursor: pointer;
+        font-weight: 600;
+        margin-top: 0.5rem;
+      }
+      .nq-btn-big {
+        width: 100%;
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 1.2rem;
+        border-radius: 1rem;
+        font-size: 1.2rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 10px 20px rgba(14, 165, 233, 0.2);
+      }
+      .nq-footer {
+        text-align: center;
+        margin-top: 3rem;
+        font-size: 0.8rem;
+        color: var(--text-dim);
+      }
+      .nq-status-text {
+        font-size: 0.9rem;
+        opacity: 0.9;
+      }
+    `}</style>
+  );
+}
