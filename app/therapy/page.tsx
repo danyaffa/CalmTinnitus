@@ -2,7 +2,8 @@
 
 "use client";
 
-import React, {
+import React,
+{
   useCallback,
   useEffect,
   useMemo,
@@ -11,9 +12,9 @@ import React, {
 } from "react";
 
 // --- FIREBASE / STORAGE IMPORTS ---
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase"; 
-import { createSavedProfile, logTherapySession } from "@/lib/therapyStorage"; 
+import { onAuthStateChanged, User } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { createSavedProfile, logTherapySession } from "@/lib/therapyStorage";
 
 // --- TYPES ---
 type TherapyMode = "relief" | "standard" | "sleep";
@@ -158,10 +159,10 @@ function useTinnitusAudio() {
     } else if (id === "rain") {
       // Realistic “rain” style noise:
       let b0 = 0, b1 = 0, b2 = 0, b3 = 0;
-      let envelope = 0.6; 
+      let envelope = 0.6;
 
       for (let i = 0; i < bufferSize; i++) {
-        const w = Math.random() * 2 - 1; 
+        const w = Math.random() * 2 - 1;
         b0 = 0.99886 * b0 + w * 0.0555179;
         b1 = 0.99332 * b1 + w * 0.0750759;
         b2 = 0.969 * b2 + w * 0.153852;
@@ -169,7 +170,7 @@ function useTinnitusAudio() {
 
         let pink = (b0 + b1 + b2 + b3 + w * 0.5362) * 0.4;
         if (i % 2000 === 0) {
-          envelope = 0.3 + Math.random() * 0.7; 
+          envelope = 0.3 + Math.random() * 0.7;
         }
         data[i] = pink * envelope;
       }
@@ -285,7 +286,7 @@ function useTinnitusAudio() {
       source.buffer = buffer;
       source.loop = true;
 
-      const effectiveNoise = Math.min(1.2, volume * 1.5); 
+      const effectiveNoise = Math.min(1.2, volume * 1.5);
       gain.gain.value = 0;
       gain.gain.setTargetAtTime(effectiveNoise, ctx.currentTime, 0.1);
 
@@ -369,7 +370,7 @@ function useTinnitusAudio() {
 
   const updateVolumes = useCallback((noiseVol: number, toneVol: number) => {
     const now = ctxRef.current?.currentTime || 0;
-    const effectiveNoise = Math.min(1.2, noiseVol * 1.5); 
+    const effectiveNoise = Math.min(1.2, noiseVol * 1.5);
     if (noiseGainRef.current) {
       noiseGainRef.current.gain.setTargetAtTime(effectiveNoise, now, 0.1);
     }
@@ -398,7 +399,15 @@ function useTinnitusAudio() {
 
 // --- PAGE COMPONENT ---
 export default function TherapyPage() {
-  const [user] = useAuthState(auth); // FIREBASE USER
+  // FIREBASE USER (SAFE FOR SSR)
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    if (!auth) return;
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return () => unsub();
+  }, []);
+
   const [tinnitusPitch, setTinnitusPitch] = useState(8000);
   const [selectedSound, setSelectedSound] = useState(SOUND_PROFILES[0]);
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("idle");
@@ -416,7 +425,7 @@ export default function TherapyPage() {
   const [noiseVol, setNoiseVol] = useState(0.7);
   const [toneVol, setToneVol] = useState(0.5);
   const [isPlayingTest, setIsPlayingTest] = useState(false);
-  
+
   // Timing
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sessionStartTimeRef = useRef<number | null>(null);
@@ -485,13 +494,10 @@ export default function TherapyPage() {
         await createSavedProfile({
           userId: user.uid,
           label: profileName || "My Tinnitus Profile",
-          earSide: "both", // Default for now, can expand later
+          earSide: "both",
           frequencyHz: tinnitusPitch,
           baseVolume: masterVol,
         });
-      } else {
-        // Optional: Alert user they could be saving to cloud?
-        // console.log("User not logged in, saving locally only");
       }
 
       setSaveBtnText("✅ Saved!");
@@ -587,18 +593,15 @@ export default function TherapyPage() {
       setSessionStatus("idle");
       setTimeRemaining(null);
 
-      // Only speak/beep when timer ends naturally
       if (reason === "auto") {
         playSessionEndAlert();
       }
 
-      // Show Report Modal (only if session was > 0.5 mins)
       if (actualMinutes > 0.1) {
         setCompletedDuration(actualMinutes);
         setReportNote("");
         setShowReport(true);
       }
-
     } catch (err) {
       console.error("stopSession failed:", err);
     }
@@ -625,9 +628,8 @@ export default function TherapyPage() {
 
       setSessionStatus("running");
       setTimeRemaining(sessionDuration);
-      sessionStartTimeRef.current = Date.now(); // Mark start time
+      sessionStartTimeRef.current = Date.now();
 
-      // Timer
       const end = Date.now() + sessionDuration * 60000;
       sessionTimerRef.current = setInterval(() => {
         const left = (end - Date.now()) / 60000;
@@ -678,38 +680,35 @@ export default function TherapyPage() {
   // --- SUBMIT REPORT TO FIREBASE ---
   const handleFinalizeSession = async () => {
     if (!user) {
-        // Just close if not logged in
-        setShowReport(false);
-        return;
+      setShowReport(false);
+      return;
     }
 
     setIsSubmittingReport(true);
     try {
-        await logTherapySession({
-            userId: user.uid,
-            profileId: null, // We could track which profile ID was used if we loaded it
-            mode: selectedMode,
-            // FIX: Ensure selectedSound.id matches the literal type
-            backgroundSound:
-              selectedSound.id === "white" ||
-              selectedSound.id === "rain" ||
-              selectedSound.id === "ocean" ||
-              selectedSound.id === "none"
-                ? selectedSound.id
-                : "none",
-            durationMinutes: completedDuration,
-            perceivedLoudnessBefore: 0, // Did not track
-            perceivedLoudnessAfter: reportLoudness,
-            reliefScore: reportRelief,
-            notes: reportNote
-        });
-        // Success
-        setShowReport(false);
+      await logTherapySession({
+        userId: user.uid,
+        profileId: null,
+        mode: selectedMode,
+        backgroundSound:
+          selectedSound.id === "white" ||
+          selectedSound.id === "rain" ||
+          selectedSound.id === "ocean" ||
+          selectedSound.id === "none"
+            ? selectedSound.id
+            : "none",
+        durationMinutes: completedDuration,
+        perceivedLoudnessBefore: 0,
+        perceivedLoudnessAfter: reportLoudness,
+        reliefScore: reportRelief,
+        notes: reportNote,
+      });
+      setShowReport(false);
     } catch (e) {
-        console.error("Failed to log session", e);
-        alert("Could not save session log. Check console.");
+      console.error("Failed to log session", e);
+      alert("Could not save session log. Check console.");
     } finally {
-        setIsSubmittingReport(false);
+      setIsSubmittingReport(false);
     }
   };
 
@@ -775,7 +774,6 @@ export default function TherapyPage() {
               ▶ Resume Session
             </button>
           )}
-          {/* Manual Stop */}
           <button onClick={() => stopSession("user")} className="nq-btn-stop">
             ⏹ Stop Session
           </button>
@@ -809,11 +807,11 @@ export default function TherapyPage() {
           />
           <span className="nq-range-label">High</span>
         </div>
-        
+
         {/* NEW SAVE SECTION */}
         <div className="nq-save-section">
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="Profile Name (e.g. Bedtime)"
             className="nq-input-profile"
             value={profileName}
@@ -956,57 +954,80 @@ export default function TherapyPage() {
       {/* SESSION REPORT MODAL */}
       {showReport && (
         <div className="nq-modal-overlay">
-            <div className="nq-modal">
-                <h2>Session Complete</h2>
-                <p>You completed <strong>{Math.round(completedDuration)} minutes</strong> of therapy.</p>
-                
-                <div className="nq-modal-field">
-                    <label>Tinnitus Loudness Now (0-10)</label>
-                    <input 
-                        type="range" min="0" max="10" 
-                        value={reportLoudness} 
-                        onChange={e => setReportLoudness(Number(e.target.value))} 
-                    />
-                    <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.8rem'}}>
-                        <span>Low</span>
-                        <span>High: {reportLoudness}</span>
-                    </div>
-                </div>
+          <div className="nq-modal">
+            <h2>Session Complete</h2>
+            <p>
+              You completed <strong>{Math.round(completedDuration)} minutes</strong> of therapy.
+            </p>
 
-                <div className="nq-modal-field">
-                    <label>How much relief did you feel? (0-10)</label>
-                    <input 
-                        type="range" min="0" max="10" 
-                        value={reportRelief} 
-                        onChange={e => setReportRelief(Number(e.target.value))} 
-                    />
-                     <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.8rem'}}>
-                        <span>None</span>
-                        <span>Lots: {reportRelief}</span>
-                    </div>
-                </div>
-
-                <div className="nq-modal-field">
-                    <label>Notes (optional)</label>
-                    <textarea 
-                        className="nq-modal-textarea"
-                        placeholder="What sound worked well? How are you feeling?"
-                        value={reportNote}
-                        onChange={e => setReportNote(e.target.value)}
-                    />
-                </div>
-
-                <div className="nq-modal-actions">
-                    <button onClick={() => setShowReport(false)} className="nq-btn-cancel">Skip</button>
-                    <button 
-                        onClick={handleFinalizeSession} 
-                        className="nq-btn-confirm"
-                        disabled={isSubmittingReport}
-                    >
-                        {isSubmittingReport ? "Saving..." : "Save Log"}
-                    </button>
-                </div>
+            <div className="nq-modal-field">
+              <label>Tinnitus Loudness Now (0-10)</label>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                value={reportLoudness}
+                onChange={(e) => setReportLoudness(Number(e.target.value))}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "0.8rem",
+                }}
+              >
+                <span>Low</span>
+                <span>High: {reportLoudness}</span>
+              </div>
             </div>
+
+            <div className="nq-modal-field">
+              <label>How much relief did you feel? (0-10)</label>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                value={reportRelief}
+                onChange={(e) => setReportRelief(Number(e.target.value))}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "0.8rem",
+                }}
+              >
+                <span>None</span>
+                <span>Lots: {reportRelief}</span>
+              </div>
+            </div>
+
+            <div className="nq-modal-field">
+              <label>Notes (optional)</label>
+              <textarea
+                className="nq-modal-textarea"
+                placeholder="What sound worked well? How are you feeling?"
+                value={reportNote}
+                onChange={(e) => setReportNote(e.target.value)}
+              />
+            </div>
+
+            <div className="nq-modal-actions">
+              <button
+                onClick={() => setShowReport(false)}
+                className="nq-btn-cancel"
+              >
+                Skip
+              </button>
+              <button
+                onClick={handleFinalizeSession}
+                className="nq-btn-confirm"
+                disabled={isSubmittingReport}
+              >
+                {isSubmittingReport ? "Saving..." : "Save Log"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1154,8 +1175,7 @@ function Style() {
         border: 2px solid white;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
       }
-      
-      /* New Save Section */
+
       .nq-save-section {
         margin-top: 1.5rem;
         text-align: center;
@@ -1349,7 +1369,6 @@ function Style() {
         opacity: 0.9;
       }
 
-      /* Modal Styles */
       .nq-modal-overlay {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
