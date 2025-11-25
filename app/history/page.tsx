@@ -7,7 +7,8 @@ import { auth } from "@/lib/firebase";
 import {
   getTherapySessions,
   TherapySession,
-} from "@/lib/therapyStorage"; :contentReference[oaicite:0]{index=0}
+} from "@/lib/therapyStorage";
+
 
 // Helpers
 function formatDate(ts: Date) {
