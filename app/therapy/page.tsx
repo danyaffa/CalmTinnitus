@@ -1,21 +1,31 @@
-// app/therapy/page.tsx
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
-// --- 🔥 FIREBASE IMPORTS ---
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getFirestore, doc, setDoc, getDoc, Firestore } from "firebase/firestore";
+
+// --- 🔥 SAFE FIREBASE INIT ---
+let app: FirebaseApp | null = null;
+let db: Firestore | null = null;
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
+
+// Only initialize if we are on the client and have an API key
+if (typeof window !== "undefined" && firebaseConfig.apiKey) {
+  try {
+    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    db = getFirestore(app);
+  } catch (error) {
+    console.error("Firebase Initialization Error:", error);
+  }
+}
 
 // --- TYPES ---
 type TherapyMode = "relief" | "standard" | "sleep";
@@ -49,13 +59,11 @@ const SOUND_PROFILES: SoundProfile[] = [
   { id: "ocean", label: "Ocean Waves", description: "Rolling surf", type: "nature" },
 ];
 
-// ✅ MODES
 const THERAPY_MODES = [
   {
     key: "relief" as TherapyMode,
     label: "1) Relief (CR) Therapy – Recommended",
-    description:
-      "Best for long-term tinnitus reduction. Creates clear ticks / short gaps in the tone to desynchronise tinnitus activity.",
+    description: "Best for long-term tinnitus reduction. Creates clear ticks / short gaps in the tone to desynchronise tinnitus activity.",
     icon: "✨",
   },
   {
@@ -79,17 +87,22 @@ function useTinnitusAudio() {
 
   const noiseNodeRef = useRef<AudioBufferSourceNode | null>(null);
   const noiseGainRef = useRef<GainNode | null>(null);
+  
   const toneOscRef = useRef<OscillatorNode | null>(null);
   const toneGainRef = useRef<GainNode | null>(null);
 
   const crOscillatorsRef = useRef<OscillatorNode[]>([]);
   const crGainsRef = useRef<GainNode[]>([]);
   const crIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // ✅ NEW: Tracks volume for CR mode so slider works in real-time
+  const latestToneVolRef = useRef<number>(0.5);
 
-  // Track stop timeout to prevent overlaps
   const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const initAudio = useCallback(() => {
+    if (typeof window === "undefined") return null;
+
     if (!ctxRef.current || ctxRef.current.state === "closed") {
       ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       masterGainRef.current = ctxRef.current.createGain();
@@ -101,11 +114,11 @@ function useTinnitusAudio() {
     return ctxRef.current;
   }, []);
 
-  const setMasterVolume = (vol: number) => {
+  const setMasterVolume = useCallback((vol: number) => {
     if (masterGainRef.current) {
       masterGainRef.current.gain.setTargetAtTime(vol, ctxRef.current?.currentTime || 0, 0.1);
     }
-  };
+  }, []);
 
   const generateNoiseBuffer = (ctx: AudioContext, type: string) => {
     const bufferSize = ctx.sampleRate * 2;
@@ -115,13 +128,7 @@ function useTinnitusAudio() {
     if (type === "white") {
       for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
     } else if (type === "pink") {
-      let b0 = 0,
-        b1 = 0,
-        b2 = 0,
-        b3 = 0,
-        b4 = 0,
-        b5 = 0,
-        b6 = 0;
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
       for (let i = 0; i < bufferSize; i++) {
         const w = Math.random() * 2 - 1;
         b0 = 0.99886 * b0 + w * 0.0555179;
@@ -145,7 +152,6 @@ function useTinnitusAudio() {
     return buffer;
   };
 
-  // soft stop with fade + delayed cleanup (used for STOP button, test tone stop, etc.)
   const stopAll = useCallback(() => {
     if (stopTimeoutRef.current) {
       clearTimeout(stopTimeoutRef.current);
@@ -159,21 +165,15 @@ function useTinnitusAudio() {
 
     stopTimeoutRef.current = setTimeout(() => {
       if (noiseNodeRef.current) {
-        try {
-          noiseNodeRef.current.stop();
-        } catch {}
+        try { noiseNodeRef.current.stop(); } catch {}
         noiseNodeRef.current.disconnect();
       }
       if (toneOscRef.current) {
-        try {
-          toneOscRef.current.stop();
-        } catch {}
+        try { toneOscRef.current.stop(); } catch {}
         toneOscRef.current.disconnect();
       }
       crOscillatorsRef.current.forEach((o) => {
-        try {
-          o.stop();
-        } catch {}
+        try { o.stop(); } catch {}
         o.disconnect();
       });
       noiseNodeRef.current = null;
@@ -183,7 +183,6 @@ function useTinnitusAudio() {
     }, 200);
   }, []);
 
-  // 🔧 hard stop with NO delayed timeout – used ONLY by CR so it doesn’t kill itself later
   const hardStopAll = useCallback(() => {
     if (stopTimeoutRef.current) {
       clearTimeout(stopTimeoutRef.current);
@@ -195,24 +194,18 @@ function useTinnitusAudio() {
     }
 
     if (noiseNodeRef.current) {
-      try {
-        noiseNodeRef.current.stop();
-      } catch {}
+      try { noiseNodeRef.current.stop(); } catch {}
       noiseNodeRef.current.disconnect();
       noiseNodeRef.current = null;
     }
     if (toneOscRef.current) {
-      try {
-        toneOscRef.current.stop();
-      } catch {}
+      try { toneOscRef.current.stop(); } catch {}
       toneOscRef.current.disconnect();
       toneOscRef.current = null;
     }
 
     crOscillatorsRef.current.forEach((o) => {
-      try {
-        o.stop();
-      } catch {}
+      try { o.stop(); } catch {}
       o.disconnect();
     });
     crOscillatorsRef.current = [];
@@ -222,10 +215,10 @@ function useTinnitusAudio() {
   const playNoise = useCallback(
     (type: string, volume: number) => {
       const ctx = initAudio();
+      if (!ctx) return;
+
       if (noiseNodeRef.current) {
-        try {
-          noiseNodeRef.current.stop();
-        } catch {}
+        try { noiseNodeRef.current.stop(); } catch {}
       }
 
       const buffer = generateNoiseBuffer(ctx, type);
@@ -244,16 +237,15 @@ function useTinnitusAudio() {
       noiseNodeRef.current = source;
       noiseGainRef.current = gain;
     },
-    [initAudio],
+    [initAudio]
   );
 
   const playTone = useCallback(
     (freq: number, volume: number) => {
       const ctx = initAudio();
+      if (!ctx) return;
       if (toneOscRef.current) {
-        try {
-          toneOscRef.current.stop();
-        } catch {}
+        try { toneOscRef.current.stop(); } catch {}
       }
 
       const osc = ctx.createOscillator();
@@ -271,15 +263,20 @@ function useTinnitusAudio() {
       toneOscRef.current = osc;
       toneGainRef.current = gain;
     },
-    [initAudio],
+    [initAudio]
   );
 
-  // ✅ CR: uses hardStopAll so it doesn’t get killed after 200ms
+  // ✅ FIXED: CR Playback now listens to the global volume ref
   const playCR = useCallback(
     (baseFreq: number, volume: number) => {
       const ctx = initAudio();
+      if (!ctx) return;
       hardStopAll();
 
+      // Initialize the global ref so it starts at the right level
+      latestToneVolRef.current = volume;
+
+      // CR Frequencies: 0.9x, 1.0x, 1.1x, 1.2x
       const freqs = [0.9, 1.0, 1.1, 1.2].map((m) => baseFreq * m);
       const oscillators: OscillatorNode[] = [];
       const gains: GainNode[] = [];
@@ -301,30 +298,45 @@ function useTinnitusAudio() {
       crGainsRef.current = gains;
 
       let idx = 0;
+      
+      // ✅ Start the rotation cycle
       crIntervalRef.current = setInterval(() => {
         const now = ctx.currentTime;
+        // Use the REF volume, not the closure volume
+        const currentVol = latestToneVolRef.current;
+
         gains.forEach((g, i) => {
-          const target = i === idx ? volume : 0;
+          // If this is the active index, ramp to volume. Else silence.
+          const target = i === idx ? currentVol : 0;
+          // 0.02s fade creates the soft "click" or "tick"
           g.gain.setTargetAtTime(target, now, 0.02);
         });
+        
         idx = (idx + 1) % gains.length;
-      }, 250);
+      }, 250); // 250ms per tick = 4Hz cycle
     },
-    [initAudio, hardStopAll],
+    [initAudio, hardStopAll]
   );
 
-  const updateVolumes = (noiseVol: number, toneVol: number) => {
+  // ✅ FIXED: UpdateVolumes now updates the Ref, ensuring CR mode picks it up
+  const updateVolumes = useCallback((noiseVol: number, toneVol: number) => {
     const now = ctxRef.current?.currentTime || 0;
-    if (noiseGainRef.current)
+    
+    // 1. Update Noise
+    if (noiseGainRef.current) {
       noiseGainRef.current.gain.setTargetAtTime(noiseVol, now, 0.1);
-    if (toneGainRef.current)
+    }
+
+    // 2. Update Standard Tone
+    if (toneGainRef.current) {
       toneGainRef.current.gain.setTargetAtTime(toneVol, now, 0.1);
+    }
 
-    // ✅ make Therapy Tone slider work for CR as well
-    crGainsRef.current.forEach((g) => g.gain.setTargetAtTime(toneVol, now, 0.1));
-  };
+    // 3. Update CR Reference (The interval loop will pick this up on next tick)
+    latestToneVolRef.current = toneVol;
+  }, []);
 
-  return {
+  const api = useMemo(() => ({
     initAudio,
     playNoise,
     playTone,
@@ -333,32 +345,31 @@ function useTinnitusAudio() {
     setMasterVolume,
     updateVolumes,
     ctxRef,
-  };
+  }), [initAudio, playNoise, playTone, playCR, stopAll, setMasterVolume, updateVolumes]);
+
+  return api;
 }
 
 // --- 🎨 COMPONENT ---
 export default function TherapyPage() {
   const [tinnitusPitch, setTinnitusPitch] = useState<number>(8000);
   const [currentPitch, setCurrentPitch] = useState<number>(8000);
-  const [selectedSound, setSelectedSound] = useState<SoundProfile>(
-    SOUND_PROFILES[2], // Default Pink
-  );
+  const [selectedSound, setSelectedSound] = useState<SoundProfile>(SOUND_PROFILES[2]); // Default Pink
   const [externalLink, setExternalLink] = useState("");
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("idle");
-  const [selectedMode, setSelectedMode] = useState<TherapyMode>("relief"); // Default to Relief
+  const [selectedMode, setSelectedMode] = useState<TherapyMode>("relief");
   const [sessionDuration, setSessionDuration] = useState(30);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [userId, setUserId] = useState<string>("");
-
+  
   // Save Button State
   const [saveBtnText, setSaveBtnText] = useState("Save Profile");
   const [saveBtnClass, setSaveBtnClass] = useState("nq-btn-save");
-
+  
   // Volumes
   const [masterVol, setMasterVol] = useState(0.5);
   const [noiseVol, setNoiseVol] = useState(0.3);
   const [toneVol, setToneVol] = useState(0.5);
-
   const [isPlayingTest, setIsPlayingTest] = useState(false);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -371,19 +382,25 @@ export default function TherapyPage() {
   }, [masterVol, audio]);
 
   useEffect(() => {
-    if (sessionStatus === "running")
+    // Always update volumes when slider moves, even if running
+    if (sessionStatus === "running") {
       audio.updateVolumes(noiseVol, toneVol);
+    }
   }, [noiseVol, toneVol, sessionStatus, audio]);
 
   // --- ☁️ LOAD PROFILE FROM FIRESTORE ---
   useEffect(() => {
     const loadProfile = async () => {
+      if (typeof window === "undefined") return;
+
       let uid = localStorage.getItem("calmtinnitus_uid");
       if (!uid) {
         uid = "guest_" + Math.random().toString(36).substr(2, 9);
         localStorage.setItem("calmtinnitus_uid", uid);
       }
       setUserId(uid);
+
+      if (!db) return; // Prevent crash if DB invalid
 
       try {
         const docRef = doc(db, "profiles", uid);
@@ -417,10 +434,15 @@ export default function TherapyPage() {
   }, [selectedSound]);
 
   // --- Handlers ---
-
   const saveProfile = async () => {
     if (!userId) return;
     setSaveBtnText("Saving...");
+    
+    if (!db) {
+      setSaveBtnText("No DB Connection");
+      setTimeout(() => setSaveBtnText("Save Profile"), 2000);
+      return;
+    }
 
     try {
       await setDoc(doc(db, "profiles", userId), {
@@ -478,14 +500,21 @@ export default function TherapyPage() {
     }
 
     setTimeout(() => {
+      // 1. Play Noise
       if (selectedSound.type !== "external") {
         audio.playNoise(selectedSound.id, noiseVol);
       }
+      
+      // 2. Play Tone based on Mode
       if (selectedMode === "relief") {
+        // Relief = CR (Modulation)
         audio.playCR(tinnitusPitch, toneVol);
-      } else {
+      } else if (selectedMode === "standard") {
+        // Standard = Constant Tone
         audio.playTone(tinnitusPitch, toneVol);
       }
+      // Sleep mode uses no tone (or very quiet noise), so we skip playing tone.
+
       setSessionStatus("running");
       setTimeRemaining(sessionDuration);
 
@@ -593,8 +622,7 @@ export default function TherapyPage() {
             borderTop: "1px solid rgba(0,0,0,0.05)",
           }}
         >
-          <strong>📅 Recommended:</strong> Use 2 sessions/day for 3-6
-          months for habituation.
+          <strong>📅 Recommended:</strong> Use 2 sessions/day for 3-6 months for habituation.
           <br />
           <span style={{ opacity: 0.8 }}>
             Or simply use it whenever you are looking for peace.
@@ -607,8 +635,7 @@ export default function TherapyPage() {
         <div className="nq-banner">
           <div className="nq-timer">{formatTime(timeRemaining)}</div>
           <div className="nq-status-text">
-            {THERAPY_MODES.find((m) => m.key === selectedMode)?.label} is
-            Active
+            {THERAPY_MODES.find((m) => m.key === selectedMode)?.label} is Active
           </div>
 
           {sessionStatus === "running" && (
@@ -639,9 +666,7 @@ export default function TherapyPage() {
             </span>
             <button
               onClick={toggleTestTone}
-              className={`nq-btn-test ${
-                isPlayingTest ? "active" : ""
-              }`}
+              className={`nq-btn-test ${isPlayingTest ? "active" : ""}`}
             >
               {isPlayingTest ? "⏹ Stop Tone" : "▶ Test Tone"}
             </button>
@@ -656,9 +681,7 @@ export default function TherapyPage() {
             max="12000"
             step="50"
             value={tinnitusPitch}
-            onChange={(e) =>
-              handlePitchChange(Number(e.target.value))
-            }
+            onChange={(e) => handlePitchChange(Number(e.target.value))}
             className="nq-main-slider"
           />
           <span className="nq-range-label">High</span>
@@ -692,9 +715,7 @@ export default function TherapyPage() {
                 key={m.key}
                 onClick={() => setSelectedMode(m.key)}
                 disabled={sessionStatus !== "idle"}
-                className={`nq-list-item ${
-                  selectedMode === m.key ? "active" : ""
-                }`}
+                className={`nq-list-item ${selectedMode === m.key ? "active" : ""}`}
               >
                 <span className="nq-icon">{m.icon}</span>
                 <div>
@@ -715,13 +736,12 @@ export default function TherapyPage() {
               <p style={{ marginTop: "0.35rem" }}>
                 In <strong>Relief (CR) Therapy</strong> you will hear gentle
                 “knocks”, “ticks”, or tiny gaps in the sound.
-                <strong> This is fully intentional – nothing is wrong with your
-                speakers or your phone.</strong>
+                <strong> This is fully intentional – nothing is wrong with your speakers or your phone.</strong>
               </p>
               <p style={{ marginTop: "0.35rem" }}>
                 These short interruptions are part of the{" "}
                 <strong>neuromodulation therapy</strong>. They briefly disrupt the
-                brain&apos;s tinnitus pattern so over-active auditory neurons lose
+                brain's tinnitus pattern so over-active auditory neurons lose
                 synchronisation over time.
               </p>
               <ul style={{ marginTop: "0.35rem", paddingLeft: "1.1rem", fontSize: "0.8rem" }}>
