@@ -33,7 +33,7 @@ const SOUND_PROFILES: SoundProfile[] = [
     type: "external",
     color: "#1DB954",
     icon: "🟢",
-    defaultLink: "", // Cleaned default link
+    defaultLink: "",
   },
   {
     id: "pink",
@@ -110,20 +110,31 @@ function useTinnitusAudio() {
 
   const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // --- FIX: Updated initAudio to be TypeScript safe ---
   const initAudio = useCallback(() => {
     if (typeof window === "undefined") return null;
 
-    if (!ctxRef.current || ctxRef.current.state === "closed") {
+    let ctx = ctxRef.current;
+
+    if (!ctx || ctx.state === "closed") {
       const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
       if (!Ctx) return null;
-      ctxRef.current = new Ctx();
-      masterGainRef.current = ctxRef.current.createGain();
-      masterGainRef.current.connect(ctxRef.current.destination);
+      
+      // Assign to local variable 'newCtx' so TypeScript knows it's not null
+      const newCtx = new Ctx();
+      ctxRef.current = newCtx;
+      ctx = newCtx;
+
+      // Create master gain using the local non-null variable
+      const masterGain = newCtx.createGain();
+      masterGain.connect(newCtx.destination);
+      masterGainRef.current = masterGain;
     }
-    if (ctxRef.current.state === "suspended") {
-      ctxRef.current.resume();
+
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume();
     }
-    return ctxRef.current;
+    return ctx;
   }, []);
 
   const setMasterVolume = useCallback((vol: number) => {
@@ -558,7 +569,6 @@ export default function TherapyPage() {
     if (type === "spotify") {
       if (url.includes("/embed/")) return url;
       const cleanUrl = url.split("?")[0];
-      // Fixed regex to correctly identify spotify track/playlist IDs
       const m = cleanUrl.match(/spotify\.com\/(track|playlist|album)\/([a-zA-Z0-9]+)/);
       return m
         ? `https://open.spotify.com/embed/${m[1]}/${m[2]}?utm_source=generator&theme=0`
