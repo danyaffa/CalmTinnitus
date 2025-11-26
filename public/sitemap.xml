@@ -2,35 +2,45 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
   <url>
-    <loc>https://calmtinnitus.com/</loc>
+    <loc>https://getyourbizonai.com/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 
   <url>
-    <loc>https://calmtinnitus.com/about</loc>
+    <loc>https://getyourbizonai.com/register</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://getyourbizonai.com/login</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://getyourbizonai.com/dashboard</loc>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://calmtinnitus.com/research</loc>
+    <loc>https://getyourbizonai.com/profile</loc>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://calmtinnitus.com/legal</loc>
+    <loc>https://getyourbizonai.com/submission</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://calmtinnitus.com/disclaimers</loc>
-  </url>
-
-  <url>
-    <loc>https://calmtinnitus.com/company-policy</loc>
-  </url>
-
-  <url>
-    <loc>https://calmtinnitus.com/therapy</loc>
+    <loc>https://getyourbizonai.com/seo</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
   </url>
 
 </urlset>
