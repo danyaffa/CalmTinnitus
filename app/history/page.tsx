@@ -1,4 +1,3 @@
-// FILE: app/history/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -49,14 +48,23 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // [NEW] 1. Load from localStorage immediately (Fixes "Log not showing" issue)
+    // 1. Load from localStorage immediately (robust to old formats)
     if (typeof window !== "undefined") {
       try {
         const raw = window.localStorage.getItem(SESSION_LOG_KEY);
         if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setSessions(parsed);
+          let parsed: any = JSON.parse(raw);
+          let asArray: TherapySession[] = [];
+
+          if (Array.isArray(parsed)) {
+            asArray = parsed as TherapySession[];
+          } else if (parsed && typeof parsed === "object") {
+            // support older single-object format
+            asArray = [parsed as TherapySession];
+          }
+
+          if (asArray.length > 0) {
+            setSessions(asArray);
             setLoading(false);
           }
         }
@@ -79,10 +87,10 @@ export default function HistoryPage() {
         // or you can merge them. For now, we prioritize local logs
         // to ensure the user sees their data instantly.
         if (sessions.length === 0) {
-            const data = await getTherapySessions(u.uid);
-            if(data && data.length > 0) {
-                setSessions(data);
-            }
+          const data = await getTherapySessions(u.uid);
+          if (data && data.length > 0) {
+            setSessions(data);
+          }
         }
       } catch (err) {
         console.error("Failed to load sessions from Firebase", err);
@@ -221,14 +229,14 @@ export default function HistoryPage() {
                     .slice()
                     .reverse()
                     .map((s) => {
-                      // [UPDATED] Robust date handling for both Firestore Timestamps and LocalStorage ISO Strings
+                      // Robust date handling for both Firestore Timestamps and LocalStorage ISO Strings
                       let d: Date;
-                      if(typeof s.createdAt === 'string') {
-                          d = new Date(s.createdAt);
+                      if (typeof s.createdAt === "string") {
+                        d = new Date(s.createdAt);
                       } else if ((s.createdAt as any).toDate) {
-                          d = (s.createdAt as any).toDate();
+                        d = (s.createdAt as any).toDate();
                       } else {
-                          d = new Date((s.createdAt as any).seconds * 1000);
+                        d = new Date((s.createdAt as any).seconds * 1000);
                       }
 
                       return (
