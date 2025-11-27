@@ -1,4 +1,3 @@
-// FILE: app/therapy/page.tsx
 "use client";
 
 import React, {
@@ -742,11 +741,27 @@ export default function TherapyPage() {
       id: Date.now().toString(), // fallback ID
     };
 
-    // 1. Save to LocalStorage (Guarantees history works)
+    // 1. Save to LocalStorage (robust to old formats)
     try {
       if (typeof window !== "undefined") {
         const existingRaw = window.localStorage.getItem(SESSION_LOG_KEY);
-        const existing = existingRaw ? JSON.parse(existingRaw) : [];
+
+        let existing: any[] = [];
+        if (existingRaw) {
+          try {
+            const parsed = JSON.parse(existingRaw);
+            if (Array.isArray(parsed)) {
+              existing = parsed;
+            } else if (parsed && typeof parsed === "object") {
+              // older version: single object
+              existing = [parsed];
+            }
+          } catch {
+            // bad JSON – ignore and start fresh
+            existing = [];
+          }
+        }
+
         const updated = [logData, ...existing];
         window.localStorage.setItem(SESSION_LOG_KEY, JSON.stringify(updated));
       }
@@ -1123,7 +1138,7 @@ export default function TherapyPage() {
                 className="nq-modal-textarea"
                 placeholder="What sound worked well? How are you feeling?"
                 value={reportNote}
-                onChange={(e) => setReportNote(e.target.value)}
+                onChange={(e) => setReportNote(e.target.value))}
               />
             </div>
 
