@@ -1138,7 +1138,7 @@ export default function TherapyPage() {
                 className="nq-modal-textarea"
                 placeholder="What sound worked well? How are you feeling?"
                 value={reportNote}
-                onChange={(e) => setReportNote(e.target.value))}
+                onChange={(e) => setReportNote(e.target.value)}
               />
             </div>
 
