@@ -433,7 +433,39 @@ function useTinnitusAudio() {
 }
 
 // --- PAGE COMPONENT ---
-export default function TherapyPage() {
+// Simple error boundary so runtime errors don't blank the page
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any, info: any) {
+    console.error("CalmTinnitus TherapyPage runtime error:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <main className="nq-container">
+          <h1 className="nq-brand">CalmTinnitus</h1>
+          <p style={{ marginTop: "1rem", color: "#64748b" }}>
+            Something went wrong while loading the therapy page. Please close
+            and reopen the app, or refresh this page.
+          </p>
+        </main>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Inner component with all the existing logic
+function TherapyInner() {
   // FIREBASE USER (SAFE FOR SSR)
   const [user, setUser] = useState<User | null>(null);
 
@@ -1170,6 +1202,32 @@ export default function TherapyPage() {
 
       <Style />
     </main>
+  );
+}
+
+// Wrapper: wait until mounted to avoid any hydration / window issues
+export default function TherapyPage() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <main className="nq-container">
+        <h1 className="nq-brand">CalmTinnitus</h1>
+        <p style={{ marginTop: "1rem", color: "#64748b" }}>
+          Loading your therapy dashboard…
+        </p>
+      </main>
+    );
+  }
+
+  return (
+    <ErrorBoundary>
+      <TherapyInner />
+    </ErrorBoundary>
   );
 }
 
