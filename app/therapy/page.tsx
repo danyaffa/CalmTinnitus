@@ -494,10 +494,15 @@ function TherapyInner() {
   const [saveBtnText, setSaveBtnText] = useState("Save Profile");
   const [saveBtnClass, setSaveBtnClass] = useState("nq-btn-save");
 
+  // --- SAFE VOLUME LIMIT FOR THERAPY TONE ---
+  const MAX_TONE_VOL = 0.4;
+  const clampTone = (val: number) => Math.min(val, MAX_TONE_VOL);
+
   // Volume
   const [masterVol, setMasterVol] = useState(0.8);
   const [noiseVol, setNoiseVol] = useState(0.7);
-  const [toneVol, setToneVol] = useState(0.5);
+  const [toneVol, setToneVol] = useState(0.3); // start safely below the cap
+
   const [isPlayingTest, setIsPlayingTest] = useState(false);
 
   // Timing
@@ -512,10 +517,10 @@ function TherapyInner() {
     audio.setMasterVolume(masterVol);
   }, [masterVol, audio]);
 
-  // live mixer during session
+  // live mixer during session (tone volume always clamped)
   useEffect(() => {
     if (sessionStatus === "running") {
-      audio.updateVolumes(noiseVol, toneVol);
+      audio.updateVolumes(noiseVol, clampTone(toneVol));
     }
   }, [noiseVol, toneVol, sessionStatus, audio]);
 
@@ -582,14 +587,14 @@ function TherapyInner() {
     }
   };
 
-  // test tone
+  // test tone (tone volume ALWAYS clamped, and no forced jump to 0.5)
   const toggleTestTone = () => {
     if (isPlayingTest) {
       audio.stopAll();
       setIsPlayingTest(false);
     } else {
       audio.initAudio();
-      const testVol = Math.max(toneVol, 0.5);
+      const testVol = clampTone(toneVol || MAX_TONE_VOL * 0.8);
       audio.playTone(tinnitusPitch, testVol);
       setIsPlayingTest(true);
     }
@@ -597,7 +602,7 @@ function TherapyInner() {
 
   useEffect(() => {
     if (isPlayingTest) {
-      const testVol = Math.max(toneVol, 0.5);
+      const testVol = clampTone(toneVol || MAX_TONE_VOL * 0.8);
       audio.playTone(tinnitusPitch, testVol);
     }
   }, [tinnitusPitch, toneVol, isPlayingTest, audio]);
@@ -647,7 +652,7 @@ function TherapyInner() {
     // Mute background noise but keep therapy tone running
     setNoiseVol(0);
     if (sessionStatus === "running") {
-      audio.updateVolumes(0, toneVol);
+      audio.updateVolumes(0, clampTone(toneVol));
     }
   };
 
@@ -661,14 +666,16 @@ function TherapyInner() {
       startDelay = 250;
     }
 
+    const safeTone = clampTone(toneVol);
+
     setTimeout(() => {
       audio.playNoise(selectedSound.id, noiseVol);
       if (selectedMode === "relief") {
-        audio.playCR(tinnitusPitch, toneVol);
+        audio.playCR(tinnitusPitch, safeTone);
       } else {
-        audio.playTone(tinnitusPitch, toneVol);
+        audio.playTone(tinnitusPitch, safeTone);
       }
-      audio.updateVolumes(noiseVol, toneVol);
+      audio.updateVolumes(noiseVol, safeTone);
 
       setSessionStatus("running");
       setTimeRemaining(sessionDuration);
@@ -968,7 +975,9 @@ function TherapyInner() {
                 max="1"
                 step="0.05"
                 value={toneVol}
-                onChange={(e) => setToneVol(Number(e.target.value))}
+                onChange={(e) =>
+                  setToneVol(clampTone(Number(e.target.value)))
+                }
               />
             </div>
           </div>
