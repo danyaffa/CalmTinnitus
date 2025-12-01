@@ -1,17 +1,33 @@
-// /app/page.tsx
+// FILE: /app/page.tsx
 "use client";
 
+import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { ReviewWidget } from "../components/ReviewWidgets";
 
 export default function HomePage() {
   const year = new Date().getFullYear();
+  const siteUrl = "https://calmtinnitus.com";
 
   return (
     <>
-      {/* ✅ Bing + Google verification tags */}
-      <head>
+      {/* ✅ SEO + verification tags */}
+      <Head>
+        {/* BASIC SEO */}
+        <title>CalmTinnitus – Gentle Sound Support for Tinnitus Relief</title>
+        <meta
+          name="description"
+          content="CalmTinnitus is a calm, at-home sound tool to support people living with tinnitus, using gentle sound, training routines and education."
+        />
+
+        {/* ✅ Canonical URL */}
+        <link rel="canonical" href={`${siteUrl}/`} />
+
+        {/* ✅ Allow indexing */}
+        <meta name="robots" content="index,follow" />
+
+        {/* ✅ Bing + Google verification tags */}
         <meta
           name="msvalidate.01"
           content="1A5F9E495867B41926D6E2C113347122"
@@ -20,7 +36,21 @@ export default function HomePage() {
           name="google-site-verification"
           content="1-hMw5VR5fPWM2BohUpP3BBUCgc3f_tuqvOjuV2Fnl0"
         />
-      </head>
+
+        {/* ✅ Social preview */}
+        <meta property="og:type" content="website" />
+        <meta
+          property="og:title"
+          content="CalmTinnitus – Gentle Sound Support for Tinnitus"
+        />
+        <meta
+          property="og:description"
+          content="Tools and sound support to help you live calmer with tinnitus."
+        />
+        <meta property="og:url" content={`${siteUrl}/`} />
+        <meta property="og:site_name" content="CalmTinnitus" />
+        <meta property="og:image" content={`${siteUrl}/CalmTinnitus-Logo.png`} />
+      </Head>
 
       <main className="nq-landing">
         {/* 🌅 TOP GRADIENT SHELL (Header + Hero) */}
