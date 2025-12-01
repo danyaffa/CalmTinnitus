@@ -45,6 +45,17 @@ export const metadata: Metadata = {
     canonical: "https://calmtinnitus.com/",
   },
 
+  // 🔵 ADD THIS — global indexing for all pages
+  robots: {
+    index: true,
+    follow: true,
+    nocache: false,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
+
   // OPEN GRAPH (FACEBOOK / LINKEDIN / WHATSAPP)
   openGraph: {
     type: "website",
@@ -101,9 +112,11 @@ export default function RootLayout({
           content="black-translucent"
         />
       </head>
+
       <body>
         {/* JSON-LD schema for AI / search */}
         <JsonLd />
+
         {/* Auth + app content */}
         <AuthProvider>{children}</AuthProvider>
       </body>
