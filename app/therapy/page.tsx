@@ -1013,12 +1013,26 @@ function TherapyInner() {
         </div>
       </div>
 
-      {/* START BUTTON */}
-      {sessionStatus === "idle" && (
-        <button onClick={startSession} className="nq-btn-big">
-          ▶ Start Session
-        </button>
-      )}
+      {/* PRIMARY SESSION CONTROL BUTTONS – OPTION B */}
+      <div style={{ marginTop: "1.5rem" }}>
+        {sessionStatus === "idle" && (
+          <button onClick={startSession} className="nq-btn-big">
+            ▶ Start Session
+          </button>
+        )}
+
+        {sessionStatus === "running" && (
+          <button onClick={pauseSession} className="nq-btn-big">
+            ⏸ Suspend Session
+          </button>
+        )}
+
+        {sessionStatus === "paused" && (
+          <button onClick={resumeSession} className="nq-btn-big">
+            ▶ Resume Session
+          </button>
+        )}
+      </div>
 
       {/* [UPDATED] REMOVED SESSION REPORT MODAL */}
 
