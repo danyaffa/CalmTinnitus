@@ -290,6 +290,13 @@ function useTinnitusAudio() {
       });
       crOscillatorsRef.current = [];
       crGainsRef.current = [];
+
+      if (toneGainRef.current) {
+        try {
+          toneGainRef.current.disconnect();
+        } catch {}
+        toneGainRef.current = null;
+      }
     } catch (err) {
       console.error("hardStopAll failed:", err);
     }
@@ -733,11 +740,9 @@ function TherapyInner() {
     return `${min}:${sec.toString().padStart(2, "0")}`;
   };
 
-  // [UPDATED] REMOVED handleFinalizeSession FUNCTION
-
   return (
     <main className="nq-container">
-      {/* HEADER - UPDATED */}
+      {/* HEADER */}
       <div className="nq-header">
         <div>
           <h1 className="nq-brand">CalmTinnitus</h1>
@@ -745,19 +750,7 @@ function TherapyInner() {
         </div>
 
         <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-          {/* [UPDATED] Removed History Button */}
-
-          <div className="nq-master-vol">
-            🔊 Master
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={masterVol}
-              onChange={(e) => setMasterVol(Number(e.target.value))}
-            />
-          </div>
+          {/* Master volume control removed as per user request */}
         </div>
       </div>
 
@@ -1013,26 +1006,22 @@ function TherapyInner() {
         </div>
       </div>
 
-      {/* PRIMARY SESSION CONTROL BUTTONS – OPTION B */}
-      <div style={{ marginTop: "1.5rem" }}>
-        {sessionStatus === "idle" && (
-          <button onClick={startSession} className="nq-btn-big">
-            ▶ Start Session
-          </button>
-        )}
-
-        {sessionStatus === "running" && (
-          <button onClick={pauseSession} className="nq-btn-big">
-            ⏸ Suspend Session
-          </button>
-        )}
-
-        {sessionStatus === "paused" && (
-          <button onClick={resumeSession} className="nq-btn-big">
-            ▶ Resume Session
-          </button>
-        )}
-      </div>
+      {/* PRIMARY SESSION CONTROL BUTTON – Start / Suspend / Resume */}
+      {sessionStatus === "idle" && (
+        <button onClick={startSession} className="nq-btn-big">
+          ▶ Start Session
+        </button>
+      )}
+      {sessionStatus === "running" && (
+        <button onClick={pauseSession} className="nq-btn-big">
+          ⏸ Suspend Session
+        </button>
+      )}
+      {sessionStatus === "paused" && (
+        <button onClick={resumeSession} className="nq-btn-big">
+          ▶ Resume Session
+        </button>
+      )}
 
       {/* [UPDATED] REMOVED SESSION REPORT MODAL */}
 
@@ -1049,7 +1038,6 @@ function TherapyInner() {
 }
 
 // --- SAFE PAGE EXPORT ---
-// This ensures we only load the heavy component once mounted on the client.
 export default function TherapyPage() {
   const [mounted, setMounted] = useState(false);
 
@@ -1106,34 +1094,6 @@ function Style() {
         font-size: 0.9rem;
         color: var(--text-dim);
       }
-      .nq-master-vol {
-        background: white;
-        padding: 0.5rem 1rem;
-        border-radius: 99px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.85rem;
-        font-weight: 600;
-      }
-      /* --- NEW NAV BUTTON STYLE --- */
-      .nq-nav-btn {
-        background: white;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #0f172a;
-        border: 1px solid #cbd5e1;
-        text-decoration: none;
-        display: inline-block;
-        transition: background 0.2s;
-      }
-      .nq-nav-btn:hover {
-        background: #f1f5f9;
-      }
-      /* --------------------------- */
       .nq-guide {
         background: #f0f9ff;
         border: 1px solid #bae6fd;
@@ -1403,6 +1363,7 @@ function Style() {
         font-weight: 700;
         cursor: pointer;
         box-shadow: 0 10px 20px rgba(14, 165, 233, 0.2);
+        margin-top: 1.5rem;
       }
       .nq-footer {
         text-align: center;
@@ -1413,59 +1374,6 @@ function Style() {
       .nq-status-text {
         font-size: 0.9rem;
         opacity: 0.9;
-      }
-
-      .nq-modal-overlay {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 999;
-        padding: 1rem;
-      }
-      .nq-modal {
-        background: white;
-        padding: 2rem;
-        border-radius: 1rem;
-        width: 100%;
-        max-width: 500px;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-      }
-      .nq-modal h2 { margin-top: 0;
-      }
-      .nq-modal-field { margin-top: 1rem;
-      }
-      .nq-modal-textarea {
-        width: 100%;
-        border: 1px solid #cbd5e1;
-        border-radius: 0.5rem;
-        padding: 0.5rem;
-        min-height: 80px;
-        margin-top: 0.25rem;
-      }
-      .nq-modal-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-        margin-top: 1.5rem;
-      }
-      .nq-btn-cancel {
-        background: transparent;
-        border: none;
-        color: #64748b;
-        cursor: pointer;
-        padding: 0.5rem 1rem;
-      }
-      .nq-btn-confirm {
-        background: var(--primary);
-        color: white;
-        border: none;
-        padding: 0.5rem 1.5rem;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        font-weight: 600;
       }
     `}</style>
   );
