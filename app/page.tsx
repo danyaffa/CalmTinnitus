@@ -12,22 +12,22 @@ export default function HomePage() {
 
   return (
     <>
-      {/* ✅ SEO + verification tags */}
+      {/* ✅ Global SEO + verification for this page */}
       <Head>
         {/* BASIC SEO */}
         <title>CalmTinnitus – Gentle Sound Support for Tinnitus Relief</title>
         <meta
           name="description"
-          content="CalmTinnitus is a calm, at-home sound tool to support people living with tinnitus, using gentle sound, training routines and education."
+          content="CalmTinnitus is a calm, at-home sound tool created by someone who has lived with tinnitus for over 50 years, using gentle sound, training routines and education."
         />
 
-        {/* ✅ Canonical URL */}
+        {/* CANONICAL */}
         <link rel="canonical" href={`${siteUrl}/`} />
 
-        {/* ✅ Allow indexing */}
+        {/* INDEXING */}
         <meta name="robots" content="index,follow" />
 
-        {/* ✅ Bing + Google verification tags */}
+        {/* VERIFICATION */}
         <meta
           name="msvalidate.01"
           content="1A5F9E495867B41926D6E2C113347122"
@@ -37,7 +37,7 @@ export default function HomePage() {
           content="1-hMw5VR5fPWM2BohUpP3BBUCgc3f_tuqvOjuV2Fnl0"
         />
 
-        {/* ✅ Social preview */}
+        {/* SOCIAL PREVIEW */}
         <meta property="og:type" content="website" />
         <meta
           property="og:title"
@@ -544,8 +544,8 @@ export default function HomePage() {
         {/* Floating review widget: button + feedback panel */}
         <ReviewWidget
           appName="CalmTinnitus"
-          appStoreUrl="https://apps.apple.com" // optional: link to public store reviews
-          feedbackEndpoint="/api/feedback" // optional: internal API to capture feedback
+          appStoreUrl="https://apps.apple.com"
+          feedbackEndpoint="/api/feedback"
         />
       </main>
     </>
