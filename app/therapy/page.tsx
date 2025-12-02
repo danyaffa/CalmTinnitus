@@ -937,9 +937,12 @@ function TherapyInner() {
               <p style={{ marginTop: "0.35rem" }}>
                 In <strong>Relief (CR) Therapy</strong> you will hear gentle
                 “knocks”, “ticks”, or tiny gaps in the sound.{" "}
-                <strong>
+                <strong>  
                   This is intentional – nothing is wrong with your speakers or
                   phone.
+                </strong>
+              <p style={{ marginTop: "0.35rem" }}>
+                 30 minutes session is the standard recommmended duration
                 </strong>
               </p>
             </div>
