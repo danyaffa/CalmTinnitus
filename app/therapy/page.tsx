@@ -10,20 +10,17 @@ import React, {
 } from "react";
 import { onAuthStateChanged, signInAnonymously, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { createSavedProfile } from "@/lib/therapyStorage"; // [UPDATED] Removed logTherapySession
+import { createSavedProfile } from "@/lib/therapyStorage";
 
 // --- CONSTANTS ---
-// Shared key for localStorage (Left here just in case, though saving logic is removed)
 const SESSION_LOG_KEY = "calmtinnitus_session_logs_v1";
 
 // --- TYPES ---
 type TherapyMode = "relief" | "standard" | "sleep";
 type SessionStatus = "idle" | "running" | "paused";
 
-// Define strict type for background sounds
 type BackgroundSoundId = "white" | "none" | "rain" | "ocean";
 
-// Use the strict type in SoundProfile
 type SoundProfile = {
   id: BackgroundSoundId;
   label: string;
@@ -65,21 +62,21 @@ const THERAPY_MODES: {
   icon: string;
 }[] = [
   {
-    key: "relief" as TherapyMode,
+    key: "relief",
     label: "1) Relief (CR) Therapy",
     description:
       "Special pattern with gentle 'holes' (clicks) intended to support long-term habituation.",
     icon: "✨",
   },
   {
-    key: "standard" as TherapyMode,
+    key: "standard",
     label: "2) Standard Therapy (Comfort)",
     description:
       "Gentle background sound with your matched tone for daily comfort & masking.",
     icon: "🎧",
   },
   {
-    key: "sleep" as TherapyMode,
+    key: "sleep",
     label: "3) Sleep Support",
     description: "Quieter profile to help you wind down and fall asleep.",
     icon: "🌙",
@@ -127,7 +124,7 @@ function useTinnitusAudio() {
 
         const masterGain = newCtx.createGain();
         masterGain.connect(newCtx.destination);
-        masterGain.gain.value = 0.8; // default
+        masterGain.gain.value = 0.8;
         masterGainRef.current = masterGain;
       }
 
@@ -158,19 +155,16 @@ function useTinnitusAudio() {
     }
   }, []);
 
-  // stronger, clearly audible buffers with more realistic RAIN
   const generateNoiseBuffer = (ctx: AudioContext, id: string) => {
-    const bufferSize = ctx.sampleRate * 2; // ~2 seconds, looped
+    const bufferSize = ctx.sampleRate * 2;
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
 
     if (id === "white") {
-      // Classic white noise
       for (let i = 0; i < bufferSize; i++) {
         data[i] = (Math.random() * 2 - 1) * 0.7;
       }
     } else if (id === "rain") {
-      // Realistic “rain” style noise:
       let b0 = 0,
         b1 = 0,
         b2 = 0,
@@ -209,7 +203,6 @@ function useTinnitusAudio() {
         b6 = w * 0.115926;
       }
     } else {
-      // Fallback
       let lastOut = 0;
       for (let i = 0; i < bufferSize; i++) {
         const w = Math.random() * 2 - 1;
@@ -481,7 +474,6 @@ class ErrorBoundary extends React.Component<
 
 // --- MAIN CONTENT ---
 function TherapyInner() {
-  // FIREBASE USER (SAFE FOR SSR)
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
@@ -491,7 +483,6 @@ function TherapyInner() {
       if (u) {
         setUser(u);
       } else {
-        // create anonymous user automatically
         signInAnonymously(auth).catch((err) => {
           console.error("Anonymous sign-in failed", err);
         });
@@ -508,49 +499,39 @@ function TherapyInner() {
   const [sessionDuration, setSessionDuration] = useState(30);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
 
-  // Profile Saving UI
   const [profileName, setProfileName] = useState("");
   const [saveBtnText, setSaveBtnText] = useState("Save Profile");
   const [saveBtnClass, setSaveBtnClass] = useState("nq-btn-save");
 
-  // --- SAFE VOLUME LIMIT FOR THERAPY TONE ---
   const MAX_TONE_VOL = 0.4;
   const clampTone = (val: number) => Math.min(val, MAX_TONE_VOL);
 
-  // Volume
   const [masterVol, setMasterVol] = useState(0.8);
   const [noiseVol, setNoiseVol] = useState(0); // start with NO background noise
-  const [toneVol, setToneVol] = useState(0.3); // start safely below the cap
+  const [toneVol, setToneVol] = useState(0.3);
 
   const [isPlayingTest, setIsPlayingTest] = useState(false);
 
-  // Timing
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sessionStartTimeRef = useRef<number | null>(null);
   const audio = useTinnitusAudio();
 
-  // [UPDATED] REMOVED REPORT MODAL STATE
-
-  // master volume
   useEffect(() => {
     audio.setMasterVolume(masterVol);
   }, [masterVol, audio]);
 
-  // live mixer during session (tone volume always clamped)
   useEffect(() => {
     if (sessionStatus === "running") {
       audio.updateVolumes(noiseVol, clampTone(toneVol));
     }
   }, [noiseVol, toneVol, sessionStatus, audio]);
 
-  // restart noise if user changes background sound during session
   useEffect(() => {
     if (sessionStatus === "running") {
       audio.playNoise(selectedSound.id, noiseVol);
     }
   }, [selectedSound, sessionStatus, noiseVol, audio]);
 
-  // load local profile (legacy / fallback)
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -572,17 +553,14 @@ function TherapyInner() {
     }
   }, []);
 
-  // --- SAVE PROFILE LOGIC (Firebase + Local) ---
   const saveProfile = async () => {
     if (typeof window === "undefined") return;
     setSaveBtnText("Saving...");
 
     try {
-      // 1. Always save to LocalStorage (offline backup)
       window.localStorage.setItem("calmtinnitus_pitch", String(tinnitusPitch));
       window.localStorage.setItem("calmtinnitus_soundId", selectedSound.id);
 
-      // 2. If logged in, save to Firestore
       if (user) {
         await createSavedProfile({
           userId: user.uid,
@@ -606,7 +584,6 @@ function TherapyInner() {
     }
   };
 
-  // test tone (tone volume ALWAYS clamped, and no forced jump to 0.5)
   const toggleTestTone = () => {
     if (isPlayingTest) {
       audio.stopAll();
@@ -626,7 +603,6 @@ function TherapyInner() {
     }
   }, [tinnitusPitch, toneVol, isPlayingTest, audio]);
 
-  // Helper for Voice Notification
   const speakSessionEnded = () => {
     if (typeof window === "undefined") return;
     if (!("speechSynthesis" in window)) return;
@@ -638,15 +614,13 @@ function TherapyInner() {
       utter.lang = "en-US";
       utter.rate = 1.0;
       utter.pitch = 1.0;
-      window.speechSynthesis.cancel(); // clear previous
+      window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utter);
     } catch (err) {
       console.error("speechSynthesis failed", err);
     }
   };
 
-  // --- STOP SESSION ---
-  // [UPDATED] REMOVED report modal triggering logic
   const stopSession = (reason: "user" | "auto" = "user") => {
     try {
       audio.stopAll();
@@ -666,9 +640,7 @@ function TherapyInner() {
     }
   };
 
-  // --- NEW: EXTERNAL AUDIO MODE FUNCTION ---
   const enableExternalAudioMode = () => {
-    // Mute background noise but keep therapy tone running
     setNoiseVol(0);
     if (sessionStatus === "running") {
       audio.updateVolumes(0, clampTone(toneVol));
@@ -702,11 +674,10 @@ function TherapyInner() {
 
       const end = Date.now() + sessionDuration * 60000;
 
-      // Timer Interval to trigger stop and voice
       sessionTimerRef.current = setInterval(() => {
         const left = (end - Date.now()) / 60000;
         if (left <= 0) {
-          stopSession("auto"); // This triggers the voice in stopSession
+          stopSession("auto");
         } else {
           setTimeRemaining(left);
         }
@@ -745,7 +716,6 @@ function TherapyInner() {
     }
   };
 
-  // NEW: allow changing duration while session is running / paused
   const handleDurationChange = (t: number) => {
     setSessionDuration(t);
 
@@ -756,14 +726,12 @@ function TherapyInner() {
         const remaining = t - elapsedMinutes;
 
         if (remaining <= 0) {
-          // If the new duration is already passed, end the session immediately
           stopSession("auto");
           return;
         }
 
         setTimeRemaining(remaining);
 
-        // If currently running, restart the countdown timer based on new duration
         if (sessionStatus === "running") {
           if (sessionTimerRef.current) {
             clearInterval(sessionTimerRef.current);
@@ -789,11 +757,9 @@ function TherapyInner() {
     return `${min}:${sec.toString().padStart(2, "0")}`;
   };
 
-  // [UPDATED] REMOVED handleFinalizeSession FUNCTION
-
   return (
     <main className="nq-container">
-      {/* HEADER - UPDATED */}
+      {/* HEADER */}
       <div className="nq-header">
         <div>
           <h1 className="nq-brand">CalmTinnitus</h1>
@@ -801,7 +767,7 @@ function TherapyInner() {
         </div>
 
         <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-          {/* Master volume control removed as per user request */}
+          {/* Master volume control removed (we still keep internal masterVol for profiles) */}
         </div>
       </div>
 
@@ -882,7 +848,6 @@ function TherapyInner() {
           <span className="nq-range-label">High</span>
         </div>
 
-        {/* NEW SAVE SECTION */}
         <div className="nq-save-section">
           <input
             type="text"
@@ -937,12 +902,9 @@ function TherapyInner() {
               <p style={{ marginTop: "0.35rem" }}>
                 In <strong>Relief (CR) Therapy</strong> you will hear gentle
                 “knocks”, “ticks”, or tiny gaps in the sound.{" "}
-                <strong>  
+                <strong>
                   This is intentional – nothing is wrong with your speakers or
                   phone.
-                </strong>
-               <p style={{ marginTop: "0.35rem" }}>
-                 30 minutes session is the standard recommended duration
                 </strong>
               </p>
             </div>
@@ -953,7 +915,6 @@ function TherapyInner() {
         <div className="nq-panel">
           <h3>Step 3: Sound & Mixer</h3>
 
-          {/* NEW: THERAPY VOLUME GUIDE */}
           <div
             className="nq-info-inline"
             style={{ marginTop: "0.75rem", marginBottom: "1.5rem" }}
@@ -967,6 +928,13 @@ function TherapyInner() {
               <strong>
                 “Just loud enough to hear it, but soft enough to ignore it.”
               </strong>
+            </p>
+            <p style={{ marginTop: "0.35rem" }}>
+              <strong>
+                30 minutes is the standard recommended session duration
+              </strong>{" "}
+              for most people. You can still choose shorter or longer sessions
+              if it suits you better.
             </p>
           </div>
 
@@ -1029,7 +997,6 @@ function TherapyInner() {
             </div>
           </div>
 
-          {/* NEW: EXTERNAL AUDIO MODE BUTTON */}
           <div style={{ marginTop: "0.5rem", marginBottom: "1rem" }}>
             <button
               type="button"
@@ -1059,7 +1026,7 @@ function TherapyInner() {
         </div>
       </div>
 
-      {/* PRIMARY SESSION CONTROL BUTTONS – OPTION B */}
+      {/* PRIMARY SESSION CONTROL BUTTONS */}
       <div style={{ marginTop: "1.5rem" }}>
         {sessionStatus === "idle" && (
           <button onClick={startSession} className="nq-btn-big">
@@ -1098,8 +1065,6 @@ function TherapyInner() {
         )}
       </div>
 
-      {/* [UPDATED] REMOVED SESSION REPORT MODAL */}
-
       <div className="nq-footer">
         <p>
           Medical Disclaimer: This is a wellness tool. Consult a doctor for
@@ -1112,7 +1077,6 @@ function TherapyInner() {
   );
 }
 
-// --- SAFE PAGE EXPORT ---
 export default function TherapyPage() {
   const [mounted, setMounted] = useState(false);
 
@@ -1135,7 +1099,6 @@ export default function TherapyPage() {
   );
 }
 
-// --- STYLES ---
 function Style() {
   return (
     <style>{`
@@ -1256,7 +1219,6 @@ function Style() {
         border: 2px solid white;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
       }
-
       .nq-save-section {
         margin-top: 1.5rem;
         text-align: center;
@@ -1281,7 +1243,6 @@ function Style() {
         color: #94a3b8;
         margin-top: 0.5rem;
       }
-
       .nq-btn-save {
         background: #e2e8f0;
         color: #334155;
