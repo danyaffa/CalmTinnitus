@@ -942,7 +942,7 @@ function TherapyInner() {
                   phone.
                 </strong>
                <p style={{ marginTop: "0.35rem" }}>
-                 30 minutes session is the standard recommmended duration
+                 30 minutes session is the standard recommended duration
                 </strong>
               </p>
             </div>
