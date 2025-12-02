@@ -27,39 +27,7 @@ type SoundProfile = {
   id: BackgroundSoundId;
   label: string;
   description: string;
-  type: "noise" | "nature";
-};
-
-const SOUND_PROFILES: SoundProfile[] = [
-  {
-    id: "white",
-    label: "White Noise",
-    description: "Classic masking sound",
-    type: "noise",
-  },
-  {
-    id: "rain",
-    label: "Rain",
-    description: "Gentle rainfall-style noise",
-    type: "nature",
-  },
-  {
-    id: "ocean",
-    label: "Ocean Waves",
-    description: "Rolling surf-style noise",
-    type: "nature",
-  },
-];
-
-const THERAPY_MODES = [
-  {
-    key: "relief" as TherapyMode,
-    label: "1) Relief (CR) Therapy – Recommended",
-    description:
-      "Best for long-term tinnitus reduction. Creates clear ticks / short gaps in the tone to desynchronise tinnitus activity.",
-    icon: "✨",
-  },
-  {
+...
     key: "standard" as TherapyMode,
     label: "2) Standard Therapy (Comfort)",
     description:
@@ -507,7 +475,7 @@ function TherapyInner() {
 
   // Volume
   const [masterVol, setMasterVol] = useState(0.8);
-  const [noiseVol, setNoiseVol] = useState(0.7);
+  const [noiseVol, setNoiseVol] = useState(0); // start with NO background noise
   const [toneVol, setToneVol] = useState(0.3); // start safely below the cap
 
   const [isPlayingTest, setIsPlayingTest] = useState(false);
@@ -634,7 +602,7 @@ function TherapyInner() {
   };
 
   // --- STOP SESSION ---
-  // [UPDATED] Removed report modal triggering logic
+  // [UPDATED] REMOVED report modal triggering logic
   const stopSession = (reason: "user" | "auto" = "user") => {
     try {
       audio.stopAll();
@@ -733,6 +701,44 @@ function TherapyInner() {
     }
   };
 
+  // NEW: allow changing duration while session is running / paused
+  const handleDurationChange = (t: number) => {
+    setSessionDuration(t);
+
+    // If a session is running or paused, adjust the remaining time
+    if (sessionStatus === "running" || sessionStatus === "paused") {
+      if (sessionStartTimeRef.current != null) {
+        const elapsedMs = Date.now() - sessionStartTimeRef.current;
+        const elapsedMinutes = elapsedMs / 60000;
+        const remaining = t - elapsedMinutes;
+
+        if (remaining <= 0) {
+          // If the new duration is already passed, end the session immediately
+          stopSession("auto");
+          return;
+        }
+
+        setTimeRemaining(remaining);
+
+        // If currently running, restart the countdown timer based on new duration
+        if (sessionStatus === "running") {
+          if (sessionTimerRef.current) {
+            clearInterval(sessionTimerRef.current);
+          }
+          const end = Date.now() + remaining * 60000;
+          sessionTimerRef.current = setInterval(() => {
+            const left = (end - Date.now()) / 60000;
+            if (left <= 0) {
+              stopSession("auto");
+            } else {
+              setTimeRemaining(left);
+            }
+          }, 1000);
+        }
+      }
+    }
+  };
+
   const formatTime = (m: number | null) => {
     if (!m) return "--:--";
     const min = Math.floor(m);
@@ -740,9 +746,11 @@ function TherapyInner() {
     return `${min}:${sec.toString().padStart(2, "0")}`;
   };
 
+  // [UPDATED] REMOVED handleFinalizeSession FUNCTION
+
   return (
     <main className="nq-container">
-      {/* HEADER */}
+      {/* HEADER - UPDATED */}
       <div className="nq-header">
         <div>
           <h1 className="nq-brand">CalmTinnitus</h1>
@@ -995,8 +1003,7 @@ function TherapyInner() {
             {[15, 30, 45, 60].map((t) => (
               <button
                 key={t}
-                onClick={() => setSessionDuration(t)}
-                disabled={sessionStatus !== "idle"}
+                onClick={() => handleDurationChange(t)}
                 className={`nq-chip ${sessionDuration === t ? "active" : ""}`}
               >
                 {t}m
@@ -1006,22 +1013,44 @@ function TherapyInner() {
         </div>
       </div>
 
-      {/* PRIMARY SESSION CONTROL BUTTON – Start / Suspend / Resume */}
-      {sessionStatus === "idle" && (
-        <button onClick={startSession} className="nq-btn-big">
-          ▶ Start Session
-        </button>
-      )}
-      {sessionStatus === "running" && (
-        <button onClick={pauseSession} className="nq-btn-big">
-          ⏸ Suspend Session
-        </button>
-      )}
-      {sessionStatus === "paused" && (
-        <button onClick={resumeSession} className="nq-btn-big">
-          ▶ Resume Session
-        </button>
-      )}
+      {/* PRIMARY SESSION CONTROL BUTTONS – OPTION B */}
+      <div style={{ marginTop: "1.5rem" }}>
+        {sessionStatus === "idle" && (
+          <button onClick={startSession} className="nq-btn-big">
+            ▶ Start Session
+          </button>
+        )}
+
+        {sessionStatus === "running" && (
+          <>
+            <button onClick={pauseSession} className="nq-btn-big">
+              ⏸ Suspend Session
+            </button>
+            <button
+              onClick={() => stopSession("user")}
+              className="nq-btn-big"
+              style={{ marginTop: "0.75rem", background: "#ef4444" }}
+            >
+              ⏹ Stop Session
+            </button>
+          </>
+        )}
+
+        {sessionStatus === "paused" && (
+          <>
+            <button onClick={resumeSession} className="nq-btn-big">
+              ▶ Resume Session
+            </button>
+            <button
+              onClick={() => stopSession("user")}
+              className="nq-btn-big"
+              style={{ marginTop: "0.75rem", background: "#ef4444" }}
+            >
+              ⏹ Stop Session
+            </button>
+          </>
+        )}
+      </div>
 
       {/* [UPDATED] REMOVED SESSION REPORT MODAL */}
 
