@@ -941,7 +941,7 @@ function TherapyInner() {
                   This is intentional – nothing is wrong with your speakers or
                   phone.
                 </strong>
-              <p style={{ marginTop: "0.35rem" }}>
+               <p style={{ marginTop: "0.35rem" }}>
                  30 minutes session is the standard recommmended duration
                 </strong>
               </p>
