@@ -1,3 +1,4 @@
+// FILE: /app/therapy/page.tsx
 "use client";
 
 import React, {
@@ -27,7 +28,50 @@ type SoundProfile = {
   id: BackgroundSoundId;
   label: string;
   description: string;
-...
+  type: "noise" | "nature";
+};
+
+const SOUND_PROFILES: SoundProfile[] = [
+  {
+    id: "white",
+    label: "White Noise",
+    description: "Classic masking sound",
+    type: "noise",
+  },
+  {
+    id: "rain",
+    label: "Soft Rain",
+    description: "Rainy-window style gentle masking",
+    type: "nature",
+  },
+  {
+    id: "ocean",
+    label: "Ocean Waves",
+    description: "Rolling waves and surf",
+    type: "nature",
+  },
+  {
+    id: "none",
+    label: "No Background",
+    description: "Tone only – use with your own music if you like",
+    type: "noise",
+  },
+];
+
+const THERAPY_MODES: {
+  key: TherapyMode;
+  label: string;
+  description: string;
+  icon: string;
+}[] = [
+  {
+    key: "relief" as TherapyMode,
+    label: "1) Relief (CR) Therapy",
+    description:
+      "Special pattern with gentle 'holes' (clicks) intended to support long-term habituation.",
+    icon: "✨",
+  },
+  {
     key: "standard" as TherapyMode,
     label: "2) Standard Therapy (Comfort)",
     description:
@@ -705,7 +749,6 @@ function TherapyInner() {
   const handleDurationChange = (t: number) => {
     setSessionDuration(t);
 
-    // If a session is running or paused, adjust the remaining time
     if (sessionStatus === "running" || sessionStatus === "paused") {
       if (sessionStartTimeRef.current != null) {
         const elapsedMs = Date.now() - sessionStartTimeRef.current;
