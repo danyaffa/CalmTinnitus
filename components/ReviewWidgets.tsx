@@ -1,8 +1,7 @@
-// FILE: components/ReviewWidget.tsx
+// FILE: components/ReviewWidgets.tsx
 "use client";
 
-import type React from "react";
-import { useState } from "react";
+import React, { useState, type CSSProperties } from "react";
 
 type ReviewWidgetProps = {
   appName?: string;
@@ -11,7 +10,7 @@ type ReviewWidgetProps = {
 
 const DEFAULT_APP_NAME = "CalmTinnitus";
 
-const pillStyle: React.CSSProperties = {
+const pillStyle: CSSProperties = {
   position: "fixed",
   bottom: 24,
   right: 24,
@@ -20,7 +19,7 @@ const pillStyle: React.CSSProperties = {
   color: "#0f172a",
   padding: "8px 16px",
   borderRadius: 999,
-  boxShadow: "0 10px 25px rgba(0,0,0,0.25)",
+  boxShadow: "0 10px 25px rgba(0, 0, 0, 0.25)",
   fontWeight: 600,
   fontSize: 14,
   display: "flex",
@@ -30,7 +29,7 @@ const pillStyle: React.CSSProperties = {
   border: "1px solid #e2e8f0",
 };
 
-const modalStyle: React.CSSProperties = {
+const modalStyle: CSSProperties = {
   position: "fixed",
   bottom: 24,
   right: 24,
@@ -39,19 +38,19 @@ const modalStyle: React.CSSProperties = {
   color: "#e5e7eb",
   padding: 20,
   borderRadius: 16,
-  boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
+  boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5)",
   width: 320,
   border: "1px solid #1f2937",
 };
 
-const starButton: React.CSSProperties = {
+const starButton: CSSProperties = {
   background: "transparent",
   border: "none",
   fontSize: 24,
   cursor: "pointer",
 };
 
-const inputBase: React.CSSProperties = {
+const inputBase: CSSProperties = {
   width: "100%",
   borderRadius: 8,
   padding: 8,
@@ -61,7 +60,7 @@ const inputBase: React.CSSProperties = {
   fontSize: 14,
 };
 
-const buttonBase: React.CSSProperties = {
+const buttonBase: CSSProperties = {
   width: "100%",
   padding: "10px 12px",
   borderRadius: 8,
@@ -71,7 +70,7 @@ const buttonBase: React.CSSProperties = {
   fontSize: 14,
 };
 
-const ReviewWidget: React.FC<ReviewWidgetProps> = ({
+const ReviewWidgets: React.FC<ReviewWidgetProps> = ({
   appName = DEFAULT_APP_NAME,
   appStoreUrl,
 }) => {
@@ -95,6 +94,7 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({
         appName,
       };
 
+      // Call API route to save + email review
       try {
         await fetch("/api/review-email", {
           method: "POST",
@@ -129,11 +129,15 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({
   // Closed pill
   if (!open) {
     return (
-      <button type="button" style={pillStyle} onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        style={pillStyle}
+        onClick={() => setOpen(true)}
+      >
         <span style={{ color: "#facc15" }}>★★★★★</span>
         <span>Rate {appName}</span>
       </button>
-    ];
+    );
   }
 
   // Open modal
@@ -196,7 +200,12 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({
             placeholder={`Tell us what you think about ${appName}...`}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            style={{ ...inputBase, minHeight: 80, marginBottom: 8, resize: "none" }}
+            style={{
+              ...inputBase,
+              minHeight: 80,
+              marginBottom: 8,
+              resize: "none",
+            }}
           />
 
           <input
@@ -226,4 +235,4 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({
   );
 };
 
-export default ReviewWidget;
+export default ReviewWidgets;
