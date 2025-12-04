@@ -1,11 +1,12 @@
 // FILE: components/ReviewWidget.tsx
 "use client";
 
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 
 type ReviewWidgetProps = {
   appName?: string;
-  appStoreUrl?: string; // Optional: e.g. App Store / Play Store URL
+  appStoreUrl?: string; // optional link to app store page
 };
 
 const DEFAULT_APP_NAME = "CalmTinnitus";
@@ -86,8 +87,7 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({
 
     setSubmitting(true);
     try {
-      // 4★–5★ get stored + emailed; 1★–3★ still just send internal feedback
-      const body = {
+      const payload = {
         rating,
         text: comment,
         comment,
@@ -99,13 +99,13 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({
         await fetch("/api/review-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify(payload),
         });
       } catch (err) {
         console.error("Review submit failed:", err);
       }
 
-      // Optional: open store page for high ratings
+      // Optional: send happy users to store
       if (rating >= 4 && appStoreUrl) {
         try {
           window.open(appStoreUrl, "_blank", "noopener,noreferrer");
@@ -133,7 +133,7 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({
         <span style={{ color: "#facc15" }}>★★★★★</span>
         <span>Rate {appName}</span>
       </button>
-    );
+    ];
   }
 
   // Open modal
@@ -201,7 +201,7 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({
 
           <input
             type="email"
-            placeholder="Email (optional, not shown publicly)"
+            placeholder="Email (optional, not public)"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             style={{ ...inputBase, marginBottom: 12 }}
