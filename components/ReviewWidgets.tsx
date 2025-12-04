@@ -1,144 +1,209 @@
-// FILE: /components/ReviewWidgets.tsx
+// FILE: components/ReviewWidget.tsx
+
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { db, collection, addDoc, serverTimestamp } from "../lib/firebase";
+import React, { useState } from "react";
+import { addReview } from "../lib/firestore";
 
-export type ReviewWidgetProps = {
-  appName?: string;
-  appStoreUrl?: string;
-  feedbackEndpoint?: string;
-  onFeedbackSubmitted?: () => void;
-  primaryColor?: string;
-  toEmail?: string;
-  forceOpen?: boolean; // ✅ NEW: Allows you to open it programmatically
-};
+// App label for this project
+const APP_NAME = "CalmTinnitus";
 
-export const ReviewWidget: React.FC<ReviewWidgetProps> = ({
-  appName = "CalmTinnitus",
-  appStoreUrl,
-  feedbackEndpoint,
-  onFeedbackSubmitted,
-  primaryColor = "#2563eb",
-  toEmail = "leffleryd@gmail.com",
-  forceOpen = false, // ✅ Default to closed
-}) => {
-  const [open, setOpen] = useState(false);
-  const [rating, setRating] = useState<number | null>(null);
+export default function ReviewWidget() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
-  const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
-
-  // ✅ Force correct endpoint
-  const FINAL_ENDPOINT = "/api/review-feedback";
-
-  // ✅ WATCH FOR FORCE OPEN (The "Happy Moment" Trigger)
-  useEffect(() => {
-    if (forceOpen && !submitted) {
-      setOpen(true);
-    }
-  }, [forceOpen, submitted]);
-
-  // Auto-close popup after submit
-  useEffect(() => {
-    if (!submitted) return;
-    const timer = setTimeout(() => setOpen(false), 3000);
-    return () => clearTimeout(timer);
-  }, [submitted]);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!rating) return;
-    const ownerEmail = toEmail || "leffleryd@gmail.com";
+    if (!comment.trim()) return;
 
-    // 1. Firestore Save
-    if (db) {
-      try {
-        await addDoc(collection(db, "reviews"), {
-          appName,
-          rating,
-          comment,
-          email,
-          ownerEmail,
-          createdAt: serverTimestamp(),
-          source: "calmtinnitus-widget",
-        });
-      } catch (e) {
-        console.warn("Firestore save failed:", e);
-      }
-    }
-
-    // 2. Email Send
+    setLoading(true);
     try {
-      const res = await fetch(FINAL_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rating,
-          comment,
-          email,
-          appName,
-          toEmail: ownerEmail,
-        }),
-      });
+      // RULE:
+      // Only 4★ and 5★ are stored + emailed.
+      // 1★, 2★, 3★ are ignored (no upload, no email).
+      const shouldUpload = rating >= 4;
 
-      if (!res.ok) throw new Error("Email failed");
+      if (shouldUpload) {
+        // 1) Save to Firestore
+        try {
+          await addReview("guest", rating, comment, APP_NAME);
+        } catch (err) {
+          console.error("addReview failed:", err);
+        }
 
+        // 2) Email notification (via API route)
+        try {
+          await fetch("/api/review-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              rating,
+              comment,
+              text: comment, // extra field for safety
+              appName: APP_NAME,
+            }),
+          });
+        } catch (err) {
+          console.error("Review email send failed:", err);
+        }
+      }
+
+      // 3) Always show thank-you confirmation
       setSubmitted(true);
-      setRating(null);
-      setComment("");
-      setEmail("");
-      onFeedbackSubmitted?.();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to send feedback.");
+      setTimeout(() => {
+        setIsOpen(false);
+        setSubmitted(false);
+        setComment("");
+      }, 2000);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Styles
-  const styles = {
-    wrapper: { position: "fixed", right: 20, bottom: 20, zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "flex-end", fontFamily: "sans-serif" } as React.CSSProperties,
-    btn: { padding: "10px 20px", borderRadius: 999, border: "none", background: primaryColor, color: "#fff", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" } as React.CSSProperties,
-    panel: { marginBottom: 15, width: 300, padding: 20, borderRadius: 16, background: "#fff", boxShadow: "0 10px 40px rgba(0,0,0,0.25)", border: "1px solid #f3f4f6" } as React.CSSProperties,
-    input: { width: "100%", padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", marginTop: 10, fontSize: 14 } as React.CSSProperties,
-    submit: { width: "100%", marginTop: 12, padding: 10, borderRadius: 8, border: "none", background: rating ? primaryColor : "#cbd5e1", color: "#fff", fontWeight: "bold", cursor: rating ? "pointer" : "default" } as React.CSSProperties
-  };
+  // Closed state → small floating pill
+  if (!isOpen) {
+    return (
+      <div
+        onClick={() => setIsOpen(true)}
+        style={{
+          position: "fixed",
+          bottom: 24,
+          right: 24,
+          zIndex: 50,
+          background: "white",
+          color: "black",
+          padding: "8px 16px",
+          borderRadius: 999,
+          boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
+          fontWeight: "bold",
+          fontSize: 14,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          cursor: "pointer",
+          border: "1px solid #e2e8f0",
+        }}
+      >
+        <span style={{ color: "#eab308" }}>★★★★★</span>
+        <span>4.9/5 Reviews</span>
+      </div>
+    );
+  }
 
-  if (typeof window === "undefined") return null;
-
+  // Opened state → dark modal
   return (
-    <div style={styles.wrapper}>
-      {open && (
-        <div style={styles.panel}>
-          {!submitted ? (
-            <>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-                <strong style={{ color: "#1e293b" }}>Rate {appName}</strong>
-                <button onClick={() => setOpen(false)} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, color: "#94a3b8" }}>✕</button>
-              </div>
-              
-              <div style={{ display: "flex", justifyContent: "center", gap: 5 }}>
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <button key={s} onClick={() => setRating(s)} style={{ border: "none", background: "none", fontSize: 28, cursor: "pointer", color: rating && s <= rating ? "#facc15" : "#e2e8f0" }}>★</button>
-                ))}
-              </div>
+    <div
+      style={{
+        position: "fixed",
+        bottom: 24,
+        right: 24,
+        zIndex: 51,
+        background: "#1e293b",
+        color: "white",
+        padding: 20,
+        borderRadius: 16,
+        boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
+        width: 300,
+        border: "1px solid #334155",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 10,
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: 16 }}>Rate {APP_NAME}</h3>
+        <button
+          onClick={() => setIsOpen(false)}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#94a3b8",
+            cursor: "pointer",
+            fontSize: 16,
+          }}
+        >
+          ✕
+        </button>
+      </div>
 
-              <textarea placeholder="Your thoughts..." value={comment} onChange={(e) => setComment(e.target.value)} style={{ ...styles.input, minHeight: 70 }} />
-              <input type="email" placeholder="Email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} style={styles.input} />
-
-              <button onClick={handleSubmit} disabled={!rating} style={styles.submit}>Send Feedback</button>
-            </>
-          ) : (
-            <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <div style={{ fontSize: 32 }}>🎉</div>
-              <h4 style={{ margin: "10px 0 5px", color: "#16a34a" }}>Thank You!</h4>
-              <p style={{ margin: 0, color: "#64748b", fontSize: 14 }}>Feedback received.</p>
-            </div>
-          )}
+      {submitted ? (
+        <div
+          style={{
+            color: "#4ade80",
+            textAlign: "center",
+            padding: "20px 0",
+          }}
+        >
+          Thanks for your feedback!
         </div>
+      ) : (
+        <>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              marginBottom: 12,
+              justifyContent: "center",
+            }}
+          >
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                onClick={() => setRating(star)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  fontSize: 24,
+                  cursor: "pointer",
+                  color: star <= rating ? "#eab308" : "#475569",
+                }}
+              >
+                ★
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder={`Tell us what you think about ${APP_NAME}...`}
+            style={{
+              width: "100%",
+              height: 80,
+              background: "#0f172a",
+              border: "1px solid #334155",
+              borderRadius: 8,
+              padding: 8,
+              color: "white",
+              marginBottom: 12,
+              resize: "none",
+            }}
+          />
+
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "10px",
+              borderRadius: 8,
+              background: "#38bdf8",
+              color: "#0f172a",
+              fontWeight: "bold",
+              border: "none",
+              cursor: loading ? "default" : "pointer",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? "Sending..." : "Submit Review"}
+          </button>
+        </>
       )}
-      <button onClick={() => setOpen(!open)} style={styles.btn}>
-        ⭐ Rate {appName}
-      </button>
     </div>
   );
-};
+}
