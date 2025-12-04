@@ -5,7 +5,8 @@ import React, { useState, type CSSProperties } from "react";
 
 type ReviewWidgetProps = {
   appName?: string;
-  appStoreUrl?: string; // optional link to app store page
+  appStoreUrl?: string;      // optional link to app store page
+  feedbackEndpoint?: string; // kept for compatibility, not used
 };
 
 const DEFAULT_APP_NAME = "CalmTinnitus";
@@ -233,6 +234,6 @@ const ReviewWidgets: React.FC<ReviewWidgetProps> = ({
 
 export default ReviewWidgets;
 
-// ✅ Also export a named component so existing imports keep working:
+// Named export so existing imports keep working:
 // import { ReviewWidget } from "@/components/ReviewWidgets";
 export const ReviewWidget = ReviewWidgets;
