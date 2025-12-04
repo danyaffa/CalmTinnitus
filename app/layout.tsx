@@ -1,8 +1,10 @@
 // FILE: app/layout.tsx
+
 import "./globals.css";
 import type { Metadata } from "next";
 import { AuthProvider } from "./AuthProvider";
 import JsonLd from "@/components/JsonLd";
+import ReviewWidget from "@/components/ReviewWidget";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://calmtinnitus.com"),
@@ -38,14 +40,14 @@ export const metadata: Metadata = {
     "tinnitus frequency match",
     "tinnitus matching tool",
     "hyperacusis relief",
-    "hearing health app"
+    "hearing health app",
   ],
 
   alternates: {
     canonical: "https://calmtinnitus.com/",
   },
 
-  // 🔵 ADD THIS — global indexing for all pages
+  // 🔵 global indexing for all pages
   robots: {
     index: true,
     follow: true,
@@ -119,7 +121,11 @@ export default function RootLayout({
 
         {/* Auth + app content */}
         <AuthProvider>{children}</AuthProvider>
+
+        {/* ⭐ Floating review widget on all pages */}
+        <ReviewWidget appName="CalmTinnitus" />
       </body>
     </html>
   );
 }
+``` :contentReference[oaicite:0]{index=0}
