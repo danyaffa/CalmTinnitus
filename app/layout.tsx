@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AuthProvider } from "./AuthProvider";
 import JsonLd from "@/components/JsonLd";
-import ReviewWidget from "@/components/ReviewWidget";
+import ReviewWidgets from "@/components/ReviewWidgets";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://calmtinnitus.com"),
@@ -48,7 +48,6 @@ export const metadata: Metadata = {
     canonical: "https://calmtinnitus.com/",
   },
 
-  // Global indexing for all pages
   robots: {
     index: true,
     follow: true,
@@ -59,7 +58,6 @@ export const metadata: Metadata = {
     },
   },
 
-  // OPEN GRAPH (FACEBOOK / LINKEDIN / WHATSAPP)
   openGraph: {
     type: "website",
     url: "https://calmtinnitus.com",
@@ -77,7 +75,6 @@ export const metadata: Metadata = {
     ],
   },
 
-  // TWITTER / X CARDS
   twitter: {
     card: "summary_large_image",
     title: "CalmTinnitus | Tinnitus Relief & Neuromodulation App",
@@ -86,7 +83,6 @@ export const metadata: Metadata = {
     images: ["https://calmtinnitus.com/CalmTinnitus-Logo.png"],
   },
 
-  // PWA MANIFEST
   manifest: "/manifest.json",
 };
 
@@ -124,7 +120,7 @@ export default function RootLayout({
         <AuthProvider>{children}</AuthProvider>
 
         {/* ⭐ Floating review widget on all pages */}
-        <ReviewWidget appName="CalmTinnitus" />
+        <ReviewWidgets appName="CalmTinnitus" />
       </body>
     </html>
   );
