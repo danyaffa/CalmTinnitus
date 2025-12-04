@@ -129,11 +129,7 @@ const ReviewWidgets: React.FC<ReviewWidgetProps> = ({
   // Closed pill
   if (!open) {
     return (
-      <button
-        type="button"
-        style={pillStyle}
-        onClick={() => setOpen(true)}
-      >
+      <button type="button" style={pillStyle} onClick={() => setOpen(true)}>
         <span style={{ color: "#facc15" }}>★★★★★</span>
         <span>Rate {appName}</span>
       </button>
@@ -236,3 +232,7 @@ const ReviewWidgets: React.FC<ReviewWidgetProps> = ({
 };
 
 export default ReviewWidgets;
+
+// ✅ Also export a named component so existing imports keep working:
+// import { ReviewWidget } from "@/components/ReviewWidgets";
+export const ReviewWidget = ReviewWidgets;
