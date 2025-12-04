@@ -1,114 +1,144 @@
 // FILE: components/ReviewWidget.tsx
-
 "use client";
 
 import React, { useState } from "react";
-import { addReview } from "../lib/firestore";
 
-// App label for this project
-const APP_NAME = "CalmTinnitus";
+type ReviewWidgetProps = {
+  appName?: string;
+  appStoreUrl?: string; // Optional: e.g. App Store / Play Store URL
+};
 
-export default function ReviewWidget() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [rating, setRating] = useState(5);
+const DEFAULT_APP_NAME = "CalmTinnitus";
+
+const pillStyle: React.CSSProperties = {
+  position: "fixed",
+  bottom: 24,
+  right: 24,
+  zIndex: 50,
+  background: "#ffffff",
+  color: "#0f172a",
+  padding: "8px 16px",
+  borderRadius: 999,
+  boxShadow: "0 10px 25px rgba(0,0,0,0.25)",
+  fontWeight: 600,
+  fontSize: 14,
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  cursor: "pointer",
+  border: "1px solid #e2e8f0",
+};
+
+const modalStyle: React.CSSProperties = {
+  position: "fixed",
+  bottom: 24,
+  right: 24,
+  zIndex: 51,
+  background: "#020617",
+  color: "#e5e7eb",
+  padding: 20,
+  borderRadius: 16,
+  boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
+  width: 320,
+  border: "1px solid #1f2937",
+};
+
+const starButton: React.CSSProperties = {
+  background: "transparent",
+  border: "none",
+  fontSize: 24,
+  cursor: "pointer",
+};
+
+const inputBase: React.CSSProperties = {
+  width: "100%",
+  borderRadius: 8,
+  padding: 8,
+  border: "1px solid #1f2937",
+  background: "#020617",
+  color: "#e5e7eb",
+  fontSize: 14,
+};
+
+const buttonBase: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: 8,
+  border: "none",
+  fontWeight: 700,
+  cursor: "pointer",
+  fontSize: 14,
+};
+
+const ReviewWidget: React.FC<ReviewWidgetProps> = ({
+  appName = DEFAULT_APP_NAME,
+  appStoreUrl,
+}) => {
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState<number>(5);
   const [comment, setComment] = useState("");
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!comment.trim()) return;
 
-    setLoading(true);
+    setSubmitting(true);
     try {
-      // RULE:
-      // Only 4★ and 5★ are stored + emailed.
-      // 1★, 2★, 3★ are ignored (no upload, no email).
-      const shouldUpload = rating >= 4;
+      // 4★–5★ get stored + emailed; 1★–3★ still just send internal feedback
+      const body = {
+        rating,
+        text: comment,
+        comment,
+        email,
+        appName,
+      };
 
-      if (shouldUpload) {
-        // 1) Save to Firestore
-        try {
-          await addReview("guest", rating, comment, APP_NAME);
-        } catch (err) {
-          console.error("addReview failed:", err);
-        }
+      try {
+        await fetch("/api/review-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      } catch (err) {
+        console.error("Review submit failed:", err);
+      }
 
-        // 2) Email notification (via API route)
+      // Optional: open store page for high ratings
+      if (rating >= 4 && appStoreUrl) {
         try {
-          await fetch("/api/review-email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              rating,
-              comment,
-              text: comment, // extra field for safety
-              appName: APP_NAME,
-            }),
-          });
-        } catch (err) {
-          console.error("Review email send failed:", err);
+          window.open(appStoreUrl, "_blank", "noopener,noreferrer");
+        } catch {
+          // ignore
         }
       }
 
-      // 3) Always show thank-you confirmation
       setSubmitted(true);
       setTimeout(() => {
-        setIsOpen(false);
         setSubmitted(false);
         setComment("");
+        setEmail("");
+        setOpen(false);
       }, 2000);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  // Closed state → small floating pill
-  if (!isOpen) {
+  // Closed pill
+  if (!open) {
     return (
-      <div
-        onClick={() => setIsOpen(true)}
-        style={{
-          position: "fixed",
-          bottom: 24,
-          right: 24,
-          zIndex: 50,
-          background: "white",
-          color: "black",
-          padding: "8px 16px",
-          borderRadius: 999,
-          boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
-          fontWeight: "bold",
-          fontSize: 14,
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          cursor: "pointer",
-          border: "1px solid #e2e8f0",
-        }}
-      >
-        <span style={{ color: "#eab308" }}>★★★★★</span>
-        <span>4.9/5 Reviews</span>
-      </div>
+      <button type="button" style={pillStyle} onClick={() => setOpen(true)}>
+        <span style={{ color: "#facc15" }}>★★★★★</span>
+        <span>Rate {appName}</span>
+      </button>
     );
   }
 
-  // Opened state → dark modal
+  // Open modal
   return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: 24,
-        right: 24,
-        zIndex: 51,
-        background: "#1e293b",
-        color: "white",
-        padding: 20,
-        borderRadius: 16,
-        boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
-        width: 300,
-        border: "1px solid #334155",
-      }}
-    >
+    <div style={modalStyle}>
       <div
         style={{
           display: "flex",
@@ -116,15 +146,16 @@ export default function ReviewWidget() {
           marginBottom: 10,
         }}
       >
-        <h3 style={{ margin: 0, fontSize: 16 }}>Rate {APP_NAME}</h3>
+        <h3 style={{ margin: 0, fontSize: 16 }}>Rate {appName}</h3>
         <button
-          onClick={() => setIsOpen(false)}
+          type="button"
+          onClick={() => setOpen(false)}
           style={{
             background: "transparent",
             border: "none",
-            color: "#94a3b8",
+            color: "#64748b",
             cursor: "pointer",
-            fontSize: 16,
+            fontSize: 18,
           }}
         >
           ✕
@@ -132,35 +163,28 @@ export default function ReviewWidget() {
       </div>
 
       {submitted ? (
-        <div
-          style={{
-            color: "#4ade80",
-            textAlign: "center",
-            padding: "20px 0",
-          }}
-        >
-          Thanks for your feedback!
+        <div style={{ textAlign: "center", padding: "16px 0" }}>
+          <div style={{ fontSize: 28 }}>🎉</div>
+          <p style={{ marginTop: 8, color: "#4ade80" }}>Thank you!</p>
         </div>
       ) : (
         <>
           <div
             style={{
               display: "flex",
+              justifyContent: "center",
               gap: 8,
               marginBottom: 12,
-              justifyContent: "center",
             }}
           >
-            {[1, 2, 3, 4, 5].map((star) => (
+            {[1, 2, 3, 4, 5].map((s) => (
               <button
-                key={star}
-                onClick={() => setRating(star)}
+                key={s}
+                type="button"
+                onClick={() => setRating(s)}
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  fontSize: 24,
-                  cursor: "pointer",
-                  color: star <= rating ? "#eab308" : "#475569",
+                  ...starButton,
+                  color: s <= rating ? "#facc15" : "#1f2937",
                 }}
               >
                 ★
@@ -169,41 +193,37 @@ export default function ReviewWidget() {
           </div>
 
           <textarea
+            placeholder={`Tell us what you think about ${appName}...`}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder={`Tell us what you think about ${APP_NAME}...`}
-            style={{
-              width: "100%",
-              height: 80,
-              background: "#0f172a",
-              border: "1px solid #334155",
-              borderRadius: 8,
-              padding: 8,
-              color: "white",
-              marginBottom: 12,
-              resize: "none",
-            }}
+            style={{ ...inputBase, minHeight: 80, marginBottom: 8, resize: "none" }}
+          />
+
+          <input
+            type="email"
+            placeholder="Email (optional, not shown publicly)"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ ...inputBase, marginBottom: 12 }}
           />
 
           <button
+            type="button"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={submitting || !comment.trim()}
             style={{
-              width: "100%",
-              padding: "10px",
-              borderRadius: 8,
-              background: "#38bdf8",
-              color: "#0f172a",
-              fontWeight: "bold",
-              border: "none",
-              cursor: loading ? "default" : "pointer",
-              opacity: loading ? 0.7 : 1,
+              ...buttonBase,
+              background: submitting ? "#0ea5e9aa" : "#0ea5e9",
+              color: "#0b1120",
+              opacity: submitting || !comment.trim() ? 0.8 : 1,
             }}
           >
-            {loading ? "Sending..." : "Submit Review"}
+            {submitting ? "Sending..." : "Submit review"}
           </button>
         </>
       )}
     </div>
   );
-}
+};
+
+export default ReviewWidget;
