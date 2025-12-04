@@ -2,6 +2,7 @@
 
 import "./globals.css";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { AuthProvider } from "./AuthProvider";
 import JsonLd from "@/components/JsonLd";
 import ReviewWidget from "@/components/ReviewWidget";
@@ -40,14 +41,14 @@ export const metadata: Metadata = {
     "tinnitus frequency match",
     "tinnitus matching tool",
     "hyperacusis relief",
-    "hearing health app",
+    "hearing health app"
   ],
 
   alternates: {
     canonical: "https://calmtinnitus.com/",
   },
 
-  // 🔵 global indexing for all pages
+  // Global indexing for all pages
   robots: {
     index: true,
     follow: true,
@@ -92,7 +93,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <html lang="en">
@@ -128,4 +129,3 @@ export default function RootLayout({
     </html>
   );
 }
-``` :contentReference[oaicite:0]{index=0}
