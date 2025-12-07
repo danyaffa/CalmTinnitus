@@ -1,59 +1,24 @@
-// FILE: app/therapy/page.tsx
+// FILE: /app/therapy/page.tsx
 "use client";
 
-/**
- * CalmTinnitus - Therapy & Research App
- * Combined build from user provided pages (8 and 12).
- * Features:
- * - Tinnitus Pitch Matching
- * - 3 Therapy Modes: Relief (CR), Standard, Sleep
- * - Procedural Background Generators (Rain, Ocean, White Noise)
- * - Research Information Page
- * - Firebase Persistence
- */
-
 import React, {
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
   useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
-import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  signInAnonymously,
-  onAuthStateChanged,
-  User,
-} from "firebase/auth";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  serverTimestamp,
-} from "firebase/firestore";
+import { onAuthStateChanged, signInAnonymously, User } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { createSavedProfile } from "@/lib/therapyStorage";
 
-// --- FIREBASE CONFIGURATION ---
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId:
-    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
-};
-
-const appId = "calm-tinnitus";
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// --- CONSTANTS ---
+const SESSION_LOG_KEY = "calmtinnitus_session_logs_v1";
 
 // --- TYPES ---
-type ViewState = "therapy" | "research";
 type TherapyMode = "relief" | "standard" | "sleep";
 type SessionStatus = "idle" | "running" | "paused";
+
 type BackgroundSoundId = "white" | "none" | "rain" | "ocean";
 
 type SoundProfile = {
@@ -94,27 +59,27 @@ const THERAPY_MODES: {
   key: TherapyMode;
   label: string;
   description: string;
-  icon: React.ReactNode;
+  icon: string;
 }[] = [
   {
     key: "relief",
     label: "1) Relief (CR) Therapy",
     description:
       "Special pattern with gentle 'holes' (clicks) intended to support long-term habituation.",
-    icon: <span className="w-5 h-5">🧠</span>,
+    icon: "✨",
   },
   {
     key: "standard",
     label: "2) Standard Therapy (Comfort)",
     description:
       "Gentle background sound with your matched tone for daily comfort & masking.",
-    icon: <span className="w-5 h-5">🎵</span>,
+    icon: "🎧",
   },
   {
     key: "sleep",
     label: "3) Sleep Support",
     description: "Quieter profile to help you wind down and fall asleep.",
-    icon: <span className="w-5 h-5">🌙</span>,
+    icon: "🌙",
   },
 ];
 
@@ -140,15 +105,19 @@ function useTinnitusAudio() {
 
     try {
       let ctx = ctxRef.current;
+
       const hasAudioContext =
-        typeof window.AudioContext !== "undefined" ||
+        typeof (window as any).AudioContext !== "undefined" ||
         typeof (window as any).webkitAudioContext !== "undefined";
 
-      if (!hasAudioContext) return null;
+      if (!hasAudioContext) {
+        console.warn("Web Audio API not supported in this browser.");
+        return null;
+      }
 
       if (!ctx || ctx.state === "closed") {
         const Ctx =
-          window.AudioContext || (window as any).webkitAudioContext;
+          (window as any).AudioContext || (window as any).webkitAudioContext;
         const newCtx: AudioContext = new Ctx();
         ctxRef.current = newCtx;
         ctx = newCtx;
@@ -160,7 +129,9 @@ function useTinnitusAudio() {
       }
 
       if (ctx && ctx.state === "suspended") {
-        ctx.resume().catch((err: any) => console.error("Resume failed:", err));
+        ctx.resume().catch((err: any) => {
+          console.error("AudioContext resume failed:", err);
+        });
       }
 
       return ctx;
@@ -179,7 +150,9 @@ function useTinnitusAudio() {
           0.1
         );
       }
-    } catch {}
+    } catch (err) {
+      console.error("setMasterVolume failed:", err);
+    }
   }, []);
 
   const generateNoiseBuffer = (ctx: AudioContext, id: string) => {
@@ -197,6 +170,7 @@ function useTinnitusAudio() {
         b2 = 0,
         b3 = 0;
       let envelope = 0.6;
+
       for (let i = 0; i < bufferSize; i++) {
         const w = Math.random() * 2 - 1;
         b0 = 0.99886 * b0 + w * 0.0555179;
@@ -204,7 +178,9 @@ function useTinnitusAudio() {
         b2 = 0.969 * b2 + w * 0.153852;
         b3 = 0.8665 * b3 + w * 0.3104856;
         let pink = (b0 + b1 + b2 + b3 + w * 0.5362) * 0.4;
-        if (i % 2000 === 0) envelope = 0.3 + Math.random() * 0.7;
+        if (i % 2000 === 0) {
+          envelope = 0.3 + Math.random() * 0.7;
+        }
         data[i] = pink * envelope;
       }
     } else if (id === "ocean") {
@@ -226,6 +202,14 @@ function useTinnitusAudio() {
         data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.5;
         b6 = w * 0.115926;
       }
+    } else {
+      let lastOut = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const w = Math.random() * 2 - 1;
+        data[i] = (lastOut + 0.02 * w) / 1.02;
+        lastOut = data[i];
+        data[i] *= 1.0;
+      }
     }
     return buffer;
   };
@@ -236,38 +220,97 @@ function useTinnitusAudio() {
         clearTimeout(stopTimeoutRef.current);
         stopTimeoutRef.current = null;
       }
+
       const now = ctxRef.current?.currentTime || 0;
+
       if (noiseGainRef.current)
         noiseGainRef.current.gain.setTargetAtTime(0, now, 0.05);
       if (toneGainRef.current)
         toneGainRef.current.gain.setTargetAtTime(0, now, 0.05);
-      crGainsRef.current.forEach((g) =>
-        g.gain.setTargetAtTime(0, now, 0.05)
-      );
+      crGainsRef.current.forEach((g) => g.gain.setTargetAtTime(0, now, 0.05));
 
       stopTimeoutRef.current = setTimeout(() => {
         try {
-          noiseNodeRef.current?.stop();
-          noiseNodeRef.current?.disconnect();
-          toneOscRef.current?.stop();
-          toneOscRef.current?.disconnect();
+          if (noiseNodeRef.current) {
+            try {
+              noiseNodeRef.current.stop();
+            } catch {}
+            noiseNodeRef.current.disconnect();
+          }
+          if (toneOscRef.current) {
+            try {
+              toneOscRef.current.stop();
+            } catch {}
+            toneOscRef.current.disconnect();
+          }
           crOscillatorsRef.current.forEach((o) => {
-            o.stop();
+            try {
+              o.stop();
+            } catch {}
             o.disconnect();
           });
           noiseNodeRef.current = null;
           toneOscRef.current = null;
           crOscillatorsRef.current = [];
           if (crIntervalRef.current) clearInterval(crIntervalRef.current);
-        } catch {}
+        } catch (err) {
+          console.error("stopAll inner cleanup error:", err);
+        }
       }, 200);
-    } catch {}
+    } catch (err) {
+      console.error("stopAll failed:", err);
+    }
+  }, []);
+
+  const hardStopAll = useCallback(() => {
+    try {
+      if (stopTimeoutRef.current) {
+        clearTimeout(stopTimeoutRef.current);
+        stopTimeoutRef.current = null;
+      }
+      if (crIntervalRef.current) {
+        clearInterval(crIntervalRef.current);
+        crIntervalRef.current = null;
+      }
+
+      if (noiseNodeRef.current) {
+        try {
+          noiseNodeRef.current.stop();
+        } catch {}
+        noiseNodeRef.current.disconnect();
+        noiseNodeRef.current = null;
+      }
+      if (toneOscRef.current) {
+        try {
+          toneOscRef.current.stop();
+        } catch {}
+        toneOscRef.current.disconnect();
+        toneOscRef.current = null;
+      }
+      crOscillatorsRef.current.forEach((o) => {
+        try {
+          o.stop();
+        } catch {}
+        o.disconnect();
+      });
+      crOscillatorsRef.current = [];
+      crGainsRef.current = [];
+
+      if (toneGainRef.current) {
+        try {
+          toneGainRef.current.disconnect();
+        } catch {}
+        toneGainRef.current = null;
+      }
+    } catch (err) {
+      console.error("hardStopAll failed:", err);
+    }
   }, []);
 
   const playNoise = useCallback(
     (id: string, volume: number) => {
       const ctx = initAudio();
-      if (!ctx || !masterGainRef.current || id === "none") return;
+      if (!ctx || !masterGainRef.current) return;
 
       if (noiseNodeRef.current) {
         try {
@@ -322,7 +365,7 @@ function useTinnitusAudio() {
     (baseFreq: number, volume: number) => {
       const ctx = initAudio();
       if (!ctx || !masterGainRef.current) return;
-      stopAll();
+      hardStopAll();
 
       latestToneVolRef.current = volume;
       const freqs = [0.9, 1.0, 1.1, 1.2].map((m) => baseFreq * m);
@@ -347,30 +390,36 @@ function useTinnitusAudio() {
 
       let idx = 0;
       crIntervalRef.current = setInterval(() => {
-        if (!ctx) return;
-        const now = ctx.currentTime;
-        const currentVol = latestToneVolRef.current;
-        gains.forEach((g, i) => {
-          const target = i === idx ? currentVol : 0;
-          g.gain.setTargetAtTime(target, now, 0.02);
-        });
-        idx = (idx + 1) % gains.length;
+        try {
+          if (!ctx) return;
+          const now = ctx.currentTime;
+          const currentVol = latestToneVolRef.current;
+          gains.forEach((g, i) => {
+            const target = i === idx ? currentVol : 0;
+            g.gain.setTargetAtTime(target, now, 0.02);
+          });
+          idx = (idx + 1) % gains.length;
+        } catch (err) {
+          console.error("CR interval tick failed:", err);
+        }
       }, 250);
     },
-    [initAudio, stopAll]
+    [initAudio, hardStopAll]
   );
 
   const updateVolumes = useCallback((noiseVol: number, toneVol: number) => {
     const now = ctxRef.current?.currentTime || 0;
     const effectiveNoise = Math.min(1.2, noiseVol * 1.5);
-    if (noiseGainRef.current)
+    if (noiseGainRef.current) {
       noiseGainRef.current.gain.setTargetAtTime(effectiveNoise, now, 0.1);
-    if (toneGainRef.current)
+    }
+    if (toneGainRef.current) {
       toneGainRef.current.gain.setTargetAtTime(toneVol, now, 0.1);
+    }
     latestToneVolRef.current = toneVol;
   }, []);
 
-  return useMemo(
+  const api = useMemo(
     () => ({
       initAudio,
       playNoise,
@@ -381,125 +430,68 @@ function useTinnitusAudio() {
       updateVolumes,
       ctxRef,
     }),
-    [initAudio, playNoise, playTone, playCR, stopAll, setMasterVolume, updateVolumes]
+    [
+      initAudio,
+      playNoise,
+      playTone,
+      playCR,
+      stopAll,
+      setMasterVolume,
+      updateVolumes,
+    ]
   );
+
+  return api;
 }
 
-// --- RESEARCH VIEW ---
-const ResearchView = ({ onBack }: { onBack: () => void }) => {
-  const year = new Date().getFullYear();
-  return (
-    <div className="nq-research">
-      <header className="nq-research-header">
-        <h1>Tinnitus neuromodulation research</h1>
-        <p>
-          This page summarizes some of the published research behind sound-based
-          neuromodulation for tinnitus, including notched-sound therapy,
-          acoustic coordinated reset (CR) neuromodulation, and related sound
-          therapies. It is informational only and not medical advice.
-        </p>
-        <div className="nq-research-back">
-          <button onClick={onBack} className="nq-link flex items-center gap-1">
-            <span className="w-4 h-4">🏠</span> Back to CalmTinnitus home
-          </button>
+// --- ERROR BOUNDARY ---
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any, info: any) {
+    console.error("CalmTinnitus Runtime Error:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: "2rem", textAlign: "center", color: "#64748b" }}>
+          <h2>Something went wrong.</h2>
+          <p>Please refresh the page or try again later.</p>
         </div>
-      </header>
+      );
+    }
+    return this.props.children;
+  }
+}
 
-      <section className="nq-research-section">
-        <h2>1. Notched sound / notched music therapy</h2>
-        <p>
-          Notched sound therapy plays pleasant audio (usually music) with a
-          “notch” removed around the person&apos;s tinnitus frequency. The idea
-          is to reduce over-activity of neurons tuned to that frequency over
-          time.
-        </p>
-        <ul>
-          <li>
-            Early work showed that tailor-made notched music could reduce
-            tinnitus loudness and related auditory cortex activity after weeks
-            of daily listening.
-            <a
-              href="https://www.pnas.org/doi/10.1073/pnas.0911268107"
-              target="_blank"
-              rel="noreferrer"
-            >
-              {" "}
-              (Okamoto et al., 2010)
-            </a>
-            .
-          </li>
-          <li>
-            Recent systematic reviews suggest notched music / sound therapy is a{" "}
-            <strong>promising, non-invasive option</strong> for some people.
-          </li>
-        </ul>
-      </section>
+// --- MAIN CONTENT ---
+function TherapyInner() {
+  const [user, setUser] = useState<User | null>(null);
 
-      <section className="nq-research-section">
-        <h2>2. Acoustic coordinated reset (CR) neuromodulation</h2>
-        <p>
-          Acoustic CR plays brief tones around the tinnitus frequency in a
-          specific pattern, aiming to “desynchronize” over-synchronous brain
-          activity linked to tinnitus.
-        </p>
-        <ul>
-          <li>
-            Real-world and clinical studies have reported reductions in tinnitus
-            loudness and handicap scores after weeks to months of daily CR sound
-            therapy in many patients.
-            <a
-              href="https://www.hindawi.com/journals/ijoto/2015/569052/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              {" "}
-              (Hauptmann et al., 2015)
-            </a>
-            .
-          </li>
-        </ul>
-      </section>
+  useEffect(() => {
+    if (!auth) return;
 
-      <section className="nq-research-section nq-research-note">
-        <h2>What this means for CalmTinnitus</h2>
-        <p>
-          CalmTinnitus is inspired by these neuromodulation approaches. It
-          brings together tinnitus pitch matching, notched-style and CR-style
-          sound patterns, and soothing soundscapes into a tool you can use at
-          home.
-        </p>
-      </section>
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (u) {
+        setUser(u);
+      } else {
+        signInAnonymously(auth).catch((err) => {
+          console.error("Anonymous sign-in failed", err);
+        });
+      }
+    });
 
-      <footer className="nq-research-footer">
-        <p>© {year} Leffler International Investments Pty Ltd. CalmTinnitus™</p>
-      </footer>
+    return () => unsub();
+  }, []);
 
-      <style>{`
-        .nq-research { max-width: 960px; margin: 0 auto; padding: 1.5rem 1rem 2.5rem; font-family: system-ui, sans-serif; }
-        .nq-research-header h1 { font-size: 1.8rem; margin-bottom: 0.6rem; color: #0f172a; font-weight: 700; }
-        .nq-research-header p { font-size: 0.98rem; color: #4b5563; line-height: 1.5; }
-        .nq-research-back { margin-top: 1rem; }
-        .nq-link { color: #0369a1; text-decoration: underline; background: none; border: none; cursor: pointer; padding: 0; font-size: 1rem; }
-        .nq-research-section { margin-top: 1.75rem; font-size: 0.96rem; color: #374151; line-height: 1.6; }
-        .nq-research-section h2 { font-size: 1.25rem; margin-bottom: 0.4rem; font-weight: 600; color: #1e293b; }
-        .nq-research-section ul { margin: 0.5rem 0 0; padding-left: 1.3rem; list-style-type: disc; }
-        .nq-research-section li { margin-bottom: 0.5rem; }
-        .nq-research-section a { color: #0369a1; }
-        .nq-research-note { background: #f3f4f6; border-radius: 0.9rem; padding: 1rem; }
-        .nq-research-footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; font-size: 0.8rem; color: #6b7280; }
-      `}</style>
-    </div>
-  );
-};
-
-// --- THERAPY VIEW ---
-const TherapyView = ({
-  user,
-  goToResearch,
-}: {
-  user: User | null;
-  goToResearch: () => void;
-}) => {
   const [tinnitusPitch, setTinnitusPitch] = useState(8000);
   const [selectedSound, setSelectedSound] = useState(SOUND_PROFILES[0]);
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("idle");
@@ -515,7 +507,7 @@ const TherapyView = ({
   const clampTone = (val: number) => Math.min(val, MAX_TONE_VOL);
 
   const [masterVol, setMasterVol] = useState(0.8);
-  const [noiseVol, setNoiseVol] = useState(0);
+  const [noiseVol, setNoiseVol] = useState(0); // start with NO background noise
   const [toneVol, setToneVol] = useState(0.3);
 
   const [isPlayingTest, setIsPlayingTest] = useState(false);
@@ -523,19 +515,6 @@ const TherapyView = ({
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sessionStartTimeRef = useRef<number | null>(null);
   const audio = useTinnitusAudio();
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const pitch = window.localStorage.getItem("calmtinnitus_pitch");
-      const soundId = window.localStorage.getItem("calmtinnitus_soundId");
-      if (pitch) setTinnitusPitch(Number(pitch) || 8000);
-      if (soundId) {
-        const s = SOUND_PROFILES.find((p) => p.id === soundId);
-        if (s) setSelectedSound(s);
-      }
-    } catch {}
-  }, []);
 
   useEffect(() => {
     audio.setMasterVolume(masterVol);
@@ -553,41 +532,43 @@ const TherapyView = ({
     }
   }, [selectedSound, sessionStatus, noiseVol, audio]);
 
-  const saveProfile = async () => {
-    setSaveBtnText("Saving...");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     try {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(
-          "calmtinnitus_pitch",
-          String(tinnitusPitch)
-        );
-        window.localStorage.setItem(
-          "calmtinnitus_soundId",
-          selectedSound.id
-        );
+      const pitch = window.localStorage.getItem("calmtinnitus_pitch");
+      const soundId = window.localStorage.getItem("calmtinnitus_soundId");
+      if (pitch) {
+        const val = Number(pitch);
+        if (!Number.isNaN(val)) {
+          setTinnitusPitch(val);
+        }
       }
 
+      if (soundId) {
+        const s = SOUND_PROFILES.find((p) => p.id === soundId);
+        if (s) setSelectedSound(s);
+      }
+    } catch (e) {
+      console.error("Error loading local profile:", e);
+    }
+  }, []);
+
+  const saveProfile = async () => {
+    if (typeof window === "undefined") return;
+    setSaveBtnText("Saving...");
+
+    try {
+      window.localStorage.setItem("calmtinnitus_pitch", String(tinnitusPitch));
+      window.localStorage.setItem("calmtinnitus_soundId", selectedSound.id);
+
       if (user) {
-        await addDoc(
-          collection(
-            db,
-            "artifacts",
-            appId,
-            "users",
-            user.uid,
-            "data",
-            "profiles",
-            "items"
-          ),
-          {
-            label: profileName || "My Tinnitus Profile",
-            earSide: "both",
-            frequencyHz: tinnitusPitch,
-            baseVolume: masterVol,
-            createdAt: serverTimestamp(),
-            mode: selectedMode,
-          }
-        );
+        await createSavedProfile({
+          userId: user.uid,
+          label: profileName || "My Tinnitus Profile",
+          earSide: "both",
+          frequencyHz: tinnitusPitch,
+          baseVolume: masterVol,
+        });
       }
 
       setSaveBtnText("✅ Saved!");
@@ -597,7 +578,7 @@ const TherapyView = ({
         setSaveBtnClass("nq-btn-save");
       }, 2000);
     } catch (e) {
-      console.error(e);
+      console.error("Error saving profile:", e);
       setSaveBtnText("❌ Error");
       setTimeout(() => setSaveBtnText("Save Profile"), 2000);
     }
@@ -615,35 +596,69 @@ const TherapyView = ({
     }
   };
 
+  useEffect(() => {
+    if (isPlayingTest) {
+      const testVol = clampTone(toneVol || MAX_TONE_VOL * 0.8);
+      audio.playTone(tinnitusPitch, testVol);
+    }
+  }, [tinnitusPitch, toneVol, isPlayingTest, audio]);
+
   const speakSessionEnded = () => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    if (typeof window === "undefined") return;
+    if (!("speechSynthesis" in window)) return;
+
+    try {
       const utter = new SpeechSynthesisUtterance(
         "Your Calm Tinnitus session has finished."
       );
+      utter.lang = "en-US";
+      utter.rate = 1.0;
+      utter.pitch = 1.0;
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utter);
+    } catch (err) {
+      console.error("speechSynthesis failed", err);
     }
   };
 
   const stopSession = (reason: "user" | "auto" = "user") => {
-    audio.stopAll();
-    if (sessionTimerRef.current) {
-      clearInterval(sessionTimerRef.current);
-      sessionTimerRef.current = null;
+    try {
+      audio.stopAll();
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+        sessionTimerRef.current = null;
+      }
+
+      setSessionStatus("idle");
+      setTimeRemaining(null);
+
+      if (reason === "auto") {
+        speakSessionEnded();
+      }
+    } catch (err) {
+      console.error("stopSession failed:", err);
     }
-    setSessionStatus("idle");
-    setTimeRemaining(null);
-    if (reason === "auto") speakSessionEnded();
+  };
+
+  const enableExternalAudioMode = () => {
+    setNoiseVol(0);
+    if (sessionStatus === "running") {
+      audio.updateVolumes(0, clampTone(toneVol));
+    }
   };
 
   const startSession = () => {
     audio.initAudio();
+
+    let startDelay = 0;
     if (isPlayingTest) {
       audio.stopAll();
       setIsPlayingTest(false);
+      startDelay = 250;
     }
 
     const safeTone = clampTone(toneVol);
+
     setTimeout(() => {
       audio.playNoise(selectedSound.id, noiseVol);
       if (selectedMode === "relief") {
@@ -658,12 +673,81 @@ const TherapyView = ({
       sessionStartTimeRef.current = Date.now();
 
       const end = Date.now() + sessionDuration * 60000;
+
       sessionTimerRef.current = setInterval(() => {
         const left = (end - Date.now()) / 60000;
-        if (left <= 0) stopSession("auto");
-        else setTimeRemaining(left);
+        if (left <= 0) {
+          stopSession("auto");
+        } else {
+          setTimeRemaining(left);
+        }
       }, 1000);
-    }, 250);
+    }, startDelay);
+  };
+
+  const pauseSession = () => {
+    try {
+      if (audio.ctxRef.current?.state === "running") {
+        audio.ctxRef.current.suspend().catch((err: any) => console.error(err));
+      }
+      if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
+      setSessionStatus("paused");
+    } catch (err) {
+      console.error("pauseSession failed:", err);
+    }
+  };
+
+  const resumeSession = () => {
+    try {
+      if (audio.ctxRef.current?.state === "suspended") {
+        audio.ctxRef.current.resume().catch((err: any) => console.error(err));
+      }
+      if (timeRemaining != null) {
+        const end = Date.now() + timeRemaining * 60000;
+        sessionTimerRef.current = setInterval(() => {
+          const left = (end - Date.now()) / 60000;
+          if (left <= 0) stopSession("auto");
+          else setTimeRemaining(left);
+        }, 1000);
+      }
+      setSessionStatus("running");
+    } catch (err) {
+      console.error("resumeSession failed:", err);
+    }
+  };
+
+  const handleDurationChange = (t: number) => {
+    setSessionDuration(t);
+
+    if (sessionStatus === "running" || sessionStatus === "paused") {
+      if (sessionStartTimeRef.current != null) {
+        const elapsedMs = Date.now() - sessionStartTimeRef.current;
+        const elapsedMinutes = elapsedMs / 60000;
+        const remaining = t - elapsedMinutes;
+
+        if (remaining <= 0) {
+          stopSession("auto");
+          return;
+        }
+
+        setTimeRemaining(remaining);
+
+        if (sessionStatus === "running") {
+          if (sessionTimerRef.current) {
+            clearInterval(sessionTimerRef.current);
+          }
+          const end = Date.now() + remaining * 60000;
+          sessionTimerRef.current = setInterval(() => {
+            const left = (end - Date.now()) / 60000;
+            if (left <= 0) {
+              stopSession("auto");
+            } else {
+              setTimeRemaining(left);
+            }
+          }, 1000);
+        }
+      }
+    }
   };
 
   const formatTime = (m: number | null) => {
@@ -674,274 +758,659 @@ const TherapyView = ({
   };
 
   return (
-    <div className="nq-container">
+    <main className="nq-container">
+      {/* HEADER */}
       <div className="nq-header">
         <div>
           <h1 className="nq-brand">CalmTinnitus</h1>
           <span className="nq-subtitle">Therapy Dashboard</span>
         </div>
-        <button
-          onClick={goToResearch}
-          className="nq-btn-icon"
-          title="Read Research"
-        >
-          <span className="w-6 h-6 text-slate-500 hover:text-blue-500">
-            📖
-          </span>
-        </button>
+
+        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+          {/* Master volume control removed (we still keep internal masterVol for profiles) */}
+        </div>
       </div>
 
+      {/* GUIDE */}
       <div className="nq-guide">
-        <div className="mb-4">
+        <div style={{ marginBottom: "1rem" }}>
           <strong>Quick Start:</strong>
           <div className="nq-guide-steps">
-            <span>1. Match your tinnitus pitch below &amp; Save.</span>
+            <span>1. Match your tinnitus pitch below & Save.</span>
             <span>2. Select a therapy mode.</span>
-            <span>3. Choose a background sound &amp; start.</span>
+            <span>3. Choose a background sound & start.</span>
           </div>
         </div>
-        <div className="pt-4 border-t border-blue-200/20">
-          <strong>📅 Recommended:</strong> Use 2 sessions/day for 3–6 months
-          for habituation.
+        <div
+          style={{
+            paddingTop: "1rem",
+            borderTop: "1px solid rgba(0,0,0,0.05)",
+          }}
+        >
+          <strong>📅 Recommended:</strong> Use 2 sessions/day for 3–6 months for
+          habituation.
+          <br />
+          <span style={{ opacity: 0.8 }}>
+            Or simply use it whenever you are looking for peace.
+          </span>
         </div>
       </div>
 
+      {/* STATUS BANNER */}
       {sessionStatus !== "idle" && (
         <div className="nq-banner">
           <div className="nq-timer">{formatTime(timeRemaining)}</div>
           <div className="nq-status-text">
             {THERAPY_MODES.find((m) => m.key === selectedMode)?.label} is Active
           </div>
-          <button
-            onClick={() => stopSession("user")}
-            className="nq-btn-stop"
-          >
+
+          {sessionStatus === "running" && (
+            <button onClick={pauseSession} className="nq-btn-stop">
+              ⏸ Pause Session
+            </button>
+          )}
+          {sessionStatus === "paused" && (
+            <button onClick={resumeSession} className="nq-btn-stop">
+              ▶ Resume Session
+            </button>
+          )}
+          <button onClick={() => stopSession("user")} className="nq-btn-stop">
             ⏹ Stop Session
           </button>
         </div>
       )}
 
-      <div className="space-y-6">
-        <div className="nq-panel nq-step-1">
-          <div className="nq-panel-header">
-            <h3>Step 1: Match Your Tinnitus Pitch</h3>
-            <div className="nq-pitch-display">
-              <span className="nq-hz">{Math.round(tinnitusPitch)} Hz</span>
-              <button
-                onClick={toggleTestTone}
-                className={`nq-btn-test ${isPlayingTest ? "active" : ""}`}
-              >
-                <span className="w-4 h-4">
-                  {isPlayingTest ? "⏸" : "▶"}
-                </span>
-                {isPlayingTest ? "Stop" : "Test"}
-              </button>
-            </div>
-          </div>
-          <div className="nq-range-wrap">
-            <span className="nq-range-label">Low</span>
-            <input
-              type="range"
-              min="200"
-              max="12000"
-              step="50"
-              value={tinnitusPitch}
-              onChange={(e) => setTinnitusPitch(Number(e.target.value))}
-              className="nq-main-slider"
-            />
-            <span className="nq-range-label">High</span>
-          </div>
-          <div className="nq-save-section">
-            <input
-              type="text"
-              placeholder="Profile Name"
-              className="nq-input-profile"
-              value={profileName}
-              onChange={(e) => setProfileName(e.target.value)}
-            />
-            <button onClick={saveProfile} className={saveBtnClass}>
-              <span className="w-4 h-4">💾</span> {saveBtnText}
+      {/* STEP 1 */}
+      <div className="nq-panel nq-step-1">
+        <div className="nq-panel-header">
+          <h3>Step 1: Match Your Tinnitus Pitch</h3>
+          <div className="nq-pitch-display">
+            <span className="nq-hz">{Math.round(tinnitusPitch)} Hz</span>
+            <button
+              onClick={toggleTestTone}
+              className={`nq-btn-test ${isPlayingTest ? "active" : ""}`}
+            >
+              {isPlayingTest ? "⏹ Stop Tone" : "▶ Test Tone"}
             </button>
           </div>
         </div>
+        <div className="nq-range-wrap">
+          <span className="nq-range-label">Low</span>
+          <input
+            type="range"
+            min="200"
+            max="12000"
+            step="50"
+            value={tinnitusPitch}
+            onChange={(e) => setTinnitusPitch(Number(e.target.value))}
+            className="nq-main-slider"
+          />
+          <span className="nq-range-label">High</span>
+        </div>
 
-        <div className="nq-controls-grid">
-          <div className="nq-panel">
-            <h3>Step 2: Therapy Mode</h3>
-            <div className="nq-list">
-              {THERAPY_MODES.map((m) => (
-                <button
-                  key={m.key}
-                  onClick={() => setSelectedMode(m.key)}
-                  disabled={sessionStatus !== "idle"}
-                  className={`nq-list-item ${
-                    selectedMode === m.key ? "active" : ""
-                  }`}
-                >
-                  <span className="nq-icon">{m.icon}</span>
-                  <div className="text-left">
-                    <strong>{m.label}</strong>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {m.description}
-                    </p>
-                  </div>
-                </button>
+        <div className="nq-save-section">
+          <input
+            type="text"
+            placeholder="Profile Name (e.g. Bedtime)"
+            className="nq-input-profile"
+            value={profileName}
+            onChange={(e) => setProfileName(e.target.value)}
+          />
+          <button onClick={saveProfile} className={saveBtnClass}>
+            {saveBtnText}
+          </button>
+        </div>
+        <p className="nq-save-hint">
+          {user
+            ? "Saving to your cloud account."
+            : "Not logged in - saving to device only."}
+        </p>
+      </div>
+
+      {/* STEP 2 & 3 */}
+      <div className="nq-controls-grid">
+        {/* Step 2: Mode */}
+        <div className="nq-panel">
+          <h3>Step 2: Therapy Mode</h3>
+          <div className="nq-list">
+            {THERAPY_MODES.map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setSelectedMode(m.key)}
+                disabled={sessionStatus !== "idle"}
+                className={`nq-list-item ${
+                  selectedMode === m.key ? "active" : ""
+                }`}
+              >
+                <span className="nq-icon">{m.icon}</span>
+                <div>
+                  <strong>{m.label}</strong>
+                  <p>{m.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="nq-info-box">
+            <span style={{ fontSize: "1.2rem", marginRight: "0.5rem" }}>
+              ℹ️
+            </span>
+            <div>
+              <strong>
+                Why you hear ticking / holes / clicks in Relief (CR)
+              </strong>
+              <p style={{ marginTop: "0.35rem" }}>
+                In <strong>Relief (CR) Therapy</strong> you will hear gentle
+                “knocks”, “ticks”, or tiny gaps in the sound.{" "}
+                <strong>
+                  This is intentional – nothing is wrong with your speakers or
+                  phone.
+                </strong>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Step 3: Sound & Mixer */}
+        <div className="nq-panel">
+          <h3>Step 3: Sound & Mixer</h3>
+
+          <div
+            className="nq-info-inline"
+            style={{ marginTop: "0.75rem", marginBottom: "1.5rem" }}
+          >
+            <strong>Therapy Volume – What Is the Correct Level?</strong>
+            <p style={{ marginTop: "0.35rem" }}>
+              The therapy should be <strong>comfortable and never loud</strong>.
+              You should still hear normal sounds around you. The ticks in
+              Relief (CR) mode should be <strong>soft but noticeable</strong>.
+              Best rule:{" "}
+              <strong>
+                “Just loud enough to hear it, but soft enough to ignore it.”
+              </strong>
+            </p>
+            <p style={{ marginTop: "0.35rem" }}>
+              <strong>
+                30 minutes is the standard recommended session duration
+              </strong>{" "}
+              for most people. You can still choose shorter or longer sessions
+              if it suits you better.
+            </p>
+          </div>
+
+          <div className="nq-slider-group">
+            <label>Background Sound</label>
+            <select
+              className="nq-select"
+              value={selectedSound.id}
+              onChange={(e) => {
+                const s = SOUND_PROFILES.find((p) => p.id === e.target.value);
+                if (s) setSelectedSound(s);
+              }}
+            >
+              {SOUND_PROFILES.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
               ))}
+            </select>
+          </div>
+
+          <div className="nq-info-inline">
+            <strong>Good to know:</strong>
+            <p>
+              While the therapy is running you can{" "}
+              <strong>
+                play any music, watch videos, or even talk on the phone.
+              </strong>
+            </p>
+          </div>
+
+          <div className="nq-mixer">
+            <div className="nq-slider-group">
+              <label>Background Sound Vol</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={noiseVol}
+                onChange={(e) => setNoiseVol(Number(e.target.value))}
+              />
+              <div className="nq-mixer-hint">
+                Turn this all the way down if you want{" "}
+                <strong>only the therapy tone</strong> without noise.
+              </div>
+            </div>
+            <div className="nq-slider-group">
+              <label>Therapy Tone Vol</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={toneVol}
+                onChange={(e) =>
+                  setToneVol(clampTone(Number(e.target.value)))
+                }
+              />
             </div>
           </div>
 
-          <div className="nq-panel">
-            <h3>Step 3: Sound &amp; Mixer</h3>
-            <div className="nq-slider-group mt-4">
-              <label>Background Sound</label>
-              <select
-                className="nq-select"
-                value={selectedSound.id}
-                onChange={(e) => {
-                  const s = SOUND_PROFILES.find(
-                    (p) => p.id === e.target.value
-                  );
-                  if (s) setSelectedSound(s);
-                }}
+          <div style={{ marginTop: "0.5rem", marginBottom: "1rem" }}>
+            <button
+              type="button"
+              onClick={enableExternalAudioMode}
+              className="nq-chip"
+              style={{
+                width: "100%",
+                background: "#f1f5f9",
+                border: "1px solid #cbd5e1",
+              }}
+            >
+              🔇 External Audio Mode – Mute Background Noise (Keep Therapy Tone)
+            </button>
+          </div>
+
+          <div className="nq-duration-group">
+            {[15, 30, 45, 60].map((t) => (
+              <button
+                key={t}
+                onClick={() => handleDurationChange(t)}
+                className={`nq-chip ${sessionDuration === t ? "active" : ""}`}
               >
-                {SOUND_PROFILES.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="nq-mixer">
-              <div className="nq-slider-group">
-                <label>Background Vol</label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={noiseVol}
-                  onChange={(e) => setNoiseVol(Number(e.target.value))}
-                />
-              </div>
-              <div className="nq-slider-group">
-                <label>Therapy Tone Vol</label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={toneVol}
-                  onChange={(e) =>
-                    setToneVol(clampTone(Number(e.target.value)))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="nq-duration-group">
-              {[15, 30, 45, 60].map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setSessionDuration(t)}
-                  className={`nq-chip ${sessionDuration === t ? "active" : ""}`}
-                >
-                  {t}m
-                </button>
-              ))}
-            </div>
+                {t}m
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="mt-6">
+      {/* PRIMARY SESSION CONTROL BUTTONS */}
+      <div style={{ marginTop: "1.5rem" }}>
         {sessionStatus === "idle" && (
           <button onClick={startSession} className="nq-btn-big">
             ▶ Start Session
           </button>
         )}
+
+        {sessionStatus === "running" && (
+          <>
+            <button onClick={pauseSession} className="nq-btn-big">
+              ⏸ Suspend Session
+            </button>
+            <button
+              onClick={() => stopSession("user")}
+              className="nq-btn-big"
+              style={{ marginTop: "0.75rem", background: "#ef4444" }}
+            >
+              ⏹ Stop Session
+            </button>
+          </>
+        )}
+
+        {sessionStatus === "paused" && (
+          <>
+            <button onClick={resumeSession} className="nq-btn-big">
+              ▶ Resume Session
+            </button>
+            <button
+              onClick={() => stopSession("user")}
+              className="nq-btn-big"
+              style={{ marginTop: "0.75rem", background: "#ef4444" }}
+            >
+              ⏹ Stop Session
+            </button>
+          </>
+        )}
+      </div>
+
+      <div className="nq-footer">
+        <p>
+          Medical Disclaimer: This is a wellness tool. Consult a doctor for
+          hearing health issues.
+        </p>
       </div>
 
       <Style />
-    </div>
-  );
-};
-
-// --- STYLES ---
-function Style() {
-  return (
-    <style>{`
-      :root { --primary: #0ea5e9; --success: #22c55e; --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --text-dim: #64748b; }
-      .nq-container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; font-family: system-ui, sans-serif; color: var(--text); background: #f8fafc; min-height: 100vh; }
-      .nq-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-      .nq-brand { margin: 0; font-size: 1.5rem; font-weight: 800; background: linear-gradient(to right, #0ea5e9, #3b82f6); -webkit-background-clip: text; color: transparent; }
-      .nq-subtitle { font-size: 0.9rem; color: var(--text-dim); }
-      .nq-guide { background: #f0f9ff; border: 1px solid #bae6fd; padding: 1rem; border-radius: 0.75rem; margin-bottom: 2rem; font-size: 0.9rem; color: #0369a1; }
-      .nq-guide-steps { display: flex; flex-direction: column; margin-top: 0.5rem; gap: 0.25rem; font-weight: 500; }
-      .nq-panel { background: white; padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; }
-      .nq-step-1 { border: 2px solid #e2e8f0; }
-      .nq-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-      .nq-panel-header h3 { margin: 0; font-weight: 600; }
-      .nq-pitch-display { display: flex; align-items: center; gap: 1rem; }
-      .nq-hz { font-size: 1.5rem; font-weight: 800; color: var(--primary); min-width: 80px; text-align: right; }
-      .nq-btn-test { background: #0f172a; color: white; border: none; padding: 0.5rem 1.2rem; border-radius: 99px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-      .nq-btn-test.active { background: #ef4444; }
-      .nq-range-wrap { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
-      .nq-range-label { font-size: 0.8rem; color: var(--text-dim); }
-      .nq-main-slider { flex: 1; height: 8px; border-radius: 4px; appearance: none; background: #e2e8f0; }
-      .nq-main-slider::-webkit-slider-thumb { appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--primary); cursor: pointer; border: 2px solid white; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); }
-      .nq-save-section { text-align: center; border-top: 1px solid #e2e8f0; padding-top: 1rem; display: flex; gap: 0.5rem; justify-content: center; align-items: center; flex-wrap: wrap; }
-      .nq-input-profile { padding: 0.6rem 1rem; border: 1px solid #cbd5e1; border-radius: 99px; font-size: 0.9rem; width: 200px; }
-      .nq-btn-save { background: #e2e8f0; color: #334155; border: none; padding: 0.6rem 1.5rem; border-radius: 99px; cursor: pointer; font-weight: 700; transition: 0.3s; display: flex; align-items: center; gap: 6px; }
-      .nq-btn-save:hover { background: #cbd5e1; }
-      .nq-btn-save.saved { background: #22c55e; color: white; }
-      .nq-controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-      @media (max-width: 768px) { .nq-controls-grid { grid-template-columns: 1fr; } }
-      .nq-list { display: grid; gap: 0.5rem; }
-      .nq-list-item { display: flex; align-items: flex-start; gap: 1rem; text-align: left; width: 100%; background: white; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 0.75rem; cursor: pointer; transition: 0.2s; }
-      .nq-list-item:hover { border-color: var(--primary); }
-      .nq-list-item.active { border: 2px solid var(--primary); background: #f0f9ff; }
-      .nq-slider-group { margin-bottom: 1rem; }
-      .nq-slider-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
-      .nq-select { width: 100%; padding: 0.6rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; font-size: 1rem; }
-      input[type="range"] { width: 100%; accent-color: var(--primary); }
-      .nq-mixer { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; margin-bottom: 1rem; }
-      .nq-duration-group { display: flex; gap: 0.5rem; }
-      .nq-chip { flex: 1; border: 1px solid #e2e8f0; background: white; padding: 0.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: 500; }
-      .nq-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
-      .nq-banner { background: linear-gradient(135deg, var(--primary), var(--success)); color: white; padding: 1.5rem; border-radius: 1rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-bottom: 2rem; box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.4); }
-      .nq-timer { font-size: 2.5rem; font-weight: 800; line-height: 1; }
-      .nq-btn-stop { background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 0.5rem 1.25rem; border-radius: 99px; cursor: pointer; font-weight: 600; margin-top: 0.5rem; }
-      .nq-btn-stop:hover { background: rgba(255, 255, 255, 0.3); }
-      .nq-btn-big { width: 100%; background: var(--primary); color: white; border: none; padding: 1.2rem; border-radius: 1rem; font-size: 1.2rem; font-weight: 700; cursor: pointer; box-shadow: 0 10px 20px rgba(14, 165, 233, 0.2); transition: 0.2s; }
-      .nq-btn-big:hover { transform: translateY(-2px); box-shadow: 0 15px 25px rgba(14, 165, 233, 0.3); }
-      .nq-btn-icon { background: none; border: none; cursor: pointer; padding: 0.5rem; border-radius: 50%; transition: background 0.2s; }
-      .nq-btn-icon:hover { background: #e2e8f0; }
-    `}</style>
+    </main>
   );
 }
 
-// --- MAIN APP COMPONENT ---
-export default function App() {
-  const [view, setView] = useState<ViewState>("therapy");
-  const [user, setUser] = useState<User | null>(null);
+export default function TherapyPage() {
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        await signInAnonymously(auth);
-      } catch (e) {
-        console.error("Firebase anonymous auth failed", e);
-      }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
+    setMounted(true);
   }, []);
 
-  if (view === "research") {
-    return <ResearchView onBack={() => setView("therapy")} />;
+  if (!mounted) {
+    return (
+      <div style={{ padding: "2rem", textAlign: "center", color: "#64748b" }}>
+        Loading therapy dashboard...
+      </div>
+    );
   }
 
-  return <TherapyView user={user} goToResearch={() => setView("research")} />;
+  return (
+    <ErrorBoundary>
+      <TherapyInner />
+    </ErrorBoundary>
+  );
+}
+
+function Style() {
+  return (
+    <style>{`
+      :root {
+        --primary: #0ea5e9;
+        --success: #22c55e;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --text: #0f172a;
+        --text-dim: #64748b;
+      }
+      .nq-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        font-family: system-ui, sans-serif;
+        color: var(--text);
+        background: #f8fafc;
+      }
+      .nq-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+      .nq-brand {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+      .nq-subtitle {
+        font-size: 0.9rem;
+        color: var(--text-dim);
+      }
+      .nq-guide {
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        margin-bottom: 2rem;
+        font-size: 0.9rem;
+        color: #0369a1;
+      }
+      .nq-guide-steps {
+        display: flex;
+        flex-direction: column;
+        margin-top: 0.5rem;
+        gap: 0.25rem;
+        font-weight: 500;
+      }
+      .nq-panel {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      }
+      .nq-step-1 {
+        border: 2px solid #e2e8f0;
+        margin-bottom: 1.5rem;
+      }
+      .nq-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+      .nq-panel-header h3 {
+        margin: 0;
+      }
+      .nq-pitch-display {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .nq-hz {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--primary);
+        min-width: 80px;
+        text-align: right;
+      }
+      .nq-btn-test {
+        background: #0f172a;
+        color: white;
+        border: none;
+        padding: 0.5rem 1.2rem;
+        border-radius: 99px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: 0.2s;
+      }
+      .nq-btn-test.active {
+        background: #ef4444;
+      }
+      .nq-range-wrap {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .nq-range-label {
+        font-size: 0.8rem;
+        color: var(--text-dim);
+        white-space: nowrap;
+      }
+      .nq-main-slider {
+        flex: 1;
+        height: 8px;
+        border-radius: 4px;
+        appearance: none;
+        background: #e2e8f0;
+      }
+      .nq-main-slider::-webkit-slider-thumb {
+        appearance: none;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--primary);
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+      .nq-save-section {
+        margin-top: 1.5rem;
+        text-align: center;
+        border-top: 1px solid #e2e8f0;
+        padding-top: 1rem;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .nq-input-profile {
+        padding: 0.6rem 1rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 99px;
+        font-size: 0.9rem;
+        width: 200px;
+      }
+      .nq-save-hint {
+        text-align: center;
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-top: 0.5rem;
+      }
+      .nq-btn-save {
+        background: #e2e8f0;
+        color: #334155;
+        border: none;
+        padding: 0.6rem 2rem;
+        border-radius: 99px;
+        cursor: pointer;
+        font-weight: 700;
+        transition: 0.3s;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      }
+      .nq-btn-save:hover {
+        background: #cbd5e1;
+      }
+      .nq-btn-save.saved {
+        background: #22c55e;
+        color: white;
+        transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
+      }
+      .nq-controls-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
+      @media (max-width: 768px) {
+        .nq-controls-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .nq-info-box {
+        margin-top: 1.5rem;
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        font-size: 0.8rem;
+        color: #92400e;
+        display: flex;
+        align-items: flex-start;
+        line-height: 1.4;
+      }
+      .nq-list {
+        display: grid;
+        gap: 0.5rem;
+      }
+      .nq-list-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        text-align: left;
+        width: 100%;
+        background: white;
+        border: 1px solid #e2e8f0;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        cursor: pointer;
+      }
+      .nq-list-item.active {
+        border: 2px solid var(--primary);
+        background: #f0f9ff;
+      }
+      .nq-slider-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+      }
+      .nq-select {
+        width: 100%;
+        padding: 0.6rem;
+        border-radius: 0.5rem;
+        border: 1px solid #e2e8f0;
+        font-size: 1rem;
+      }
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--primary);
+      }
+      .nq-mixer {
+        display: grid;
+        gap: 1rem;
+        margin-top: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      .nq-mixer-hint {
+        margin-top: 0.3rem;
+        font-size: 0.8rem;
+        color: #6b7280;
+      }
+      .nq-duration-group {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .nq-chip {
+        flex: 1;
+        border: 1px solid #e2e8f0;
+        background: white;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: 500;
+      }
+      .nq-chip.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+      }
+      .nq-info-inline {
+        margin-top: 0.75rem;
+        margin-bottom: 0.25rem;
+        background: #ecfeff;
+        border-radius: 0.75rem;
+        padding: 0.7rem 0.9rem;
+        font-size: 0.85rem;
+        color: #0f172a;
+        border: 1px solid #a5f3fc;
+      }
+      .nq-banner {
+        background: linear-gradient(135deg, var(--primary), var(--success));
+        color: white;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+      }
+      .nq-timer {
+        font-size: 2.5rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+      .nq-btn-stop {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        padding: 0.5rem 1.25rem;
+        border-radius: 99px;
+        cursor: pointer;
+        font-weight: 600;
+        margin-top: 0.5rem;
+      }
+      .nq-btn-big {
+        width: 100%;
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 1.2rem;
+        border-radius: 1rem;
+        font-size: 1.2rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 10px 20px rgba(14, 165, 233, 0.2);
+        margin-top: 1.5rem;
+      }
+      .nq-footer {
+        text-align: center;
+        margin-top: 3rem;
+        font-size: 0.8rem;
+        color: var(--text-dim);
+      }
+      .nq-status-text {
+        font-size: 0.9rem;
+        opacity: 0.9;
+      }
+    `}</style>
+  );
 }
