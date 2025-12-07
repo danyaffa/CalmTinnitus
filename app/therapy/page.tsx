@@ -1,3 +1,6 @@
+// FILE: app/therapy/page.tsx
+"use client";
+
 /**
  * Calm Tinnitus – Evidence-Based Neuromodulation & Notch Therapy
  * Features:
