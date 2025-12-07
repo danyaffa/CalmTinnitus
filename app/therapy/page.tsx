@@ -1,6 +1,9 @@
+// FILE: app/therapy/page.tsx
+"use client";
+
 /**
  * CalmTinnitus - Therapy & Research App
- * Combined build from user provided pages.
+ * Combined build from user provided pages (8 and 12).
  * Features:
  * - Tinnitus Pitch Matching
  * - 3 Therapy Modes: Relief (CR), Standard, Sleep
@@ -9,7 +12,13 @@
  * - Firebase Persistence
  */
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -19,18 +28,23 @@ import {
 } from "firebase/auth";
 import {
   getFirestore,
-  doc,
-  setDoc,
   collection,
   addDoc,
   serverTimestamp,
 } from "firebase/firestore";
 
 // --- FIREBASE CONFIGURATION ---
-// @ts-ignore
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-// @ts-ignore
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'calm-tinnitus';
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
+  messagingSenderId:
+    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
+};
+
+const appId = "calm-tinnitus";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -87,20 +101,20 @@ const THERAPY_MODES: {
     label: "1) Relief (CR) Therapy",
     description:
       "Special pattern with gentle 'holes' (clicks) intended to support long-term habituation.",
-    icon: <span className="text-xl">🧠</span>,
+    icon: <span className="w-5 h-5">🧠</span>,
   },
   {
     key: "standard",
     label: "2) Standard Therapy (Comfort)",
     description:
       "Gentle background sound with your matched tone for daily comfort & masking.",
-    icon: <span className="text-xl">🎵</span>,
+    icon: <span className="w-5 h-5">🎵</span>,
   },
   {
     key: "sleep",
     label: "3) Sleep Support",
     description: "Quieter profile to help you wind down and fall asleep.",
-    icon: <span className="text-xl">🌙</span>,
+    icon: <span className="w-5 h-5">🌙</span>,
   },
 ];
 
@@ -165,7 +179,7 @@ function useTinnitusAudio() {
           0.1
         );
       }
-    } catch (err) {}
+    } catch {}
   }, []);
 
   const generateNoiseBuffer = (ctx: AudioContext, id: string) => {
@@ -245,9 +259,9 @@ function useTinnitusAudio() {
           toneOscRef.current = null;
           crOscillatorsRef.current = [];
           if (crIntervalRef.current) clearInterval(crIntervalRef.current);
-        } catch (e) {}
+        } catch {}
       }, 200);
-    } catch (e) {}
+    } catch {}
   }, []);
 
   const playNoise = useCallback(
@@ -308,7 +322,7 @@ function useTinnitusAudio() {
     (baseFreq: number, volume: number) => {
       const ctx = initAudio();
       if (!ctx || !masterGainRef.current) return;
-      stopAll(); // Ensure clean slate for CR
+      stopAll();
 
       latestToneVolRef.current = volume;
       const freqs = [0.9, 1.0, 1.1, 1.2].map((m) => baseFreq * m);
@@ -371,9 +385,7 @@ function useTinnitusAudio() {
   );
 }
 
-// --- SUB-VIEWS ---
-
-// 1. Research View
+// --- RESEARCH VIEW ---
 const ResearchView = ({ onBack }: { onBack: () => void }) => {
   const year = new Date().getFullYear();
   return (
@@ -382,9 +394,9 @@ const ResearchView = ({ onBack }: { onBack: () => void }) => {
         <h1>Tinnitus neuromodulation research</h1>
         <p>
           This page summarizes some of the published research behind sound-based
-          neuromodulation for tinnitus, including notched-sound therapy, acoustic
-          coordinated reset (CR) neuromodulation, and related sound therapies.
-          It is informational only and not medical advice.
+          neuromodulation for tinnitus, including notched-sound therapy,
+          acoustic coordinated reset (CR) neuromodulation, and related sound
+          therapies. It is informational only and not medical advice.
         </p>
         <div className="nq-research-back">
           <button onClick={onBack} className="nq-link flex items-center gap-1">
@@ -451,9 +463,10 @@ const ResearchView = ({ onBack }: { onBack: () => void }) => {
       <section className="nq-research-section nq-research-note">
         <h2>What this means for CalmTinnitus</h2>
         <p>
-          CalmTinnitus is inspired by these neuromodulation approaches. It brings
-          together tinnitus pitch matching, notched-style and CR-style sound
-          patterns, and soothing soundscapes into a tool you can use at home.
+          CalmTinnitus is inspired by these neuromodulation approaches. It
+          brings together tinnitus pitch matching, notched-style and CR-style
+          sound patterns, and soothing soundscapes into a tool you can use at
+          home.
         </p>
       </section>
 
@@ -479,7 +492,7 @@ const ResearchView = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
-// 2. Therapy View
+// --- THERAPY VIEW ---
 const TherapyView = ({
   user,
   goToResearch,
@@ -511,7 +524,6 @@ const TherapyView = ({
   const sessionStartTimeRef = useRef<number | null>(null);
   const audio = useTinnitusAudio();
 
-  // Load from local storage on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -522,7 +534,7 @@ const TherapyView = ({
         const s = SOUND_PROFILES.find((p) => p.id === soundId);
         if (s) setSelectedSound(s);
       }
-    } catch (e) {}
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -556,7 +568,6 @@ const TherapyView = ({
       }
 
       if (user) {
-        // Create Saved Profile directly in Firestore
         await addDoc(
           collection(
             db,
@@ -664,7 +675,6 @@ const TherapyView = ({
 
   return (
     <div className="nq-container">
-      {/* HEADER */}
       <div className="nq-header">
         <div>
           <h1 className="nq-brand">CalmTinnitus</h1>
@@ -675,11 +685,12 @@ const TherapyView = ({
           className="nq-btn-icon"
           title="Read Research"
         >
-          <span className="w-6 h-6 text-slate-500 hover:text-blue-500">📖</span>
+          <span className="w-6 h-6 text-slate-500 hover:text-blue-500">
+            📖
+          </span>
         </button>
       </div>
 
-      {/* GUIDE */}
       <div className="nq-guide">
         <div className="mb-4">
           <strong>Quick Start:</strong>
@@ -690,12 +701,11 @@ const TherapyView = ({
           </div>
         </div>
         <div className="pt-4 border-t border-blue-200/20">
-          <strong>📅 Recommended:</strong> Use 2 sessions/day for 3–6 months for
-          habituation.
+          <strong>📅 Recommended:</strong> Use 2 sessions/day for 3–6 months
+          for habituation.
         </div>
       </div>
 
-      {/* STATUS BANNER */}
       {sessionStatus !== "idle" && (
         <div className="nq-banner">
           <div className="nq-timer">{formatTime(timeRemaining)}</div>
@@ -711,9 +721,7 @@ const TherapyView = ({
         </div>
       )}
 
-      {/* CONTROLS */}
       <div className="space-y-6">
-        {/* Step 1 */}
         <div className="nq-panel nq-step-1">
           <div className="nq-panel-header">
             <h3>Step 1: Match Your Tinnitus Pitch</h3>
@@ -758,7 +766,6 @@ const TherapyView = ({
         </div>
 
         <div className="nq-controls-grid">
-          {/* Step 2 */}
           <div className="nq-panel">
             <h3>Step 2: Therapy Mode</h3>
             <div className="nq-list">
@@ -783,7 +790,6 @@ const TherapyView = ({
             </div>
           </div>
 
-          {/* Step 3 */}
           <div className="nq-panel">
             <h3>Step 3: Sound &amp; Mixer</h3>
             <div className="nq-slider-group mt-4">
@@ -922,7 +928,11 @@ export default function App() {
 
   useEffect(() => {
     const initAuth = async () => {
-      await signInAnonymously(auth);
+      try {
+        await signInAnonymously(auth);
+      } catch (e) {
+        console.error("Firebase anonymous auth failed", e);
+      }
     };
     initAuth();
     const unsubscribe = onAuthStateChanged(auth, setUser);
