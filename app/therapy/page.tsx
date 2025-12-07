@@ -1,9 +1,6 @@
-// FILE: app/therapy/page.tsx
-"use client";
-
 /**
  * CalmTinnitus - Therapy & Research App
- * Combined build from user provided pages (8 and 12).
+ * Combined build from user provided pages.
  * Features:
  * - Tinnitus Pitch Matching
  * - 3 Therapy Modes: Relief (CR), Standard, Sleep
@@ -19,7 +16,6 @@ import {
   signInAnonymously,
   onAuthStateChanged,
   User,
-  signInWithCustomToken,
 } from "firebase/auth";
 import {
   getFirestore,
@@ -31,17 +27,10 @@ import {
 } from "firebase/firestore";
 
 // --- FIREBASE CONFIGURATION ---
-// Uses standard NEXT_PUBLIC_* env vars – same pattern as your other apps.
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
-};
-
-const appId = "calm-tinnitus";
+// @ts-ignore
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+// @ts-ignore
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'calm-tinnitus';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -98,24 +87,24 @@ const THERAPY_MODES: {
     label: "1) Relief (CR) Therapy",
     description:
       "Special pattern with gentle 'holes' (clicks) intended to support long-term habituation.",
-    icon: <span className="w-5 h-5">🧠</span>,
+    icon: <span className="text-xl">🧠</span>,
   },
   {
     key: "standard",
     label: "2) Standard Therapy (Comfort)",
     description:
       "Gentle background sound with your matched tone for daily comfort & masking.",
-    icon: <span className="w-5 h-5">🎵</span>,
+    icon: <span className="text-xl">🎵</span>,
   },
   {
     key: "sleep",
     label: "3) Sleep Support",
     description: "Quieter profile to help you wind down and fall asleep.",
-    icon: <span className="w-5 h-5">🌙</span>,
+    icon: <span className="text-xl">🌙</span>,
   },
 ];
 
-// --- AUDIO ENGINE HOOK (From Page 8) ---
+// --- AUDIO ENGINE HOOK ---
 function useTinnitusAudio() {
   const ctxRef = useRef<AudioContext | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
@@ -384,7 +373,7 @@ function useTinnitusAudio() {
 
 // --- SUB-VIEWS ---
 
-// 1. Research View (From Page 12)
+// 1. Research View
 const ResearchView = ({ onBack }: { onBack: () => void }) => {
   const year = new Date().getFullYear();
   return (
@@ -490,7 +479,7 @@ const ResearchView = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
-// 2. Therapy View (From Page 8)
+// 2. Therapy View
 const TherapyView = ({
   user,
   goToResearch,
@@ -933,13 +922,7 @@ export default function App() {
 
   useEffect(() => {
     const initAuth = async () => {
-      // @ts-ignore – optional custom token support
-      const customToken =
-        typeof __initial_auth_token !== "undefined"
-          ? __initial_auth_token
-          : null;
-      if (customToken) await signInWithCustomToken(auth, customToken);
-      else await signInAnonymously(auth);
+      await signInAnonymously(auth);
     };
     initAuth();
     const unsubscribe = onAuthStateChanged(auth, setUser);
