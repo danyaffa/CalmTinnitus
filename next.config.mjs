@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  // output: 'export', // <--- COMMENTED OUT FOR VERCEL DEPLOYMENT. (Uncomment this line only when building for Android/iOS)
   images: {
     unoptimized: true,
   },
