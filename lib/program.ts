@@ -6,6 +6,7 @@ import {
   where,
   orderBy,
   getDocs,
+  getDoc,
   doc,
   setDoc,
   serverTimestamp,
@@ -45,23 +46,23 @@ const startOfLocalDay = (d: Date) => {
   return x.getTime();
 };
 
+/**
+ * ✅ FIX: Avoids composite index + avoids permissions edge cases from list/query.
+ * Reads the known doc: active_UID
+ */
 export async function getActiveEnrollment(userId: string) {
-  // Query 1: Requires Index 1 (userId asc, active asc, startDate desc)
-  const q = query(
-    collection(db, ENROLLMENTS),
-    where("userId", "==", userId),
-    where("active", "==", true),
-    orderBy("startDate", "desc"),
-    limit(1)
-  );
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
+  const id = `active_${userId}`;
+  const ref = doc(db, ENROLLMENTS, id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
 
-  const doc0 = snap.docs[0];
-  return { id: doc0.id, ...(doc0.data() as any) } as { id: string } & ProgramEnrollment;
+  return { id: snap.id, ...(snap.data() as any) } as { id: string } & ProgramEnrollment;
 }
 
-export async function createOrReplaceEnrollment(userId: string, lengthDays: ProgramLengthDays) {
+export async function createOrReplaceEnrollment(
+  userId: string,
+  lengthDays: ProgramLengthDays
+) {
   // Document ID is active_UID
   const id = `active_${userId}`;
   const startDate = startOfLocalDay(new Date());
@@ -85,12 +86,13 @@ export async function createOrReplaceEnrollment(userId: string, lengthDays: Prog
 
 export function getDayNumber(enrollmentStartDateMs: number) {
   const today = startOfLocalDay(new Date());
-  const diffDays = Math.floor((today - enrollmentStartDateMs) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.floor(
+    (today - enrollmentStartDateMs) / (1000 * 60 * 60 * 24)
+  );
   return diffDays + 1;
 }
 
 export async function getCheckInForDay(userId: string, dayStartMs: number) {
-  // This simple query often works without a specific index, but relies on Index 2 for history.
   const q = query(
     collection(db, CHECKINS),
     where("userId", "==", userId),
@@ -101,10 +103,12 @@ export async function getCheckInForDay(userId: string, dayStartMs: number) {
   if (snap.empty) return null;
 
   const d0 = snap.docs[0];
-  return { id: d0.id, ...(d0.data() as any) } as any;
+  return { id: d0.id, ...(d0.data() as any) } as { id: string } & DailyCheckIn;
 }
 
-export async function saveDailyCheckIn(input: Omit<DailyCheckIn, "createdAt" | "updatedAt">) {
+export async function saveDailyCheckIn(
+  input: Omit<DailyCheckIn, "createdAt" | "updatedAt">
+) {
   // Document ID is UID_DateMs
   const id = `${input.userId}_${input.date}`;
   const ref = doc(db, CHECKINS, id);
@@ -122,22 +126,26 @@ export async function saveDailyCheckIn(input: Omit<DailyCheckIn, "createdAt" | "
   return id;
 }
 
-// FINAL IMPLEMENTATION: Retrieve Check-in History for Download and Chart
+/**
+ * History for Chart + Download
+ * NOTE: This query may still require a composite index:
+ * - userId ASC, date ASC
+ */
 export async function getCheckInHistory(userId: string, programStartDateMs: number) {
-    // Query 2: Requires Index 2 (userId asc, date asc)
-    const q = query(
-        collection(db, CHECKINS),
-        where("userId", "==", userId),
-        where("date", ">=", programStartDateMs), 
-        orderBy("date", "asc")
-    );
-    const snap = await getDocs(q);
+  const q = query(
+    collection(db, CHECKINS),
+    where("userId", "==", userId),
+    where("date", ">=", programStartDateMs),
+    orderBy("date", "asc")
+  );
 
-    // Filter data to ensure we only get days up to the current day in the program
-    const currentDay = getDayNumber(programStartDateMs);
-    
-    return snap.docs.map(doc => ({
-        id: doc.id,
-        ...(doc.data() as DailyCheckIn),
-    })).filter(doc => doc.dayNumber <= currentDay) as DailyCheckInType[];
+  const snap = await getDocs(q);
+  const currentDay = getDayNumber(programStartDateMs);
+
+  const items = snap.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as DailyCheckIn),
+  })) as Array<{ id: string } & DailyCheckIn>;
+
+  return items.filter((x) => x.dayNumber <= currentDay);
 }
