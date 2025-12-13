@@ -12,13 +12,16 @@ import {
   getDayNumber,
   getCheckInForDay,
   saveDailyCheckIn,
-  getCheckInHistory, 
+  getCheckInHistory,
   DailyCheckIn as DailyCheckInType,
 } from "@/lib/program";
 
 // --- TYPES & CONSTANTS ---
-type CheckIn = Omit<DailyCheckInType, "userId" | "dayNumber" | "date" | "createdAt" | "updatedAt">;
-type ViewMode = 'dashboard' | 'chart'; 
+type CheckIn = Omit<
+  DailyCheckInType,
+  "userId" | "dayNumber" | "date" | "createdAt" | "updatedAt"
+>;
+type ViewMode = "dashboard" | "chart";
 
 // Initial state for the check-in form
 const initialCheckInState: CheckIn = {
@@ -30,119 +33,183 @@ const initialCheckInState: CheckIn = {
 };
 
 // --- UTILITY: CSV DOWNLOADER ---
-const downloadProgressData = (data: DailyCheckInType[], enrollment: ProgramEnrollment) => {
+const downloadProgressData = (
+  data: DailyCheckInType[],
+  enrollment: ProgramEnrollment
+) => {
   if (data.length === 0) return;
 
-  const header = "Day,Date,Tinnitus Loudness (0-10),Stress (0-10),Sleep Quality (0-10),Minutes Used,Notes\n";
-  
-  const csvContent = data.map(item => {
-    const localDate = new Date(item.date).toLocaleDateString();
-    // Escape double quotes in notes field for CSV format
-    return `${item.dayNumber},"${localDate}",${item.loudness},${item.stress},${item.sleepQuality},${item.minutesUsed},"${item.notes?.replace(/"/g, '""') || ''}"`;
-  }).join('\n');
+  const header =
+    "Day,Date,Tinnitus Loudness (0-10),Stress (0-10),Sleep Quality (0-10),Minutes Used,Notes\n";
+
+  const csvContent = data
+    .map((item) => {
+      const localDate = new Date(item.date).toLocaleDateString();
+      // Escape double quotes in notes field for CSV format
+      return `${item.dayNumber},"${localDate}",${item.loudness},${item.stress},${item.sleepQuality},${item.minutesUsed},"${
+        item.notes?.replace(/"/g, '""') || ""
+      }"`;
+    })
+    .join("\n");
 
   const finalCsv = header + csvContent;
-  const blob = new Blob([finalCsv], { type: 'text/csv;charset=utf-8;' });
-  
+  const blob = new Blob([finalCsv], { type: "text/csv;charset=utf-8;" });
+
   // Create a temporary link element to trigger the download
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `CalmTinnitus_Progress_Program_${enrollment.lengthDays}days_${new Date(enrollment.startDate).toLocaleDateString().replace(/\//g, '-')}.csv`;
+  link.download = `CalmTinnitus_Progress_Program_${
+    enrollment.lengthDays
+  }days_${new Date(enrollment.startDate)
+    .toLocaleDateString()
+    .replace(/\//g, "-")}.csv`;
   link.click();
   URL.revokeObjectURL(link.href);
 };
 
-
 // --- CHART COMPONENT PLACEHOLDER (FINAL VERSION) ---
-const ProgressChartPlaceholder = ({ 
-    enrollment, 
-    onBack,
-    userId 
-}: { 
-    enrollment: ProgramEnrollment, 
-    onBack: () => void,
-    userId: string 
+const ProgressChartPlaceholder = ({
+  enrollment,
+  onBack,
+  userId,
+}: {
+  enrollment: ProgramEnrollment;
+  onBack: () => void;
+  userId: string;
 }) => {
-    const [chartHistory, setChartHistory] = useState<DailyCheckInType[]>([]);
-    const [chartLoading, setChartLoading] = useState(true);
+  const [chartHistory, setChartHistory] = useState<DailyCheckInType[]>([]);
+  const [chartLoading, setChartLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchHistory = async () => {
-            setChartLoading(true);
-            try {
-                // Fetch the full history using the function defined in /lib/program.ts
-                const history = await getCheckInHistory(userId, enrollment.startDate);
-                setChartHistory(history);
-            } catch (e) {
-                console.error("Failed to load chart history:", e);
-                // Optionally set an error state here if needed
-            } finally {
-                setChartLoading(false);
-            }
-        };
-        fetchHistory();
-    }, [userId, enrollment.startDate]);
+  useEffect(() => {
+    const fetchHistory = async () => {
+      setChartLoading(true);
+      try {
+        // Fetch the full history using the function defined in /lib/program.ts
+        const history = await getCheckInHistory(userId, enrollment.startDate);
+        setChartHistory(history);
+      } catch (e) {
+        console.error("Failed to load chart history:", e);
+      } finally {
+        setChartLoading(false);
+      }
+    };
+    fetchHistory();
+  }, [userId, enrollment.startDate]);
 
+  return (
+    <div className="nq-panel nq-chart-view">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1.5rem",
+        }}
+      >
+        <h2 className="nq-title" style={{ color: "#4f46e5" }}>
+          Progress Chart: {enrollment.lengthDays} Days
+        </h2>
+        <button
+          className="nq-btn-action"
+          onClick={onBack}
+          style={{
+            background: "#f1f5f9",
+            color: "#334155",
+            border: "1px solid #e2e8f0",
+            flex: "none",
+          }}
+        >
+          ← Back to Dashboard
+        </button>
+      </div>
 
-    return (
-        <div className="nq-panel nq-chart-view">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
-                <h2 className="nq-title" style={{color: '#4f46e5'}}>Progress Chart: {enrollment.lengthDays} Days</h2>
-                <button className="nq-btn-action" onClick={onBack} style={{background: '#f1f5f9', color: '#334155', border: '1px solid #e2e8f0', flex: 'none'}}>
-                    ← Back to Dashboard
-                </button>
-            </div>
-            
-            <p className="nq-subtitle">
-                Visualizing your Tinnitus Loudness, Stress, and Sleep Quality over the course of your program. (Days tracked: {chartHistory.length})
-            </p>
-            
-            <div style={{ height: '300px', background: '#f8fafc', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.5rem', marginBottom: '1rem'}}>
-                {chartLoading ? (
-                    "Loading data for chart..."
-                ) : chartHistory.length > 0 ? (
-                    // This is where you would integrate Chart.js or Recharts
-                    "Chart Rendering Area (Data available to plot)"
-                ) : (
-                    "No check-in data has been recorded yet to generate a chart."
-                )}
-            </div>
-        </div>
-    );
+      <p className="nq-subtitle">
+        Visualizing your Tinnitus Loudness, Stress, and Sleep Quality over the
+        course of your program. (Days tracked: {chartHistory.length})
+      </p>
+
+      <div
+        style={{
+          height: "300px",
+          background: "#f8fafc",
+          border: "1px dashed #cbd5e1",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: "0.5rem",
+          marginBottom: "1rem",
+        }}
+      >
+        {chartLoading ? (
+          "Loading data for chart..."
+        ) : chartHistory.length > 0 ? (
+          // This is where you would integrate Chart.js or Recharts
+          "Chart Rendering Area (Data available to plot)"
+        ) : (
+          "No check-in data has been recorded yet to generate a chart."
+        )}
+      </div>
+    </div>
+  );
 };
-
 
 // --- TIPS COMPONENT ---
 const TipsInfo = () => (
-    <div className="nq-info-box" style={{ background: '#fffbeb', border: '1px solid #fcd34d', color: '#92400e', marginTop: '1.5rem', marginBottom: '0.5rem' }}>
-        <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#92400e' }}>
-            ⚠️ Quick Tinnitus Management Tips
-        </h4>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>
-            If you are noticing a trend of **increased loudness or stress**, consider these steps:
-        </p>
-        <ul style={{ margin: '0', paddingLeft: '1.25rem', fontSize: '0.85rem' }}>
-            <li style={{ marginBottom: '0.25rem' }}>
-                **Volume Check:** Reduce the **Therapy Tone Volume** slightly on the Therapy Dashboard. The sound should be soft enough to ignore.
-            </li>
-            <li style={{ marginBottom: '0.25rem' }}>
-                **Caffeine/Stimulants:** Temporarily reduce caffeine or alcohol intake, as these can sometimes contribute to tinnitus perception.
-            </li>
-            <li style={{ marginBottom: '0.25rem' }}>
-                **Screen Time:** Turn off screens (TV, phone) at least 30 minutes before sleep to help reduce mental stress.
-            </li>
-            <li>
-                **Relaxation:** Practice mindful breathing or gentle stretches, especially before starting a therapy session.
-            </li>
-        </ul>
-        <p style={{ marginTop: '0.75rem', marginBottom: '0', borderTop: '1px solid #fde68a', paddingTop: '0.5rem', fontWeight: 600, fontSize: '0.8rem', color: '#b45309' }}>
-            *If your tinnitus persists, worsens suddenly, or causes strong distress, please consult with your auditory health professional.*
-        </p>
-    </div>
+  <div
+    className="nq-info-box"
+    style={{
+      background: "#fffbeb",
+      border: "1px solid #fcd34d",
+      color: "#92400e",
+      marginTop: "1.5rem",
+      marginBottom: "0.5rem",
+    }}
+  >
+    <h4
+      style={{
+        margin: "0 0 0.5rem",
+        fontSize: "1rem",
+        fontWeight: 700,
+        color: "#92400e",
+      }}
+    >
+      ⚠️ Quick Tinnitus Management Tips
+    </h4>
+    <p style={{ margin: "0 0 0.75rem", fontSize: "0.9rem" }}>
+      If you are noticing a trend of **increased loudness or stress**, consider
+      these steps:
+    </p>
+    <ul style={{ margin: "0", paddingLeft: "1.25rem", fontSize: "0.85rem" }}>
+      <li style={{ marginBottom: "0.25rem" }}>
+        **Volume Check:** Reduce the **Therapy Tone Volume** slightly on the
+        Therapy Dashboard. The sound should be soft enough to ignore.
+      </li>
+      <li style={{ marginBottom: "0.25rem" }}>
+        **Caffeine/Stimulants:** Temporarily reduce caffeine or alcohol intake,
+        as these can sometimes contribute to tinnitus perception.
+      </li>
+      <li style={{ marginBottom: "0.25rem" }}>
+        **Screen Time:** Turn off screens (TV, phone) at least 30 minutes before
+        sleep to help reduce mental stress.
+      </li>
+      <li>**Relaxation:** Practice mindful breathing or gentle stretches, especially before starting a therapy session.</li>
+    </ul>
+    <p
+      style={{
+        marginTop: "0.75rem",
+        marginBottom: "0",
+        borderTop: "1px solid #fde68a",
+        paddingTop: "0.5rem",
+        fontWeight: 600,
+        fontSize: "0.8rem",
+        color: "#b45309",
+      }}
+    >
+      *If your tinnitus persists, worsens suddenly, or causes strong distress,
+      please consult with your auditory health professional.*
+    </p>
+  </div>
 );
-
-
-// --- COMPONENTS ---
 
 // -----------------------------------------------------
 // Check-In Modal Component
@@ -162,7 +229,9 @@ const CheckInModal = ({
 }) => {
   const [form, setForm] = useState<CheckIn>(initialData);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value, type } = e.target;
     setForm((prev) => ({
       ...prev,
@@ -181,10 +250,20 @@ const CheckInModal = ({
         <button className="rw-close-btn" onClick={onClose}>
           &times;
         </button>
-        
+
         {/* Medical Disclaimer */}
-        <p style={{ fontSize: '0.75rem', color: '#ef4444', textAlign: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid #fee2e2' }}>
-            **Disclaimer:** This is a wellness and tracking tool. It does not provide medical diagnosis or treatment.
+        <p
+          style={{
+            fontSize: "0.75rem",
+            color: "#ef4444",
+            textAlign: "center",
+            marginBottom: "1rem",
+            paddingBottom: "0.5rem",
+            borderBottom: "1px solid #fee2e2",
+          }}
+        >
+          **Disclaimer:** This is a wellness and tracking tool. It does not
+          provide medical diagnosis or treatment.
         </p>
 
         <h2 className="rw-title">Daily Check-in: Day {dayNumber}</h2>
@@ -285,7 +364,6 @@ const CheckInModal = ({
   );
 };
 
-
 // -----------------------------------------------------
 // Program Pill Component
 // -----------------------------------------------------
@@ -316,15 +394,14 @@ export default function ProgramPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [enrollment, setEnrollment] = useState<ProgramEnrollment | null>(null);
-  const [selectedLength, setSelectedLength] = useState<ProgramLengthDays | null>(
-    null
-  );
+  const [selectedLength, setSelectedLength] =
+    useState<ProgramLengthDays | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [checkIn, setCheckIn] = useState<DailyCheckInType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('dashboard'); 
+  const [viewMode, setViewMode] = useState<ViewMode>("dashboard");
 
   const startOfTodayMs = useMemo(() => {
     const today = new Date();
@@ -345,27 +422,29 @@ export default function ProgramPage() {
   }, []);
 
   // 2. Load Active Enrollment AND Check-in
-  const loadEnrollment = useCallback(async (u: User) => {
-    setLoading(true);
-    try {
-      const activeEnrollment = await getActiveEnrollment(u.uid);
-      setEnrollment(activeEnrollment);
+  const loadEnrollment = useCallback(
+    async (u: User) => {
+      setLoading(true);
+      try {
+        const activeEnrollment = await getActiveEnrollment(u.uid);
+        setEnrollment(activeEnrollment);
 
-      if (activeEnrollment) {
-        setSelectedLength(activeEnrollment.lengthDays);
-        const dailyData = await getCheckInForDay(u.uid, startOfTodayMs);
-        setCheckIn(dailyData);
-      } else {
-        setSelectedLength(30);
-        setCheckIn(null);
+        if (activeEnrollment) {
+          setSelectedLength(activeEnrollment.lengthDays);
+          const dailyData = await getCheckInForDay(u.uid, startOfTodayMs);
+          setCheckIn(dailyData);
+        } else {
+          setSelectedLength(30);
+          setCheckIn(null);
+        }
+      } catch (e) {
+        console.error("Failed to load program status:", e);
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.error("Failed to load program status:", e);
-      // Neutral message is shown below if user is present but loading failed
-    } finally {
-      setLoading(false);
-    }
-  }, [startOfTodayMs]);
+    },
+    [startOfTodayMs]
+  );
 
   useEffect(() => {
     if (user) {
@@ -384,68 +463,76 @@ export default function ProgramPage() {
         selectedLength
       );
       setEnrollment(newEnrollment);
-      setCheckIn(null); 
-      setStatusMessage("Program started successfully! Ready for your first check-in.");
+      setCheckIn(null);
+      setStatusMessage(
+        "Program started successfully! Ready for your first check-in."
+      );
     } catch (e) {
       console.error("Failed to start program:", e);
-      setStatusMessage("Error starting program. Please check Firebase connection and rules.");
+      setStatusMessage(
+        "Error starting program. Please check Firebase connection and rules."
+      );
     }
   }, [user, selectedLength]);
 
-
   // 4. Handle Daily Check-in Submission
-  const handleCheckInSubmit = useCallback(async (data: CheckIn) => {
-    if (!user || !enrollment) return;
-
-    setIsSubmitting(true);
-    setStatusMessage("Submitting daily report...");
-
-    const checkInToSave: Omit<DailyCheckInType, "createdAt" | "updatedAt"> = {
-      ...data,
-      userId: user.uid,
-      dayNumber: getDayNumber(enrollment.startDate),
-      date: startOfTodayMs,
-    };
-
-    try {
-      await saveDailyCheckIn(checkInToSave);
-      setCheckIn({ ...checkInToSave, id: `${user.uid}_${startOfTodayMs}` } as DailyCheckInType);
-      setIsModalOpen(false);
-      setStatusMessage("Daily check-in saved. Great job!");
-    } catch (e) {
-      console.error("Failed to save check-in:", e);
-      setStatusMessage("Error saving daily report. Please check Firebase rules.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [user, enrollment, startOfTodayMs]);
-  
-  // 5. Handle Download Progress 
-  const handleDownload = useCallback(async () => {
+  const handleCheckInSubmit = useCallback(
+    async (data: CheckIn) => {
       if (!user || !enrollment) return;
-      setIsDownloading(true);
-      setStatusMessage("Preparing download...");
+
+      setIsSubmitting(true);
+      setStatusMessage("Submitting daily report...");
+
+      const checkInToSave: Omit<DailyCheckInType, "createdAt" | "updatedAt"> = {
+        ...data,
+        userId: user.uid,
+        dayNumber: getDayNumber(enrollment.startDate),
+        date: startOfTodayMs,
+      };
 
       try {
-          // Note: getCheckInHistory requires implementation in /lib/program.ts
-          const history = await getCheckInHistory(user.uid, enrollment.startDate);
-          
-          if (history.length === 0) {
-              setStatusMessage("No progress data available to download yet.");
-          } else {
-              downloadProgressData(history, enrollment);
-              setStatusMessage("Download complete!");
-          }
-          
+        await saveDailyCheckIn(checkInToSave);
+        setCheckIn({
+          ...checkInToSave,
+          id: `${user.uid}_${startOfTodayMs}`,
+        } as DailyCheckInType);
+        setIsModalOpen(false);
+        setStatusMessage("Daily check-in saved. Great job!");
       } catch (e) {
-          console.error("Download failed:", e);
-          setStatusMessage("Failed to download data due to a system error. Check console for details.");
+        console.error("Failed to save check-in:", e);
+        setStatusMessage("Error saving daily report. Please check Firebase rules.");
       } finally {
-          setIsDownloading(false);
-          setTimeout(() => setStatusMessage(null), 4000);
+        setIsSubmitting(false);
       }
-  }, [user, enrollment]);
+    },
+    [user, enrollment, startOfTodayMs]
+  );
 
+  // 5. Handle Download Progress
+  const handleDownload = useCallback(async () => {
+    if (!user || !enrollment) return;
+    setIsDownloading(true);
+    setStatusMessage("Preparing download...");
+
+    try {
+      const history = await getCheckInHistory(user.uid, enrollment.startDate);
+
+      if (history.length === 0) {
+        setStatusMessage("No progress data available to download yet.");
+      } else {
+        downloadProgressData(history, enrollment);
+        setStatusMessage("Download complete!");
+      }
+    } catch (e) {
+      console.error("Download failed:", e);
+      setStatusMessage(
+        "Failed to download data due to a system error. Check console for details."
+      );
+    } finally {
+      setIsDownloading(false);
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
+  }, [user, enrollment]);
 
   // Calculate current day number and check if program is complete
   const programStatus = useMemo(() => {
@@ -487,19 +574,21 @@ export default function ProgramPage() {
   // Render Logic
   const ProgramView = () => {
     if (loading) {
-      return (
-        <div className="nq-info-box">Loading active program status...</div>
-      );
+      return <div className="nq-info-box">Loading active program status...</div>;
     }
 
     if (enrollment) {
-      
       // If viewMode is 'chart', render the chart placeholder
-      if (viewMode === 'chart') {
-          // Pass user ID for chart data fetching
-          return <ProgressChartPlaceholder enrollment={enrollment} onBack={() => setViewMode('dashboard')} userId={user.uid} />;
+      if (viewMode === "chart") {
+        return (
+          <ProgressChartPlaceholder
+            enrollment={enrollment}
+            onBack={() => setViewMode("dashboard")}
+            userId={user.uid}
+          />
+        );
       }
-      
+
       // Default: Render Dashboard view
       const { dayNumber, isComplete } = programStatus;
       const progress = Math.min(
@@ -507,96 +596,117 @@ export default function ProgramPage() {
         ((dayNumber - 1) / enrollment.lengthDays) * 100
       );
       const isCheckInDue = !isComplete && !checkIn;
-      const initialCheckIn = checkIn ? (checkIn as CheckIn) : initialCheckInState;
-
+      const initialCheckIn = checkIn
+        ? (checkIn as unknown as CheckIn)
+        : initialCheckInState;
 
       return (
         <div className="nq-panel">
-          <h2 className="nq-title">
-            Program Active: {enrollment.lengthDays} Days
-          </h2>
+          <h2 className="nq-title">Program Active: {enrollment.lengthDays} Days</h2>
           <p className="nq-subtitle">
-            You are currently on Day **{dayNumber}** of{" "}
-            {enrollment.lengthDays} days.
+            You are currently on Day **{dayNumber}** of {enrollment.lengthDays} days.
           </p>
 
           <div className="progressWrap" style={{ marginBottom: "1.5rem" }}>
-            <div
-              className="progressBar"
-              style={{ width: `${progress}%` }}
-            ></div>
+            <div className="progressBar" style={{ width: `${progress}%` }}></div>
           </div>
 
           {!isComplete ? (
-            <div className="nq-btn-group" style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
-              
+            <div
+              className="nq-btn-group"
+              style={{ display: "flex", gap: "1rem", flexDirection: "column" }}
+            >
               {/* PRIMARY CHECK-IN BUTTON */}
               <button
                 onClick={() => setIsModalOpen(true)}
-                className={`nq-btn-big ${isCheckInDue ? 'nq-btn-due' : 'nq-btn-done'}`}
+                className={`nq-btn-big ${
+                  isCheckInDue ? "nq-btn-due" : "nq-btn-done"
+                }`}
               >
-                {isCheckInDue ? "📝 Check In Now" : "✅ Check-in Complete (Tap to Edit)"}
+                {isCheckInDue
+                  ? "📝 Check In Now"
+                  : "✅ Check-in Complete (Tap to Edit)"}
               </button>
-              
+
               {/* VIEW PROGRESS CHART BUTTON */}
               <button
-                  onClick={() => setViewMode('chart')}
-                  className="nq-btn-action"
-                  style={{ background: '#3b82f6', color: 'white', border: 'none' }}
+                onClick={() => setViewMode("chart")}
+                className="nq-btn-action"
+                style={{
+                  background: "#3b82f6",
+                  color: "white",
+                  border: "none",
+                }}
               >
-                  📈 View Progress Chart
+                📈 View Progress Chart
               </button>
 
               {/* LINK TO THERAPY */}
-              <a href="/therapy" className="nq-btn-action" style={{ background: '#4f46e5', color: 'white' }}>
+              <a
+                href="/therapy"
+                className="nq-btn-action"
+                style={{ background: "#4f46e5", color: "white" }}
+              >
                 Go to Therapy Page (Start Session)
               </a>
-              
+
               {/* DOWNLOAD BUTTON */}
               <button
-                  onClick={handleDownload}
-                  className="nq-btn-action nq-btn-ghost"
-                  disabled={isDownloading}
-                  style={{ background: 'transparent', color: '#4b5563', border: '1px solid #e2e8f0' }}
+                onClick={handleDownload}
+                className="nq-btn-action nq-btn-ghost"
+                disabled={isDownloading}
+                style={{
+                  background: "transparent",
+                  color: "#4b5563",
+                  border: "1px solid #e2e8f0",
+                }}
               >
-                  {isDownloading ? "Preparing Data..." : "⬇️ Download Progress Data (.csv)"}
+                {isDownloading ? "Preparing Data..." : "⬇️ Download Progress Data (.csv)"}
               </button>
-
             </div>
           ) : (
             <div className="nq-info-box" style={{ background: "#d1fae5" }}>
               ✅ Program Complete! Day {dayNumber}.
               <br />
-              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+              <div
+                style={{
+                  marginTop: "1rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.5rem",
+                }}
+              >
                 <button
-                    onClick={() => setViewMode('chart')}
-                    className="nq-btn-action"
-                    style={{ background: '#3b82f6', color: 'white' }}
+                  onClick={() => setViewMode("chart")}
+                  className="nq-btn-action"
+                  style={{ background: "#3b82f6", color: "white" }}
                 >
-                    📈 View Final Chart
+                  📈 View Final Chart
                 </button>
                 <button
-                    onClick={handleDownload}
-                    className="nq-btn-action nq-btn-ghost"
-                    disabled={isDownloading}
-                    style={{ background: 'transparent', color: '#4b5563', border: '1px solid #e2e8f0' }}
+                  onClick={handleDownload}
+                  className="nq-btn-action nq-btn-ghost"
+                  disabled={isDownloading}
+                  style={{
+                    background: "transparent",
+                    color: "#4b5563",
+                    border: "1px solid #e2e8f0",
+                  }}
                 >
-                    {isDownloading ? "Preparing Data..." : "⬇️ Download Progress Data (.csv)"}
+                  {isDownloading ? "Preparing Data..." : "⬇️ Download Progress Data (.csv)"}
                 </button>
                 <button
-                    onClick={() => setEnrollment(null)}
-                    className="nq-btn-action"
-                    style={{ background: '#4f46e5', color: 'white' }}
+                  onClick={() => setEnrollment(null)}
+                  className="nq-btn-action"
+                  style={{ background: "#4f46e5", color: "white" }}
                 >
-                    Start New Program
+                  Start New Program
                 </button>
               </div>
             </div>
           )}
 
-          {statusMessage && (
-            <p className="nq-status-message">{statusMessage}</p>
-          )}
+          {statusMessage && <p className="nq-status-message">{statusMessage}</p>}
 
           {isModalOpen && (
             <CheckInModal
@@ -620,27 +730,16 @@ export default function ProgramPage() {
         </p>
 
         <div className="nq-duration-group" style={{ marginBottom: "1.5rem" }}>
-          <ProgramPill
-            label="7 Days"
-            days={7}
-            currentDays={selectedLength}
-            onClick={setSelectedLength}
-          />
-          <ProgramPill
-            label="14 Days"
-            days={14}
-            currentDays={selectedLength}
-            onClick={setSelectedLength}
-          />
-          <ProgramPill
-            label="30 Days"
-            days={30}
-            currentDays={selectedLength}
-            onClick={setSelectedLength}
-          />
+          <ProgramPill label="7 Days" days={7} currentDays={selectedLength} onClick={setSelectedLength} />
+          <ProgramPill label="14 Days" days={14} currentDays={selectedLength} onClick={setSelectedLength} />
+          <ProgramPill label="30 Days" days={30} currentDays={selectedLength} onClick={setSelectedLength} />
         </div>
 
-        <button onClick={startProgram} className="nq-btn-big" disabled={!selectedLength}>
+        <button
+          onClick={startProgram}
+          className="nq-btn-big"
+          disabled={!selectedLength}
+        >
           Start {selectedLength} Day Program
         </button>
 
@@ -739,31 +838,31 @@ function Style() {
         text-align: center;
       }
       .nq-btn-big.nq-btn-due {
-          background: var(--danger);
-          box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);
+        background: var(--danger);
+        box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);
       }
       .nq-btn-big.nq-btn-done {
-          background: var(--success);
-          box-shadow: 0 10px 20px rgba(34, 197, 94, 0.2);
+        background: var(--success);
+        box-shadow: 0 10px 20px rgba(34, 197, 94, 0.2);
       }
       .nq-btn-action {
-          flex: 1;
-          padding: 0.75rem 1rem;
-          border-radius: 999px;
-          font-weight: 600;
-          font-size: 1rem;
-          text-align: center;
-          cursor: pointer;
-          text-decoration: none;
-          border: none;
-          transition: background 0.2s;
-          color: white;
-          display: block;
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 1rem;
+        text-align: center;
+        cursor: pointer;
+        text-decoration: none;
+        border: none;
+        transition: background 0.2s;
+        color: white;
+        display: block;
       }
       .nq-btn-ghost {
-          background: transparent;
-          color: #4b5563;
-          border: 1px solid #e2e8f0;
+        background: transparent;
+        color: #4b5563;
+        border: 1px solid #e2e8f0;
       }
 
       /* Program Pills */
@@ -806,7 +905,7 @@ function Style() {
         background: var(--success);
         transition: width 0.5s ease-out;
       }
-      
+
       /* Check-in Buttons */
       .nq-btn-group {
         display: flex;
@@ -841,12 +940,21 @@ function Style() {
         animation: rw-slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
       @keyframes rw-fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
       }
       @keyframes rw-slideUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { transform: translateY(0); }
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          transform: translateY(0);
+        }
       }
       .rw-close-btn {
         position: absolute;
