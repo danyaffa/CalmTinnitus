@@ -120,13 +120,14 @@ export async function saveDailyCheckIn(input: Omit<DailyCheckIn, "createdAt" | "
   return id;
 }
 
-// 🔥 NEW FUNCTION: Retrieve Check-in History for Download (Required for ProgramPage)
+// 🔥 FINAL IMPLEMENTATION: Retrieve Check-in History for Download and Chart
 export async function getCheckInHistory(userId: string, programStartDateMs: number) {
+    // This query requires the Composite Index: program_checkins, fields: userId (asc), date (asc)
     const q = query(
         collection(db, CHECKINS),
         where("userId", "==", userId),
-        where("date", ">=", programStartDateMs), // Only get data since the program started
-        orderBy("date", "asc") // Order by date ascending
+        where("date", ">=", programStartDateMs), 
+        orderBy("date", "asc")
     );
     const snap = await getDocs(q);
 
