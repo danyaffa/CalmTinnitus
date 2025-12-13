@@ -46,6 +46,7 @@ const startOfLocalDay = (d: Date) => {
 };
 
 export async function getActiveEnrollment(userId: string) {
+  // Query 1: Requires Index 1 (userId asc, active asc, startDate desc)
   const q = query(
     collection(db, ENROLLMENTS),
     where("userId", "==", userId),
@@ -61,7 +62,7 @@ export async function getActiveEnrollment(userId: string) {
 }
 
 export async function createOrReplaceEnrollment(userId: string, lengthDays: ProgramLengthDays) {
-  // one active program per user
+  // Document ID is active_UID
   const id = `active_${userId}`;
   const startDate = startOfLocalDay(new Date());
   const ref = doc(db, ENROLLMENTS, id);
@@ -89,6 +90,7 @@ export function getDayNumber(enrollmentStartDateMs: number) {
 }
 
 export async function getCheckInForDay(userId: string, dayStartMs: number) {
+  // This simple query often works without a specific index, but relies on Index 2 for history.
   const q = query(
     collection(db, CHECKINS),
     where("userId", "==", userId),
@@ -103,7 +105,7 @@ export async function getCheckInForDay(userId: string, dayStartMs: number) {
 }
 
 export async function saveDailyCheckIn(input: Omit<DailyCheckIn, "createdAt" | "updatedAt">) {
-  // one per user per day
+  // Document ID is UID_DateMs
   const id = `${input.userId}_${input.date}`;
   const ref = doc(db, CHECKINS, id);
 
@@ -120,9 +122,9 @@ export async function saveDailyCheckIn(input: Omit<DailyCheckIn, "createdAt" | "
   return id;
 }
 
-// 🔥 FINAL IMPLEMENTATION: Retrieve Check-in History for Download and Chart
+// FINAL IMPLEMENTATION: Retrieve Check-in History for Download and Chart
 export async function getCheckInHistory(userId: string, programStartDateMs: number) {
-    // This query requires the Composite Index: program_checkins, fields: userId (asc), date (asc)
+    // Query 2: Requires Index 2 (userId asc, date asc)
     const q = query(
         collection(db, CHECKINS),
         where("userId", "==", userId),
