@@ -45,7 +45,6 @@ const downloadProgressData = (
   const csvContent = data
     .map((item) => {
       const localDate = new Date(item.date).toLocaleDateString();
-      // Escape double quotes in notes field for CSV format
       return `${item.dayNumber},"${localDate}",${item.loudness},${item.stress},${item.sleepQuality},${item.minutesUsed},"${
         item.notes?.replace(/"/g, '""') || ""
       }"`;
@@ -55,7 +54,6 @@ const downloadProgressData = (
   const finalCsv = header + csvContent;
   const blob = new Blob([finalCsv], { type: "text/csv;charset=utf-8;" });
 
-  // Create a temporary link element to trigger the download
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = `CalmTinnitus_Progress_Program_${
@@ -67,7 +65,7 @@ const downloadProgressData = (
   URL.revokeObjectURL(link.href);
 };
 
-// --- CHART COMPONENT PLACEHOLDER (FINAL VERSION) ---
+// --- CHART VIEW (with clear error reporting) ---
 const ProgressChartPlaceholder = ({
   enrollment,
   onBack,
@@ -79,20 +77,36 @@ const ProgressChartPlaceholder = ({
 }) => {
   const [chartHistory, setChartHistory] = useState<DailyCheckInType[]>([]);
   const [chartLoading, setChartLoading] = useState(true);
+  const [chartError, setChartError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
       setChartLoading(true);
+      setChartError(null);
       try {
-        // Fetch the full history using the function defined in /lib/program.ts
         const history = await getCheckInHistory(userId, enrollment.startDate);
         setChartHistory(history);
-      } catch (e) {
+      } catch (e: any) {
         console.error("Failed to load chart history:", e);
+        // show useful message for index issues
+        const msg =
+          typeof e?.message === "string" ? e.message : "Unknown Firestore error";
+        if (msg.toLowerCase().includes("requires an index")) {
+          setChartError(
+            "Firestore index required. Open DevTools Console to see the Firestore link 'You can create it here' and click it to create the index."
+          );
+        } else if (msg.toLowerCase().includes("missing or insufficient permissions")) {
+          setChartError(
+            "Permissions blocked. Re-check Firestore rules for program_checkins read."
+          );
+        } else {
+          setChartError(msg);
+        }
       } finally {
         setChartLoading(false);
       }
     };
+
     fetchHistory();
   }, [userId, enrollment.startDate]);
 
@@ -128,6 +142,20 @@ const ProgressChartPlaceholder = ({
         course of your program. (Days tracked: {chartHistory.length})
       </p>
 
+      {chartError && (
+        <div
+          className="nq-info-box"
+          style={{
+            background: "#fee2e2",
+            border: "1px solid #fecaca",
+            color: "#991b1b",
+            marginBottom: "1rem",
+          }}
+        >
+          <b>Chart Error:</b> {chartError}
+        </div>
+      )}
+
       <div
         style={{
           height: "300px",
@@ -143,7 +171,6 @@ const ProgressChartPlaceholder = ({
         {chartLoading ? (
           "Loading data for chart..."
         ) : chartHistory.length > 0 ? (
-          // This is where you would integrate Chart.js or Recharts
           "Chart Rendering Area (Data available to plot)"
         ) : (
           "No check-in data has been recorded yet to generate a chart."
@@ -192,7 +219,10 @@ const TipsInfo = () => (
         **Screen Time:** Turn off screens (TV, phone) at least 30 minutes before
         sleep to help reduce mental stress.
       </li>
-      <li>**Relaxation:** Practice mindful breathing or gentle stretches, especially before starting a therapy session.</li>
+      <li>
+        **Relaxation:** Practice mindful breathing or gentle stretches,
+        especially before starting a therapy session.
+      </li>
     </ul>
     <p
       style={{
@@ -229,13 +259,19 @@ const CheckInModal = ({
 }) => {
   const [form, setForm] = useState<CheckIn>(initialData);
 
+  // ✅ FIX: range inputs return strings; convert ranges to numbers too
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target as any;
+    const inputType = (e.target as HTMLInputElement).type;
+
+    const shouldBeNumber =
+      inputType === "number" || inputType === "range";
+
     setForm((prev) => ({
       ...prev,
-      [name]: type === "number" ? Number(value) : value,
+      [name]: shouldBeNumber ? Number(value) : value,
     }));
   };
 
@@ -251,7 +287,6 @@ const CheckInModal = ({
           &times;
         </button>
 
-        {/* Medical Disclaimer */}
         <p
           style={{
             fontSize: "0.75rem",
@@ -271,7 +306,6 @@ const CheckInModal = ({
           Rate your experience and log your session details for today.
         </p>
 
-        {/* Tips Info Component */}
         <TipsInfo />
 
         <form onSubmit={handleSubmit} className="rw-form">
@@ -409,19 +443,15 @@ export default function ProgramPage() {
     return today.getTime();
   }, []);
 
-  // 1. Authentication Check
   useEffect(() => {
     if (!auth) return;
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      if (!u) {
-        setLoading(false);
-      }
+      if (!u) setLoading(false);
     });
     return () => unsub();
   }, []);
 
-  // 2. Load Active Enrollment AND Check-in
   const loadEnrollment = useCallback(
     async (u: User) => {
       setLoading(true);
@@ -447,12 +477,9 @@ export default function ProgramPage() {
   );
 
   useEffect(() => {
-    if (user) {
-      loadEnrollment(user);
-    }
+    if (user) loadEnrollment(user);
   }, [user, loadEnrollment]);
 
-  // 3. Handle Enrollment/Start Program
   const startProgram = useCallback(async () => {
     if (!user || !selectedLength) return;
 
@@ -475,7 +502,6 @@ export default function ProgramPage() {
     }
   }, [user, selectedLength]);
 
-  // 4. Handle Daily Check-in Submission
   const handleCheckInSubmit = useCallback(
     async (data: CheckIn) => {
       if (!user || !enrollment) return;
@@ -508,7 +534,6 @@ export default function ProgramPage() {
     [user, enrollment, startOfTodayMs]
   );
 
-  // 5. Handle Download Progress
   const handleDownload = useCallback(async () => {
     if (!user || !enrollment) return;
     setIsDownloading(true);
@@ -534,17 +559,13 @@ export default function ProgramPage() {
     }
   }, [user, enrollment]);
 
-  // Calculate current day number and check if program is complete
   const programStatus = useMemo(() => {
     if (!enrollment) return { dayNumber: 0, isComplete: false };
-
     const dayNumber = getDayNumber(enrollment.startDate);
     const isComplete = dayNumber > enrollment.lengthDays;
-
     return { dayNumber, isComplete };
   }, [enrollment]);
 
-  // Handle Authentication and Loading States
   if (!user && loading) {
     return (
       <div className="nq-container">
@@ -571,14 +592,12 @@ export default function ProgramPage() {
     );
   }
 
-  // Render Logic
   const ProgramView = () => {
     if (loading) {
       return <div className="nq-info-box">Loading active program status...</div>;
     }
 
     if (enrollment) {
-      // If viewMode is 'chart', render the chart placeholder
       if (viewMode === "chart") {
         return (
           <ProgressChartPlaceholder
@@ -589,7 +608,6 @@ export default function ProgramPage() {
         );
       }
 
-      // Default: Render Dashboard view
       const { dayNumber, isComplete } = programStatus;
       const progress = Math.min(
         100,
@@ -616,7 +634,6 @@ export default function ProgramPage() {
               className="nq-btn-group"
               style={{ display: "flex", gap: "1rem", flexDirection: "column" }}
             >
-              {/* PRIMARY CHECK-IN BUTTON */}
               <button
                 onClick={() => setIsModalOpen(true)}
                 className={`nq-btn-big ${
@@ -628,7 +645,6 @@ export default function ProgramPage() {
                   : "✅ Check-in Complete (Tap to Edit)"}
               </button>
 
-              {/* VIEW PROGRESS CHART BUTTON */}
               <button
                 onClick={() => setViewMode("chart")}
                 className="nq-btn-action"
@@ -641,7 +657,6 @@ export default function ProgramPage() {
                 📈 View Progress Chart
               </button>
 
-              {/* LINK TO THERAPY */}
               <a
                 href="/therapy"
                 className="nq-btn-action"
@@ -650,7 +665,6 @@ export default function ProgramPage() {
                 Go to Therapy Page (Start Session)
               </a>
 
-              {/* DOWNLOAD BUTTON */}
               <button
                 onClick={handleDownload}
                 className="nq-btn-action nq-btn-ghost"
@@ -721,7 +735,6 @@ export default function ProgramPage() {
       );
     }
 
-    // No active enrollment - show setup
     return (
       <div className="nq-panel nq-step-1">
         <h2 className="nq-title">Start a New Program</h2>
@@ -763,11 +776,10 @@ export default function ProgramPage() {
   );
 }
 
-// Minimal styles to ensure the page looks functional
+// Minimal styles
 function Style() {
   return (
     <style jsx global>{`
-      /* Common Styles */
       :root {
         --primary: #0ea5e9;
         --success: #22c55e;
@@ -864,8 +876,6 @@ function Style() {
         color: #4b5563;
         border: 1px solid #e2e8f0;
       }
-
-      /* Program Pills */
       .nq-duration-group {
         display: flex;
         gap: 0.5rem;
@@ -889,8 +899,6 @@ function Style() {
         border-color: var(--primary);
         box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
       }
-
-      /* Progress Bar Styling */
       .progressWrap {
         width: 100%;
         height: 14px;
@@ -905,17 +913,6 @@ function Style() {
         background: var(--success);
         transition: width 0.5s ease-out;
       }
-
-      /* Check-in Buttons */
-      .nq-btn-group {
-        display: flex;
-        gap: 1rem;
-        flex-direction: column;
-      }
-
-      /* ------------------------------------------- */
-      /* Modal Styles */
-      /* ------------------------------------------- */
       .rw-overlay {
         position: fixed;
         inset: 0;
@@ -940,21 +937,12 @@ function Style() {
         animation: rw-slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
       @keyframes rw-fadeIn {
-        from {
-          opacity: 0;
-        }
-        to {
-          opacity: 1;
-        }
+        from { opacity: 0; }
+        to { opacity: 1; }
       }
       @keyframes rw-slideUp {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        to {
-          transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(20px); }
+        to { transform: translateY(0); }
       }
       .rw-close-btn {
         position: absolute;
@@ -967,47 +955,30 @@ function Style() {
         background: #f3f4f6;
         color: #6b7280;
         font-size: 1.2rem;
-        font-weight: 400;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background 0.2s;
       }
       .rw-title {
         margin: 0 0 0.5rem;
         font-size: 1.25rem;
         font-weight: 700;
         color: #111827;
-        line-height: 1.3;
       }
       .rw-subtitle {
         margin: 0 0 1.5rem;
         font-size: 0.95rem;
-        line-height: 1.5;
         color: #4b5563;
       }
-      .rw-form {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-      }
-      .rw-label {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-        font-size: 0.85rem;
-        font-weight: 500;
-        color: #374151;
-      }
-      .rw-input,
-      .rw-textarea {
+      .rw-form { display: flex; flex-direction: column; gap: 1rem; }
+      .rw-label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; font-weight: 500; color: #374151; }
+      .rw-input, .rw-textarea {
         border-radius: 10px;
         border: 1px solid #d1d5db;
         padding: 0.75rem;
         font-size: 0.95rem;
         font-family: inherit;
-        transition: border-color 0.2s, box-shadow 0.2s;
         width: 100%;
         box-sizing: border-box;
       }
@@ -1026,12 +997,7 @@ function Style() {
         font-size: 1rem;
         margin-top: -0.5rem;
       }
-      .rw-actions {
-        display: flex;
-        gap: 0.75rem;
-        margin-top: 1rem;
-        justify-content: flex-end;
-      }
+      .rw-actions { display: flex; gap: 0.75rem; margin-top: 1rem; justify-content: flex-end; }
       .rw-btn {
         border-radius: 999px;
         padding: 0.75rem 1.25rem;
@@ -1039,21 +1005,9 @@ function Style() {
         font-weight: 600;
         border: 1px solid transparent;
         cursor: pointer;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
       }
-      .rw-btn-primary {
-        background: var(--primary);
-        color: #ffffff;
-      }
-      .rw-btn-ghost {
-        background: transparent;
-        color: #4b5563;
-        border: 1px solid #e5e7eb;
-      }
-      /* ------------------------------------------- */
+      .rw-btn-primary { background: var(--primary); color: #ffffff; }
+      .rw-btn-ghost { background: transparent; color: #4b5563; border: 1px solid #e5e7eb; }
     `}</style>
   );
 }
