@@ -82,7 +82,7 @@ const ProgressChartPlaceholder = ({
     const fetchHistory = async () => {
       setChartLoading(true);
       try {
-        // NOTE: This function will fail until Composite Index 2 is active.
+        // NOTE: This will fail until Composite Index B is active.
         const history = await getCheckInHistory(userId, enrollment.startDate);
         setChartHistory(history);
       } catch (e: any) {
@@ -432,12 +432,13 @@ export default function ProgramPage() {
     async (u: User) => {
       setLoading(true);
       try {
-        // NOTE: This call requires Composite Index 1 AND the corrected READ rule
+        // NOTE: This function now uses the direct read in /lib/program.ts, requiring the fixed rules.
         const activeEnrollment = await getActiveEnrollment(u.uid);
         setEnrollment(activeEnrollment);
 
         if (activeEnrollment) {
           setSelectedLength(activeEnrollment.lengthDays);
+          // NOTE: This should work if the enrollment is valid.
           const dailyData = await getCheckInForDay(u.uid, startOfTodayMs);
           setCheckIn(dailyData);
         } else {
@@ -474,7 +475,6 @@ export default function ProgramPage() {
       );
     } catch (e) {
       console.error("Failed to start program:", e);
-      // NOTE: This operation fails due to the CREATE rule failing if not published correctly.
       setStatusMessage(
         "Error starting program. Please check Firebase rules are published."
       );
@@ -576,6 +576,7 @@ export default function ProgramPage() {
       return <div className="nq-info-box">Loading active program status...</div>;
     }
 
+    // NOTE: If enrollment fails to load, the page correctly defaults to the Start a New Program screen.
     if (enrollment) {
       if (viewMode === "chart") {
         return (
