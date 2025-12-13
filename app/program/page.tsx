@@ -79,6 +79,35 @@ const ProgressChartPlaceholder = ({ enrollment, onBack }: { enrollment: ProgramE
     );
 };
 
+// --- TIPS COMPONENT ---
+const TipsInfo = () => (
+    <div className="nq-info-box" style={{ background: '#fffbeb', border: '1px solid #fcd34d', color: '#92400e', marginTop: '1.5rem', marginBottom: '0.5rem' }}>
+        <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#92400e' }}>
+            ⚠️ Quick Tinnitus Management Tips
+        </h4>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>
+            If you are noticing a trend of **increased loudness or stress**, consider these steps:
+        </p>
+        <ul style={{ margin: '0', paddingLeft: '1.25rem', fontSize: '0.85rem' }}>
+            <li style={{ marginBottom: '0.25rem' }}>
+                **Volume Check:** Reduce the **Therapy Tone Volume** slightly on the Therapy Dashboard. The sound should be soft enough to ignore.
+            </li>
+            <li style={{ marginBottom: '0.25rem' }}>
+                **Caffeine/Stimulants:** Temporarily reduce caffeine or alcohol intake, as these can sometimes contribute to tinnitus perception.
+            </li>
+            <li style={{ marginBottom: '0.25rem' }}>
+                **Screen Time:** Turn off screens (TV, phone) at least 30 minutes before sleep to help reduce mental stress.
+            </li>
+            <li>
+                **Relaxation:** Practice mindful breathing or gentle stretches, especially before starting a therapy session.
+            </li>
+        </ul>
+        <p style={{ marginTop: '0.75rem', marginBottom: '0', borderTop: '1px solid #fde68a', paddingTop: '0.5rem', fontWeight: 600, fontSize: '0.8rem', color: '#b45309' }}>
+            *If your tinnitus persists, worsens suddenly, or causes strong distress, please consult with your auditory health professional.*
+        </p>
+    </div>
+);
+
 
 // --- COMPONENTS ---
 
@@ -119,10 +148,19 @@ const CheckInModal = ({
         <button className="rw-close-btn" onClick={onClose}>
           &times;
         </button>
+        
+        {/* Medical Disclaimer */}
+        <p style={{ fontSize: '0.75rem', color: '#ef4444', textAlign: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid #fee2e2' }}>
+            **Disclaimer:** This is a wellness and tracking tool. It does not provide medical diagnosis or treatment.
+        </p>
+
         <h2 className="rw-title">Daily Check-in: Day {dayNumber}</h2>
         <p className="rw-subtitle">
           Rate your experience and log your session details for today.
         </p>
+
+        {/* Tips Info Component */}
+        <TipsInfo />
 
         <form onSubmit={handleSubmit} className="rw-form">
           <label className="rw-label">
@@ -163,7 +201,7 @@ const CheckInModal = ({
               name="sleepQuality"
               value={form.sleepQuality}
               onChange={handleChange}
-            />
+              />
             <span className="rw-range-value">{form.sleepQuality}</span>
           </label>
 
@@ -343,7 +381,7 @@ export default function ProgramPage() {
       setStatusMessage("Daily check-in saved. Great job!");
     } catch (e) {
       console.error("Failed to save check-in:", e);
-      setStatusMessage("Error saving daily report.");
+      setStatusMessage("Error saving daily report. Please check Firebase rules.");
     } finally {
       setIsSubmitting(false);
     }
@@ -356,6 +394,7 @@ export default function ProgramPage() {
       setStatusMessage("Preparing download...");
 
       try {
+          // Note: getCheckInHistory requires implementation in /lib/program.ts
           const history = await getCheckInHistory(user.uid, enrollment.startDate);
           
           if (history.length === 0) {
@@ -367,7 +406,7 @@ export default function ProgramPage() {
           
       } catch (e) {
           console.error("Download failed:", e);
-          setStatusMessage("Failed to download data due to a system error.");
+          setStatusMessage("Failed to download data due to a system error. Check console for details.");
       } finally {
           setIsDownloading(false);
           setTimeout(() => setStatusMessage(null), 4000);
