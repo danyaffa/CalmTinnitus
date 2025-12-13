@@ -11,7 +11,7 @@ import React, {
 import { onAuthStateChanged, signInAnonymously, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { createSavedProfile } from "@/lib/therapyStorage";
-import Link from "next/link"; // ✅ CHANGE 1: ADD ONE IMPORT
+import Link from "next/link"; 
 
 // --- CONSTANTS ---
 const SESSION_LOG_KEY = "calmtinnitus_session_logs_v1";
@@ -796,13 +796,12 @@ function TherapyInner() {
           </span>
         </div>
       </div>
-      {/* ✅ CHANGE 2: ADD ONE BUTTON (ONE JSX BLOCK) */}
+
       <div style={{ marginBottom: "2rem" }}>
         <Link href="/program" className="pillBtn pillBtnPrimary">
           Track Your Progress
         </Link>
       </div>
-      {/* END OF CHANGE 2 */}
 
       {/* STATUS BANNER */}
       {sessionStatus !== "idle" && (
@@ -1409,6 +1408,31 @@ function Style() {
         box-shadow: 0 10px 20px rgba(14, 165, 233, 0.2);
         margin-top: 1.5rem;
       }
+      
+      /* --- NEW STYLES FOR TRACK BUTTON --- */
+      .pillBtn {
+        display: block; /* Link is inline by default */
+        text-align: center;
+        text-decoration: none;
+        padding: 1.2rem;
+        border-radius: 1rem;
+        font-size: 1.2rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        width: 100%; /* Make it take full width */
+      }
+      .pillBtnPrimary {
+        background: var(--primary);
+        color: white;
+        border: none;
+        box-shadow: 0 5px 15px rgba(14, 165, 233, 0.3); /* Slightly softer shadow than nq-btn-big */
+      }
+      .pillBtnPrimary:hover {
+        background: #0d8cd3; /* Darker primary color on hover */
+      }
+      /* --- END NEW STYLES --- */
+
       .nq-footer {
         text-align: center;
         margin-top: 3rem;
