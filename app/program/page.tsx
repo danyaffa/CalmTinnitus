@@ -12,11 +12,13 @@ import {
   getDayNumber,
   getCheckInForDay,
   saveDailyCheckIn,
+  getCheckInHistory, 
   DailyCheckIn as DailyCheckInType,
-} from "@/lib/program"; // Importing logic from the new utility file
+} from "@/lib/program";
 
 // --- TYPES & CONSTANTS ---
 type CheckIn = Omit<DailyCheckInType, "userId" | "dayNumber" | "date" | "createdAt" | "updatedAt">;
+type ViewMode = 'dashboard' | 'chart'; // New state type for switching views
 
 // Initial state for the check-in form
 const initialCheckInState: CheckIn = {
@@ -26,6 +28,56 @@ const initialCheckInState: CheckIn = {
   minutesUsed: 30,
   notes: "",
 };
+
+// --- UTILITY: CSV DOWNLOADER ---
+const downloadProgressData = (data: DailyCheckInType[], enrollment: ProgramEnrollment) => {
+  if (data.length === 0) return;
+
+  const header = "Day,Date,Tinnitus Loudness (0-10),Stress (0-10),Sleep Quality (0-10),Minutes Used,Notes\n";
+  
+  const csvContent = data.map(item => {
+    const localDate = new Date(item.date).toLocaleDateString();
+    return `${item.dayNumber},"${localDate}",${item.loudness},${item.stress},${item.sleepQuality},${item.minutesUsed},"${item.notes?.replace(/"/g, '""') || ''}"`;
+  }).join('\n');
+
+  const finalCsv = header + csvContent;
+  const blob = new Blob([finalCsv], { type: 'text/csv;charset=utf-8;' });
+  
+  // Create a temporary link element to trigger the download
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `CalmTinnitus_Progress_Program_${enrollment.lengthDays}days_${new Date(enrollment.startDate).toLocaleDateString().replace(/\//g, '-')}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+
+// --- CHART COMPONENT PLACEHOLDER ---
+const ProgressChartPlaceholder = ({ enrollment, onBack }: { enrollment: ProgramEnrollment, onBack: () => void }) => {
+    return (
+        <div className="nq-panel nq-chart-view">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
+                <h2 className="nq-title" style={{color: '#4f46e5'}}>Progress Chart: {enrollment.lengthDays} Days</h2>
+                <button className="nq-btn-action" onClick={onBack} style={{background: '#f1f5f9', color: '#334155', border: '1px solid #e2e8f0', flex: 'none'}}>
+                    ← Back to Dashboard
+                </button>
+            </div>
+            
+            <p className="nq-subtitle">
+                **Chart Visualization Here** (Loudness, Stress, and Sleep Quality plotted over time).
+            </p>
+            
+            <div style={{ height: '300px', background: '#f8fafc', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.5rem', marginBottom: '1rem'}}>
+                Chart Library Placeholder
+            </div>
+            
+            <p className="nq-info-box" style={{ background: '#fef2f2', color: '#991b1b'}}>
+                To enable the visual chart, integrate a charting library (like Chart.js or Recharts) here to plot the fetched check-in data.
+            </p>
+        </div>
+    );
+};
+
 
 // --- COMPONENTS ---
 
@@ -163,7 +215,7 @@ const CheckInModal = ({
 
 
 // -----------------------------------------------------
-// Program Pill Component (reused)
+// Program Pill Component
 // -----------------------------------------------------
 const ProgramPill = ({
   label,
@@ -199,6 +251,8 @@ export default function ProgramPage() {
   const [checkIn, setCheckIn] = useState<DailyCheckInType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('dashboard'); // New view mode state
 
   const startOfTodayMs = useMemo(() => {
     const today = new Date();
@@ -235,7 +289,7 @@ export default function ProgramPage() {
       }
     } catch (e) {
       console.error("Failed to load program status:", e);
-      setStatusMessage("Error loading program status.");
+      setStatusMessage("Error loading program status. Please check login and Firestore rules.");
     } finally {
       setLoading(false);
     }
@@ -258,11 +312,11 @@ export default function ProgramPage() {
         selectedLength
       );
       setEnrollment(newEnrollment);
-      setCheckIn(null); // Clear any existing check-in data from a previous day's load
+      setCheckIn(null); 
       setStatusMessage("Program started successfully! Ready for your first check-in.");
     } catch (e) {
       console.error("Failed to start program:", e);
-      setStatusMessage("Error starting program.");
+      setStatusMessage("Error starting program. Please check Firestore rules.");
     }
   }, [user, selectedLength]);
 
@@ -293,6 +347,26 @@ export default function ProgramPage() {
       setIsSubmitting(false);
     }
   }, [user, enrollment, startOfTodayMs]);
+  
+  // 5. Handle Download Progress
+  const handleDownload = useCallback(async () => {
+      if (!user || !enrollment) return;
+      setIsDownloading(true);
+      setStatusMessage("Preparing download...");
+
+      try {
+          const history = await getCheckInHistory(user.uid, enrollment.startDate);
+          downloadProgressData(history, enrollment);
+          setStatusMessage("Download complete!");
+      } catch (e) {
+          console.error("Download failed:", e);
+          setStatusMessage("Failed to download data. Check internet connection.");
+      } finally {
+          setIsDownloading(false);
+          setTimeout(() => setStatusMessage(null), 3000);
+      }
+  }, [user, enrollment]);
+
 
   // Calculate current day number and check if program is complete
   const programStatus = useMemo(() => {
@@ -340,6 +414,13 @@ export default function ProgramPage() {
     }
 
     if (enrollment) {
+      
+      // If viewMode is 'chart', render the chart placeholder
+      if (viewMode === 'chart') {
+          return <ProgressChartPlaceholder enrollment={enrollment} onBack={() => setViewMode('dashboard')} />;
+      }
+      
+      // Default: Render Dashboard view
       const { dayNumber, isComplete } = programStatus;
       const progress = Math.min(
         100,
@@ -367,30 +448,69 @@ export default function ProgramPage() {
           </div>
 
           {!isComplete ? (
-            <div className="nq-btn-group" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <a href="/therapy" className="nq-btn-action">
-                Start Today's Session
-              </a>
+            <div className="nq-btn-group" style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
               
+              {/* PRIMARY CHECK-IN BUTTON */}
               <button
                 onClick={() => setIsModalOpen(true)}
-                className={`nq-btn-action ${isCheckInDue ? 'nq-btn-due' : 'nq-btn-done'}`}
+                className={`nq-btn-big ${isCheckInDue ? 'nq-btn-due' : 'nq-btn-done'}`}
               >
-                {isCheckInDue ? "📝 Check In Now" : "✅ Check-in Complete"}
+                {isCheckInDue ? "📝 Check In Now" : "✅ Check-in Complete (Tap to Edit)"}
               </button>
+              
+              {/* VIEW PROGRESS CHART BUTTON */}
+              <button
+                  onClick={() => setViewMode('chart')}
+                  className="nq-btn-action"
+                  style={{ background: '#3b82f6', color: 'white', border: 'none' }}
+              >
+                  📈 View Progress Chart
+              </button>
+
+              {/* LINK TO THERAPY */}
+              <a href="/therapy" className="nq-btn-action" style={{ background: '#4f46e5', color: 'white' }}>
+                Go to Therapy Page (Start Session)
+              </a>
+              
+              {/* DOWNLOAD BUTTON */}
+              <button
+                  onClick={handleDownload}
+                  className="nq-btn-action nq-btn-ghost"
+                  disabled={isDownloading}
+                  style={{ background: 'transparent', color: '#4b5563', border: '1px solid #e2e8f0' }}
+              >
+                  {isDownloading ? "Preparing Data..." : "⬇️ Download Progress Data (.csv)"}
+              </button>
+
             </div>
           ) : (
             <div className="nq-info-box" style={{ background: "#d1fae5" }}>
               ✅ Program Complete! Day {dayNumber}.
               <br />
-              Consider starting a new program.
-              <button
-                onClick={() => setEnrollment(null)}
-                className="nq-btn-action"
-                style={{ marginTop: '1rem', background: '#3b82f6', color: 'white' }}
-              >
-                Start New Program
-              </button>
+              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                <button
+                    onClick={() => setViewMode('chart')}
+                    className="nq-btn-action"
+                    style={{ background: '#3b82f6', color: 'white' }}
+                >
+                    📈 View Final Chart
+                </button>
+                <button
+                    onClick={handleDownload}
+                    className="nq-btn-action nq-btn-ghost"
+                    disabled={isDownloading}
+                    style={{ background: 'transparent', color: '#4b5563', border: '1px solid #e2e8f0' }}
+                >
+                    {isDownloading ? "Preparing Data..." : "⬇️ Download Progress Data (.csv)"}
+                </button>
+                <button
+                    onClick={() => setEnrollment(null)}
+                    className="nq-btn-action"
+                    style={{ background: '#4f46e5', color: 'white' }}
+                >
+                    Start New Program
+                </button>
+              </div>
             </div>
           )}
 
@@ -538,16 +658,32 @@ function Style() {
         display: block;
         text-align: center;
       }
+      .nq-btn-big.nq-btn-due {
+          background: var(--danger);
+          box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);
+      }
+      .nq-btn-big.nq-btn-done {
+          background: var(--success);
+          box-shadow: 0 10px 20px rgba(34, 197, 94, 0.2);
+      }
       .nq-btn-action {
-        flex: 1;
-        padding: 0.75rem 1rem;
-        border-radius: 999px;
-        font-weight: 600;
-        font-size: 1rem;
-        text-align: center;
-        cursor: pointer;
-        text-decoration: none;
-        border: 1px solid #e2e8f0;
+          flex: 1;
+          padding: 0.75rem 1rem;
+          border-radius: 999px;
+          font-weight: 600;
+          font-size: 1rem;
+          text-align: center;
+          cursor: pointer;
+          text-decoration: none;
+          border: none;
+          transition: background 0.2s;
+          color: white;
+          display: block;
+      }
+      .nq-btn-ghost {
+          background: transparent;
+          color: #4b5563;
+          border: 1px solid #e2e8f0;
       }
 
       /* Program Pills */
@@ -592,31 +728,14 @@ function Style() {
       }
       
       /* Check-in Buttons */
-      .nq-btn-action {
-          flex: 1;
-          padding: 0.75rem 1rem;
-          border-radius: 999px;
-          font-weight: 600;
-          font-size: 1rem;
-          text-align: center;
-          cursor: pointer;
-          text-decoration: none;
-          border: none; /* Removed border */
-          transition: background 0.2s;
-          color: white;
+      .nq-btn-group {
+        display: flex;
+        gap: 1rem;
+        flex-direction: column;
       }
-      .nq-btn-action:first-child {
-          background: #4f46e5; /* Indigo for Therapy Session button */
-      }
-      .nq-btn-action.nq-btn-due {
-          background: var(--danger); /* Red for urgency */
-      }
-      .nq-btn-action.nq-btn-done {
-          background: var(--success); /* Green when complete */
-      }
-      
+
       /* ------------------------------------------- */
-      /* Modal Styles (Duplicated from review-widgets.css for local use) */
+      /* Modal Styles */
       /* ------------------------------------------- */
       .rw-overlay {
         position: fixed;
