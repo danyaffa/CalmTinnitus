@@ -53,7 +53,7 @@ const downloadProgressData = (data: DailyCheckInType[], enrollment: ProgramEnrol
 };
 
 
-// --- CHART COMPONENT PLACEHOLDER (UPDATED) ---
+// --- CHART COMPONENT PLACEHOLDER (FINAL VERSION) ---
 const ProgressChartPlaceholder = ({ 
     enrollment, 
     onBack,
@@ -75,7 +75,7 @@ const ProgressChartPlaceholder = ({
                 setChartHistory(history);
             } catch (e) {
                 console.error("Failed to load chart history:", e);
-                // Optionally set an error state here
+                // Optionally set an error state here if needed
             } finally {
                 setChartLoading(false);
             }
@@ -101,7 +101,7 @@ const ProgressChartPlaceholder = ({
                 {chartLoading ? (
                     "Loading data for chart..."
                 ) : chartHistory.length > 0 ? (
-                    // Placeholder for chart library integration
+                    // This is where you would integrate Chart.js or Recharts
                     "Chart Rendering Area (Data available to plot)"
                 ) : (
                     "No check-in data has been recorded yet to generate a chart."
