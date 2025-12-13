@@ -37,6 +37,7 @@ const downloadProgressData = (data: DailyCheckInType[], enrollment: ProgramEnrol
   
   const csvContent = data.map(item => {
     const localDate = new Date(item.date).toLocaleDateString();
+    // Escape double quotes in notes field for CSV format
     return `${item.dayNumber},"${localDate}",${item.loudness},${item.stress},${item.sleepQuality},${item.minutesUsed},"${item.notes?.replace(/"/g, '""') || ''}"`;
   }).join('\n');
 
@@ -289,7 +290,7 @@ export default function ProgramPage() {
       }
     } catch (e) {
       console.error("Failed to load program status:", e);
-      setStatusMessage("Error loading program status. Please check login and Firestore rules.");
+      // Removed specific error message here, relying on a neutral status message below
     } finally {
       setLoading(false);
     }
@@ -316,7 +317,7 @@ export default function ProgramPage() {
       setStatusMessage("Program started successfully! Ready for your first check-in.");
     } catch (e) {
       console.error("Failed to start program:", e);
-      setStatusMessage("Error starting program. Please check Firestore rules.");
+      setStatusMessage("Error starting program. Please check Firebase connection and rules.");
     }
   }, [user, selectedLength]);
 
@@ -348,7 +349,7 @@ export default function ProgramPage() {
     }
   }, [user, enrollment, startOfTodayMs]);
   
-  // 5. Handle Download Progress
+  // 5. Handle Download Progress (UPDATED WITH NO-DATA MESSAGE)
   const handleDownload = useCallback(async () => {
       if (!user || !enrollment) return;
       setIsDownloading(true);
@@ -356,14 +357,20 @@ export default function ProgramPage() {
 
       try {
           const history = await getCheckInHistory(user.uid, enrollment.startDate);
-          downloadProgressData(history, enrollment);
-          setStatusMessage("Download complete!");
+          
+          if (history.length === 0) {
+              setStatusMessage("No progress data available to download yet.");
+          } else {
+              downloadProgressData(history, enrollment);
+              setStatusMessage("Download complete!");
+          }
+          
       } catch (e) {
           console.error("Download failed:", e);
-          setStatusMessage("Failed to download data. Check internet connection.");
+          setStatusMessage("Failed to download data due to a system error.");
       } finally {
           setIsDownloading(false);
-          setTimeout(() => setStatusMessage(null), 3000);
+          setTimeout(() => setStatusMessage(null), 4000);
       }
   }, [user, enrollment]);
 
@@ -766,7 +773,7 @@ function Style() {
       }
       @keyframes rw-slideUp {
         from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+        to { transform: translateY(0); }
       }
       .rw-close-btn {
         position: absolute;
