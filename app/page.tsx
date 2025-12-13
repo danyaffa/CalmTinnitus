@@ -85,6 +85,10 @@ export default function HomePage() {
             {/* HERO */}
             <section className="nq-hero">
               <div className="nq-hero-text">
+                {/* NEW PROGRAM LINK ADDED HERE */}
+                <Link href="/program" className="nq-research-link">
+                  7–30 Day Relief Program + Tracking
+                </Link>
                 <Link href="/research" className="nq-research-link">
                   Based on tinnitus neuromodulation research
                 </Link>
@@ -190,6 +194,7 @@ export default function HomePage() {
           <div className="nq-footer-links">
             <Link href="/about">About</Link>
             <Link href="/research">Research</Link>
+            <Link href="/program">7–30 Day Program</Link> {/* NEW PROGRAM LINK ADDED HERE */}
             <Link href="/legal">Legal</Link>
             <Link href="/disclaimers">Disclaimers</Link>
             <Link href="/company-policy">Company Policy</Link>
@@ -380,6 +385,11 @@ export default function HomePage() {
             background: rgba(191, 219, 254, 0.55);
             border-radius: 999px;
             text-decoration: none;
+            margin-right: 0.75rem; /* Add spacing between multiple links */
+          }
+          
+          .nq-research-link:last-of-type {
+              margin-right: 0;
           }
 
           .nq-research-link:hover {
