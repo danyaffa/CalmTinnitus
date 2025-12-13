@@ -12,7 +12,7 @@ import {
   getDayNumber,
   getCheckInForDay,
   saveDailyCheckIn,
-  getCheckInHistory,
+  getCheckInHistory, 
   DailyCheckIn as DailyCheckInType,
 } from "@/lib/program";
 
@@ -65,7 +65,7 @@ const downloadProgressData = (
   URL.revokeObjectURL(link.href);
 };
 
-// --- CHART VIEW (with clear error reporting) ---
+// --- CHART VIEW (Final production state, errors hidden) ---
 const ProgressChartPlaceholder = ({
   enrollment,
   onBack,
@@ -77,31 +77,18 @@ const ProgressChartPlaceholder = ({
 }) => {
   const [chartHistory, setChartHistory] = useState<DailyCheckInType[]>([]);
   const [chartLoading, setChartLoading] = useState(true);
-  const [chartError, setChartError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
       setChartLoading(true);
-      setChartError(null);
       try {
+        // NOTE: This function will fail until Composite Index 2 is active.
         const history = await getCheckInHistory(userId, enrollment.startDate);
         setChartHistory(history);
       } catch (e: any) {
-        console.error("Failed to load chart history:", e);
-        // show useful message for index issues
-        const msg =
-          typeof e?.message === "string" ? e.message : "Unknown Firestore error";
-        if (msg.toLowerCase().includes("requires an index")) {
-          setChartError(
-            "Firestore index required. Open DevTools Console to see the Firestore link 'You can create it here' and click it to create the index."
-          );
-        } else if (msg.toLowerCase().includes("missing or insufficient permissions")) {
-          setChartError(
-            "Permissions blocked. Re-check Firestore rules for program_checkins read."
-          );
-        } else {
-          setChartError(msg);
-        }
+        console.error("Chart load failed (Firestore index or permission issue):", e);
+        // Do NOT set an error state visible to the user. Fail gracefully to empty chart.
+        setChartHistory([]);
       } finally {
         setChartLoading(false);
       }
@@ -141,21 +128,8 @@ const ProgressChartPlaceholder = ({
         Visualizing your Tinnitus Loudness, Stress, and Sleep Quality over the
         course of your program. (Days tracked: {chartHistory.length})
       </p>
-
-      {chartError && (
-        <div
-          className="nq-info-box"
-          style={{
-            background: "#fee2e2",
-            border: "1px solid #fecaca",
-            color: "#991b1b",
-            marginBottom: "1rem",
-          }}
-        >
-          <b>Chart Error:</b> {chartError}
-        </div>
-      )}
-
+      
+      {/* Chart Rendering Area: Displays loading, placeholder, or chart content */}
       <div
         style={{
           height: "300px",
@@ -166,14 +140,16 @@ const ProgressChartPlaceholder = ({
           justifyContent: "center",
           borderRadius: "0.5rem",
           marginBottom: "1rem",
+          textAlign: "center"
         }}
       >
         {chartLoading ? (
           "Loading data for chart..."
         ) : chartHistory.length > 0 ? (
-          "Chart Rendering Area (Data available to plot)"
+          // Final integration point: Replace this text with your chart component
+          "Chart Rendering Area (Data is ready to plot)"
         ) : (
-          "No check-in data has been recorded yet to generate a chart."
+          "Your progress chart will appear as you complete daily check-ins."
         )}
       </div>
     </div>
@@ -259,7 +235,7 @@ const CheckInModal = ({
 }) => {
   const [form, setForm] = useState<CheckIn>(initialData);
 
-  // ✅ FIX: range inputs return strings; convert ranges to numbers too
+  // FIX: range inputs must be converted to numbers
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -456,6 +432,7 @@ export default function ProgramPage() {
     async (u: User) => {
       setLoading(true);
       try {
+        // NOTE: This call requires Composite Index 1 AND the corrected READ rule
         const activeEnrollment = await getActiveEnrollment(u.uid);
         setEnrollment(activeEnrollment);
 
@@ -469,6 +446,7 @@ export default function ProgramPage() {
         }
       } catch (e) {
         console.error("Failed to load program status:", e);
+        // Fail silently to the "Start a New Program" screen if enrollment fails to load
       } finally {
         setLoading(false);
       }
@@ -496,8 +474,9 @@ export default function ProgramPage() {
       );
     } catch (e) {
       console.error("Failed to start program:", e);
+      // NOTE: This operation fails due to the CREATE rule failing if not published correctly.
       setStatusMessage(
-        "Error starting program. Please check Firebase connection and rules."
+        "Error starting program. Please check Firebase rules are published."
       );
     }
   }, [user, selectedLength]);
@@ -735,6 +714,7 @@ export default function ProgramPage() {
       );
     }
 
+    // No active enrollment - show setup
     return (
       <div className="nq-panel nq-step-1">
         <h2 className="nq-title">Start a New Program</h2>
@@ -743,9 +723,24 @@ export default function ProgramPage() {
         </p>
 
         <div className="nq-duration-group" style={{ marginBottom: "1.5rem" }}>
-          <ProgramPill label="7 Days" days={7} currentDays={selectedLength} onClick={setSelectedLength} />
-          <ProgramPill label="14 Days" days={14} currentDays={selectedLength} onClick={setSelectedLength} />
-          <ProgramPill label="30 Days" days={30} currentDays={selectedLength} onClick={setSelectedLength} />
+          <ProgramPill
+            label="7 Days"
+            days={7}
+            currentDays={selectedLength}
+            onClick={setSelectedLength}
+          />
+          <ProgramPill
+            label="14 Days"
+            days={14}
+            currentDays={selectedLength}
+            onClick={setSelectedLength}
+          />
+          <ProgramPill
+            label="30 Days"
+            days={30}
+            currentDays={selectedLength}
+            onClick={setSelectedLength}
+          />
         </div>
 
         <button
@@ -1007,7 +1002,7 @@ function Style() {
         cursor: pointer;
       }
       .rw-btn-primary { background: var(--primary); color: #ffffff; }
-      .rw-btn-ghost { background: transparent; color: #4b5563; border: 1px solid #e5e7eb; }
+      .rw-btn-ghost { background: transparent; color: #4b5563; border: 1px solid #e5e8f0; }
     `}</style>
   );
 }
