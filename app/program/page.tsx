@@ -12,9 +12,33 @@ import {
   getDayNumber,
   getCheckInForDay,
   saveDailyCheckIn,
-  getCheckInHistory, 
+  getCheckInHistory,
   DailyCheckIn as DailyCheckInType,
 } from "@/lib/program";
+
+// ✅ Chart.js (client-side)
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title as ChartTitle,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import { Line } from "react-chartjs-2";
+
+// Register once
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  ChartTitle,
+  Tooltip,
+  Legend
+);
 
 // --- TYPES & CONSTANTS ---
 type CheckIn = Omit<
@@ -65,7 +89,9 @@ const downloadProgressData = (
   URL.revokeObjectURL(link.href);
 };
 
-// --- CHART VIEW (Final production state, errors hidden) ---
+// -----------------------------------------------------
+// ✅ CHART VIEW (Final: no red errors shown to user)
+// -----------------------------------------------------
 const ProgressChartPlaceholder = ({
   enrollment,
   onBack,
@@ -82,12 +108,15 @@ const ProgressChartPlaceholder = ({
     const fetchHistory = async () => {
       setChartLoading(true);
       try {
-        // NOTE: This will fail until Composite Index B is active.
+        // NOTE: Requires Composite Index B (userId ASC, date ASC)
         const history = await getCheckInHistory(userId, enrollment.startDate);
-        setChartHistory(history);
+        setChartHistory(Array.isArray(history) ? history : []);
       } catch (e: any) {
-        console.error("Chart load failed (Firestore index or permission issue):", e);
-        // Do NOT set an error state visible to the user. Fail gracefully to empty chart.
+        console.error(
+          "Chart load failed (Firestore index or permission issue):",
+          e
+        );
+        // Do NOT show user a red error. Fail gracefully.
         setChartHistory([]);
       } finally {
         setChartLoading(false);
@@ -96,6 +125,77 @@ const ProgressChartPlaceholder = ({
 
     fetchHistory();
   }, [userId, enrollment.startDate]);
+
+  // ✅ Safe, clean chart inputs (no runtime crashes)
+  const labels = useMemo(() => {
+    return (chartHistory || []).map((x) => `Day ${x.dayNumber}`);
+  }, [chartHistory]);
+
+  const data = useMemo(() => {
+    const loudness = (chartHistory || []).map((x) =>
+      Number.isFinite(x.loudness) ? x.loudness : 0
+    );
+    const stress = (chartHistory || []).map((x) =>
+      Number.isFinite(x.stress) ? x.stress : 0
+    );
+    const sleep = (chartHistory || []).map((x) =>
+      Number.isFinite(x.sleepQuality) ? x.sleepQuality : 0
+    );
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: "Tinnitus Loudness",
+          data: loudness,
+          tension: 0.35,
+          borderWidth: 2,
+          pointRadius: 2,
+        },
+        {
+          label: "Stress",
+          data: stress,
+          tension: 0.35,
+          borderWidth: 2,
+          pointRadius: 2,
+        },
+        {
+          label: "Sleep Quality",
+          data: sleep,
+          tension: 0.35,
+          borderWidth: 2,
+          pointRadius: 2,
+        },
+      ],
+    };
+  }, [chartHistory, labels]);
+
+  const options = useMemo(() => {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: "bottom" as const },
+        title: {
+          display: false,
+          text: "Progress",
+        },
+        tooltip: { enabled: true },
+      },
+      scales: {
+        y: {
+          min: 0,
+          max: 10,
+          ticks: { stepSize: 1 },
+        },
+        x: {
+          ticks: { maxRotation: 0, minRotation: 0 },
+        },
+      },
+    };
+  }, []);
+
+  const hasData = !chartLoading && (chartHistory?.length || 0) > 0;
 
   return (
     <div className="nq-panel nq-chart-view">
@@ -128,28 +228,45 @@ const ProgressChartPlaceholder = ({
         Visualizing your Tinnitus Loudness, Stress, and Sleep Quality over the
         course of your program. (Days tracked: {chartHistory.length})
       </p>
-      
-      {/* Chart Rendering Area: Displays loading, placeholder, or chart content */}
+
+      {/* ✅ Chart Rendering Area */}
       <div
         style={{
-          height: "300px",
+          height: "320px",
           background: "#f8fafc",
           border: "1px dashed #cbd5e1",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
           borderRadius: "0.5rem",
           marginBottom: "1rem",
-          textAlign: "center"
+          padding: "0.75rem",
+          display: "block",
         }}
       >
         {chartLoading ? (
-          "Loading data for chart..."
-        ) : chartHistory.length > 0 ? (
-          // Final integration point: Replace this text with your chart component
-          "Chart Rendering Area (Data is ready to plot)"
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+            }}
+          >
+            Loading data for chart...
+          </div>
+        ) : hasData ? (
+          <Line data={data as any} options={options as any} />
         ) : (
-          "Your progress chart will appear as you complete daily check-ins."
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+            }}
+          >
+            Your progress chart will appear as you complete daily check-ins.
+          </div>
         )}
       </div>
     </div>
@@ -242,8 +359,7 @@ const CheckInModal = ({
     const { name, value } = e.target as any;
     const inputType = (e.target as HTMLInputElement).type;
 
-    const shouldBeNumber =
-      inputType === "number" || inputType === "range";
+    const shouldBeNumber = inputType === "number" || inputType === "range";
 
     setForm((prev) => ({
       ...prev,
@@ -432,13 +548,11 @@ export default function ProgramPage() {
     async (u: User) => {
       setLoading(true);
       try {
-        // NOTE: This function now uses the direct read in /lib/program.ts, requiring the fixed rules.
         const activeEnrollment = await getActiveEnrollment(u.uid);
         setEnrollment(activeEnrollment);
 
         if (activeEnrollment) {
           setSelectedLength(activeEnrollment.lengthDays);
-          // NOTE: This should work if the enrollment is valid.
           const dailyData = await getCheckInForDay(u.uid, startOfTodayMs);
           setCheckIn(dailyData);
         } else {
@@ -447,7 +561,6 @@ export default function ProgramPage() {
         }
       } catch (e) {
         console.error("Failed to load program status:", e);
-        // Fail silently to the "Start a New Program" screen if enrollment fails to load
       } finally {
         setLoading(false);
       }
@@ -576,7 +689,6 @@ export default function ProgramPage() {
       return <div className="nq-info-box">Loading active program status...</div>;
     }
 
-    // NOTE: If enrollment fails to load, the page correctly defaults to the Start a New Program screen.
     if (enrollment) {
       if (viewMode === "chart") {
         return (
@@ -715,7 +827,6 @@ export default function ProgramPage() {
       );
     }
 
-    // No active enrollment - show setup
     return (
       <div className="nq-panel nq-step-1">
         <h2 className="nq-title">Start a New Program</h2>
@@ -933,12 +1044,21 @@ function Style() {
         animation: rw-slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
       @keyframes rw-fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
       }
       @keyframes rw-slideUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { transform: translateY(0); }
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          transform: translateY(0);
+        }
       }
       .rw-close-btn {
         position: absolute;
@@ -967,9 +1087,21 @@ function Style() {
         font-size: 0.95rem;
         color: #4b5563;
       }
-      .rw-form { display: flex; flex-direction: column; gap: 1rem; }
-      .rw-label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; font-weight: 500; color: #374151; }
-      .rw-input, .rw-textarea {
+      .rw-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .rw-label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #374151;
+      }
+      .rw-input,
+      .rw-textarea {
         border-radius: 10px;
         border: 1px solid #d1d5db;
         padding: 0.75rem;
@@ -993,7 +1125,12 @@ function Style() {
         font-size: 1rem;
         margin-top: -0.5rem;
       }
-      .rw-actions { display: flex; gap: 0.75rem; margin-top: 1rem; justify-content: flex-end; }
+      .rw-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1rem;
+        justify-content: flex-end;
+      }
       .rw-btn {
         border-radius: 999px;
         padding: 0.75rem 1.25rem;
@@ -1002,8 +1139,15 @@ function Style() {
         border: 1px solid transparent;
         cursor: pointer;
       }
-      .rw-btn-primary { background: var(--primary); color: #ffffff; }
-      .rw-btn-ghost { background: transparent; color: #4b5563; border: 1px solid #e5e8f0; }
+      .rw-btn-primary {
+        background: var(--primary);
+        color: #ffffff;
+      }
+      .rw-btn-ghost {
+        background: transparent;
+        color: #4b5563;
+        border: 1px solid #e5e8f0;
+      }
     `}</style>
   );
 }
