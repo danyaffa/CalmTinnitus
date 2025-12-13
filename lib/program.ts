@@ -1,4 +1,4 @@
-// FILE: /lib/program.ts
+// FILE: /lib/program.ts (FINAL FIX)
 import {
   db,
   collection,
@@ -6,7 +6,7 @@ import {
   where,
   orderBy,
   getDocs,
-  getDoc,
+  getDoc, // <- NEW: Used for direct read
   doc,
   setDoc,
   serverTimestamp,
@@ -47,8 +47,7 @@ const startOfLocalDay = (d: Date) => {
 };
 
 /**
- * ✅ FIX: Avoids composite index + avoids permissions edge cases from list/query.
- * Reads the known doc: active_UID
+ * ✅ FINAL FIX: Reads the known doc ID (active_UID) directly, eliminating the need for Complex Index A.
  */
 export async function getActiveEnrollment(userId: string) {
   const id = `active_${userId}`;
@@ -93,6 +92,7 @@ export function getDayNumber(enrollmentStartDateMs: number) {
 }
 
 export async function getCheckInForDay(userId: string, dayStartMs: number) {
+  // Simple query, should be fast.
   const q = query(
     collection(db, CHECKINS),
     where("userId", "==", userId),
@@ -128,8 +128,7 @@ export async function saveDailyCheckIn(
 
 /**
  * History for Chart + Download
- * NOTE: This query may still require a composite index:
- * - userId ASC, date ASC
+ * NOTE: Requires Composite Index 2
  */
 export async function getCheckInHistory(userId: string, programStartDateMs: number) {
   const q = query(
