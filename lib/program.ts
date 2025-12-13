@@ -119,3 +119,22 @@ export async function saveDailyCheckIn(input: Omit<DailyCheckIn, "createdAt" | "
 
   return id;
 }
+
+// 🔥 NEW FUNCTION: Retrieve Check-in History for Download (Required for ProgramPage)
+export async function getCheckInHistory(userId: string, programStartDateMs: number) {
+    const q = query(
+        collection(db, CHECKINS),
+        where("userId", "==", userId),
+        where("date", ">=", programStartDateMs), // Only get data since the program started
+        orderBy("date", "asc") // Order by date ascending
+    );
+    const snap = await getDocs(q);
+
+    // Filter data to ensure we only get days up to the current day in the program
+    const currentDay = getDayNumber(programStartDateMs);
+    
+    return snap.docs.map(doc => ({
+        id: doc.id,
+        ...(doc.data() as DailyCheckIn),
+    })).filter(doc => doc.dayNumber <= currentDay) as DailyCheckInType[];
+}
