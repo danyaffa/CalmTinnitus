@@ -18,7 +18,7 @@ import {
 
 // --- TYPES & CONSTANTS ---
 type CheckIn = Omit<DailyCheckInType, "userId" | "dayNumber" | "date" | "createdAt" | "updatedAt">;
-type ViewMode = 'dashboard' | 'chart'; // New state type for switching views
+type ViewMode = 'dashboard' | 'chart'; 
 
 // Initial state for the check-in form
 const initialCheckInState: CheckIn = {
@@ -53,8 +53,37 @@ const downloadProgressData = (data: DailyCheckInType[], enrollment: ProgramEnrol
 };
 
 
-// --- CHART COMPONENT PLACEHOLDER ---
-const ProgressChartPlaceholder = ({ enrollment, onBack }: { enrollment: ProgramEnrollment, onBack: () => void }) => {
+// --- CHART COMPONENT PLACEHOLDER (UPDATED) ---
+const ProgressChartPlaceholder = ({ 
+    enrollment, 
+    onBack,
+    userId 
+}: { 
+    enrollment: ProgramEnrollment, 
+    onBack: () => void,
+    userId: string 
+}) => {
+    const [chartHistory, setChartHistory] = useState<DailyCheckInType[]>([]);
+    const [chartLoading, setChartLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            setChartLoading(true);
+            try {
+                // Fetch the full history using the function defined in /lib/program.ts
+                const history = await getCheckInHistory(userId, enrollment.startDate);
+                setChartHistory(history);
+            } catch (e) {
+                console.error("Failed to load chart history:", e);
+                // Optionally set an error state here
+            } finally {
+                setChartLoading(false);
+            }
+        };
+        fetchHistory();
+    }, [userId, enrollment.startDate]);
+
+
     return (
         <div className="nq-panel nq-chart-view">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
@@ -65,19 +94,23 @@ const ProgressChartPlaceholder = ({ enrollment, onBack }: { enrollment: ProgramE
             </div>
             
             <p className="nq-subtitle">
-                **Chart Visualization Here** (Loudness, Stress, and Sleep Quality plotted over time).
+                Visualizing your Tinnitus Loudness, Stress, and Sleep Quality over the course of your program. (Days tracked: {chartHistory.length})
             </p>
             
             <div style={{ height: '300px', background: '#f8fafc', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.5rem', marginBottom: '1rem'}}>
-                Chart Library Placeholder
+                {chartLoading ? (
+                    "Loading data for chart..."
+                ) : chartHistory.length > 0 ? (
+                    // Placeholder for chart library integration
+                    "Chart Rendering Area (Data available to plot)"
+                ) : (
+                    "No check-in data has been recorded yet to generate a chart."
+                )}
             </div>
-            
-            <p className="nq-info-box" style={{ background: '#fef2f2', color: '#991b1b'}}>
-                To enable the visual chart, integrate a charting library (like Chart.js or Recharts) here to plot the fetched check-in data.
-            </p>
         </div>
     );
 };
+
 
 // --- TIPS COMPONENT ---
 const TipsInfo = () => (
@@ -201,7 +234,7 @@ const CheckInModal = ({
               name="sleepQuality"
               value={form.sleepQuality}
               onChange={handleChange}
-              />
+            />
             <span className="rw-range-value">{form.sleepQuality}</span>
           </label>
 
@@ -291,7 +324,7 @@ export default function ProgramPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('dashboard'); // New view mode state
+  const [viewMode, setViewMode] = useState<ViewMode>('dashboard'); 
 
   const startOfTodayMs = useMemo(() => {
     const today = new Date();
@@ -328,7 +361,7 @@ export default function ProgramPage() {
       }
     } catch (e) {
       console.error("Failed to load program status:", e);
-      // Removed specific error message here, relying on a neutral status message below
+      // Neutral message is shown below if user is present but loading failed
     } finally {
       setLoading(false);
     }
@@ -387,7 +420,7 @@ export default function ProgramPage() {
     }
   }, [user, enrollment, startOfTodayMs]);
   
-  // 5. Handle Download Progress (UPDATED WITH NO-DATA MESSAGE)
+  // 5. Handle Download Progress 
   const handleDownload = useCallback(async () => {
       if (!user || !enrollment) return;
       setIsDownloading(true);
@@ -463,7 +496,8 @@ export default function ProgramPage() {
       
       // If viewMode is 'chart', render the chart placeholder
       if (viewMode === 'chart') {
-          return <ProgressChartPlaceholder enrollment={enrollment} onBack={() => setViewMode('dashboard')} />;
+          // Pass user ID for chart data fetching
+          return <ProgressChartPlaceholder enrollment={enrollment} onBack={() => setViewMode('dashboard')} userId={user.uid} />;
       }
       
       // Default: Render Dashboard view
