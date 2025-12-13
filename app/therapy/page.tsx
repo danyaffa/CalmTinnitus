@@ -11,6 +11,7 @@ import React, {
 import { onAuthStateChanged, signInAnonymously, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { createSavedProfile } from "@/lib/therapyStorage";
+import Link from "next/link"; // ✅ CHANGE 1: ADD ONE IMPORT
 
 // --- CONSTANTS ---
 const SESSION_LOG_KEY = "calmtinnitus_session_logs_v1";
@@ -795,6 +796,13 @@ function TherapyInner() {
           </span>
         </div>
       </div>
+      {/* ✅ CHANGE 2: ADD ONE BUTTON (ONE JSX BLOCK) */}
+      <div style={{ marginBottom: "2rem" }}>
+        <Link href="/program" className="pillBtn pillBtnPrimary">
+          Track Your Progress
+        </Link>
+      </div>
+      {/* END OF CHANGE 2 */}
 
       {/* STATUS BANNER */}
       {sessionStatus !== "idle" && (
