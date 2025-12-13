@@ -1,3 +1,5 @@
+// FILE: /lib/firebase.ts
+
 // /lib/firebase.ts
 
 import { initializeApp, getApps, getApp } from "firebase/app";
@@ -21,6 +23,12 @@ import {
   getDocs,
   serverTimestamp,
   Timestamp,
+  doc, // Added
+  setDoc, // Added
+  updateDoc, // Added
+  getDoc, // Added
+  deleteDoc, // Added
+  limit, // Added
 } from "firebase/firestore";
 
 // Firebase config via environment variables
@@ -33,24 +41,19 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Avoid SSR initialization crash
-const isBrowser = typeof window !== "undefined";
-
-// Initialize app safely
-const app = isBrowser
-  ? !getApps().length
-    ? initializeApp(firebaseConfig)
-    : getApp()
-  : null;
+// Initialize app safely (simplified)
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 // Export usable Firebase services
-export const auth = app ? getAuth(app) : (null as any);
-export const googleProvider = app ? new GoogleAuthProvider() : (null as any);
-export const db = app ? getFirestore(app) : (null as any);
+export const auth = getAuth(app);
+export const provider = new GoogleAuthProvider(); // Renamed from googleProvider
+export const db = getFirestore(app);
 
 // Re-export helpers
 export {
   onAuthStateChanged,
+  signInWithPopup,
+  signOut,
   collection,
   addDoc,
   query,
@@ -59,19 +62,12 @@ export {
   getDocs,
   serverTimestamp,
   Timestamp,
+  doc,
+  setDoc,
+  updateDoc,
+  getDoc,
+  deleteDoc,
+  limit,
 };
 
 export type { User };
-
-// Optional UI helpers
-export const firebaseGoogleSignIn = async () => {
-  if (!auth || !googleProvider) {
-    throw new Error("Firebase Auth not initialized.");
-  }
-  await signInWithPopup(auth, googleProvider);
-};
-
-export const firebaseSignOut = async () => {
-  if (!auth) return;
-  await signOut(auth);
-};
