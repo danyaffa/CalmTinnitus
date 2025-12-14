@@ -1,52 +1,23 @@
-// FILE: lib/firestore.ts
+// FILE: /lib/firestore.ts
 
-import {
-  collection,
-  addDoc,
-  Timestamp,
-  getDocs,
-  orderBy,
-  limit,
-  query,
-} from "firebase/firestore";
-import { db } from "./firebaseClient";
+import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { firebaseReady, db } from "./firebase";
 
 export type ReviewDoc = {
   id?: string;
   userId?: string;
-  rating?: number;
-  comment?: string;
-  email?: string;
   appName?: string;
-  createdAt?: Timestamp;
+  rating: number;
+  comment?: string;
+  createdAt: Timestamp;
 };
 
-/**
- * Add a new review document to Firestore (client side).
- */
-export async function addReview(
-  userId: string,
-  rating: number,
-  comment: string,
-  appName?: string
-) {
+export async function addReview(payload: Omit<ReviewDoc, "createdAt" | "id">) {
+  if (!firebaseReady || !db) return;
+
   const reviewsRef = collection(db, "reviews");
-  const docRef = await addDoc(reviewsRef, {
-    userId,
-    rating,
-    comment,
-    appName: appName || "CalmTinnitus",
+  return await addDoc(reviewsRef, {
+    ...payload,
     createdAt: Timestamp.now(),
   });
-  return docRef;
-}
-
-/**
- * Fetch recent reviews (optional helper if you ever need it client-side).
- */
-export async function getRecentReviews(limitCount = 50) {
-  const reviewsRef = collection(db, "reviews");
-  const q = query(reviewsRef, orderBy("createdAt", "desc"), limit(limitCount));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as ReviewDoc[];
 }
