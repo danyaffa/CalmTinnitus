@@ -1,9 +1,5 @@
 // FILE: /lib/firebase.ts
-//
-// IMPORTANT:
-// This file must NEVER hard-crash the app at import-time.
-// If Firebase env vars are missing (common in local Android/Capacitor builds),
-// we keep the app running and expose a 'firebaseReady' flag for the UI.
+// Safe Firebase init (never hard-crashes at import-time)
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import {
@@ -16,7 +12,6 @@ import {
   type Auth,
   type User,
 } from "firebase/auth";
-
 import {
   getFirestore,
   collection,
@@ -36,7 +31,7 @@ import {
   type Firestore,
 } from "firebase/firestore";
 
-// ---- Config + Safe init ----
+// ---- Config ----
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
@@ -52,34 +47,33 @@ const hasFirebaseConfig =
   !!firebaseConfig.projectId &&
   !!firebaseConfig.appId;
 
-let app: FirebaseApp | null = null;
-let auth: Auth | null = null;
-let db: Firestore | null = null;
+// ---- Internal singletons (NO name collisions) ----
+let firebaseAppInstance: FirebaseApp | null = null;
+let authInstance: Auth | null = null;
+let dbInstance: Firestore | null = null;
 
 try {
   if (hasFirebaseConfig) {
-    app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
+    firebaseAppInstance = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    authInstance = getAuth(firebaseAppInstance);
+    dbInstance = getFirestore(firebaseAppInstance);
   }
 } catch (err) {
-  // Never crash the whole app at import time.
-  app = null;
-  auth = null;
-  db = null;
+  firebaseAppInstance = null;
+  authInstance = null;
+  dbInstance = null;
   // eslint-disable-next-line no-console
   console.error("[Firebase] init failed (app will run without Firebase):", err);
 }
 
-export const firebaseReady = !!app && !!auth && !!db;
+export const firebaseReady = !!firebaseAppInstance && !!authInstance && !!dbInstance;
 
 // ---- Exports (services) ----
-// These are nullable by design; callers must guard with `firebaseReady`.
-export const firebaseApp = app;
-export const authClient = auth;
-export const dbClient = db;
+export const firebaseApp = firebaseAppInstance;
+export const authClient = authInstance;
+export const dbClient = dbInstance;
 
-// Backward-compatible aliases (older files import these names)
+// Backward-compatible names used across the repo
 export const auth = authClient;
 export const db = dbClient;
 
