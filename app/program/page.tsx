@@ -102,7 +102,7 @@ const ProgressChartPlaceholder = ({
     H = 320,
     L = 44,
     R = 16,
-    T = 12,
+    T = 36, // <-- UPDATED: Top padding increased for '10' label visibility
     B = 32;
 
   const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
@@ -267,14 +267,14 @@ const ProgressChartPlaceholder = ({
               strokeLinejoin="round"
             />
 
-            {/* ✅ POINTS (for single-day visibility) */}
-            {loudPts.map((p, i) => (
+            {/* POINTS (order matters for overlap: Loudness last) */}
+            {sleepPts.map((p, i) => (
               <circle
-                key={"l" + i}
+                key={"q" + i}
                 cx={p.x}
                 cy={p.y}
                 r="5"
-                fill="#2563eb"
+                fill="#16a34a"
                 stroke="#ffffff"
                 strokeWidth="2"
               />
@@ -290,34 +290,28 @@ const ProgressChartPlaceholder = ({
                 strokeWidth="2"
               />
             ))}
-            {sleepPts.map((p, i) => (
+            {loudPts.map((p, i) => (
               <circle
-                key={"q" + i}
+                key={"l" + i}
                 cx={p.x}
                 cy={p.y}
-                r="5"
-                fill="#16a34a"
+                r="6" // <-- UPDATED: Loudness dot size increased for prominence
+                fill="#2563eb"
                 stroke="#ffffff"
                 strokeWidth="2"
               />
             ))}
 
-            {/* Legend */}
+            {/* Legend - MOVED TO TOP MARGIN */}
             <g>
-              <rect x={L} y={T} width="12" height="12" fill="#2563eb" />
-              <text x={L + 18} y={T + 11} fontSize="14" fill="#0f172a">
-                Loudness
-              </text>
+              <rect x={L} y={10} width="12" height="12" fill="#2563eb" />
+              <text x={L + 18} y={21} fontSize="14" fill="#0f172a">Loudness</text>
 
-              <rect x={L + 120} y={T} width="12" height="12" fill="#ef4444" />
-              <text x={L + 138} y={T + 11} fontSize="14" fill="#0f172a">
-                Stress
-              </text>
+              <rect x={L + 120} y={10} width="12" height="12" fill="#ef4444" />
+              <text x={L + 138} y={21} fontSize="14" fill="#0f172a">Stress</text>
 
-              <rect x={L + 220} y={T} width="12" height="12" fill="#16a34a" />
-              <text x={L + 238} y={T + 11} fontSize="14" fill="#0f172a">
-                Sleep
-              </text>
+              <rect x={L + 220} y={10} width="12" height="12" fill="#16a34a" />
+              <text x={L + 238} y={21} fontSize="14" fill="#0f172a">Sleep</text>
             </g>
           </svg>
         )}
