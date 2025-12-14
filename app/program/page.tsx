@@ -16,29 +16,7 @@ import {
   DailyCheckIn as DailyCheckInType,
 } from "@/lib/program";
 
-// ✅ Chart.js (client-side)
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title as ChartTitle,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { Line } from "react-chartjs-2";
-
-// Register once
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  ChartTitle,
-  Tooltip,
-  Legend
-);
+// DELETE: Chart.js imports and registration have been removed to fix Vercel build.
 
 // --- TYPES & CONSTANTS ---
 type CheckIn = Omit<
@@ -90,7 +68,7 @@ const downloadProgressData = (
 };
 
 // -----------------------------------------------------
-// ✅ CHART VIEW (Final: no red errors shown to user)
+// ✅ PROGRESS CHART: PURE SVG (Dependency-free fix)
 // -----------------------------------------------------
 const ProgressChartPlaceholder = ({
   enrollment,
@@ -102,100 +80,36 @@ const ProgressChartPlaceholder = ({
   userId: string;
 }) => {
   const [chartHistory, setChartHistory] = useState<DailyCheckInType[]>([]);
-  const [chartLoading, setChartLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchHistory = async () => {
-      setChartLoading(true);
+    (async () => {
+      setLoading(true);
       try {
-        // NOTE: Requires Composite Index B (userId ASC, date ASC)
-        const history = await getCheckInHistory(userId, enrollment.startDate);
-        setChartHistory(Array.isArray(history) ? history : []);
-      } catch (e: any) {
-        console.error(
-          "Chart load failed (Firestore index or permission issue):",
-          e
-        );
-        // Do NOT show user a red error. Fail gracefully.
+        const h = await getCheckInHistory(userId, enrollment.startDate);
+        setChartHistory(Array.isArray(h) ? h : []);
+      } catch (e) {
+        console.error("Chart load failed:", e);
         setChartHistory([]);
       } finally {
-        setChartLoading(false);
+        setLoading(false);
       }
-    };
-
-    fetchHistory();
+    })();
   }, [userId, enrollment.startDate]);
 
-  // ✅ Safe, clean chart inputs (no runtime crashes)
-  const labels = useMemo(() => {
-    return (chartHistory || []).map((x) => `Day ${x.dayNumber}`);
-  }, [chartHistory]);
+  // SVG helpers
+  const W = 900, H = 320, L = 44, R = 16, T = 12, B = 32;
+  const y = (v: number) => T + (1 - Math.max(0, Math.min(1, v / 10))) * (H - T - B);
+  const x = (i: number, n: number) => n <= 1 ? L : L + (i / (n - 1)) * (W - L - R);
+  const pts = (a: number[]) => a.map((v, i) => `${x(i, a.length)},${y(v)}`).join(" ");
 
-  const data = useMemo(() => {
-    const loudness = (chartHistory || []).map((x) =>
-      Number.isFinite(x.loudness) ? x.loudness : 0
-    );
-    const stress = (chartHistory || []).map((x) =>
-      Number.isFinite(x.stress) ? x.stress : 0
-    );
-    const sleep = (chartHistory || []).map((x) =>
-      Number.isFinite(x.sleepQuality) ? x.sleepQuality : 0
-    );
+  const loud = pts(chartHistory.map(v => Number(v.loudness) || 0));
+  const stress = pts(chartHistory.map(v => Number(v.stress) || 0));
+  const sleep = pts(chartHistory.map(v => Number(v.sleepQuality) || 0));
+  
+  const labels = chartHistory.map((x) => `D${x.dayNumber}`);
+  const hasData = !loading && chartHistory.length > 0;
 
-    return {
-      labels,
-      datasets: [
-        {
-          label: "Tinnitus Loudness",
-          data: loudness,
-          tension: 0.35,
-          borderWidth: 2,
-          pointRadius: 2,
-        },
-        {
-          label: "Stress",
-          data: stress,
-          tension: 0.35,
-          borderWidth: 2,
-          pointRadius: 2,
-        },
-        {
-          label: "Sleep Quality",
-          data: sleep,
-          tension: 0.35,
-          borderWidth: 2,
-          pointRadius: 2,
-        },
-      ],
-    };
-  }, [chartHistory, labels]);
-
-  const options = useMemo(() => {
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: true, position: "bottom" as const },
-        title: {
-          display: false,
-          text: "Progress",
-        },
-        tooltip: { enabled: true },
-      },
-      scales: {
-        y: {
-          min: 0,
-          max: 10,
-          ticks: { stepSize: 1 },
-        },
-        x: {
-          ticks: { maxRotation: 0, minRotation: 0 },
-        },
-      },
-    };
-  }, []);
-
-  const hasData = !chartLoading && (chartHistory?.length || 0) > 0;
 
   return (
     <div className="nq-panel nq-chart-view">
@@ -210,6 +124,7 @@ const ProgressChartPlaceholder = ({
         <h2 className="nq-title" style={{ color: "#4f46e5" }}>
           Progress Chart: {enrollment.lengthDays} Days
         </h2>
+
         <button
           className="nq-btn-action"
           onClick={onBack}
@@ -225,53 +140,90 @@ const ProgressChartPlaceholder = ({
       </div>
 
       <p className="nq-subtitle">
-        Visualizing your Tinnitus Loudness, Stress, and Sleep Quality over the
-        course of your program. (Days tracked: {chartHistory.length})
+        Loudness, Stress, Sleep Quality (0–10). Days tracked: {chartHistory.length}
       </p>
 
-      {/* ✅ Chart Rendering Area */}
       <div
         style={{
-          height: "320px",
+          height: "360px",
           background: "#f8fafc",
           border: "1px dashed #cbd5e1",
           borderRadius: "0.5rem",
-          marginBottom: "1rem",
           padding: "0.75rem",
-          display: "block",
         }}
       >
-        {chartLoading ? (
-          <div
-            style={{
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center",
-            }}
-          >
+        {loading ? (
+          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
             Loading data for chart...
           </div>
-        ) : hasData ? (
-          <Line data={data as any} options={options as any} />
-        ) : (
-          <div
-            style={{
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center",
-            }}
-          >
+        ) : !hasData ? (
+          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
             Your progress chart will appear as you complete daily check-ins.
           </div>
+        ) : (
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            width="100%"
+            height="100%"
+            role="img"
+            aria-label="Progress chart"
+          >
+            {/* Grid lines (0..10) */}
+            {[0, 2, 4, 6, 8, 10].map(v => (
+              <g key={v}>
+                <line x1={L} y1={y(v)} x2={W-R} y2={y(v)} stroke="#e2e8f0" strokeWidth="1" />
+                <text x={8} y={y(v) + 4} fontSize="14" fill="#64748b">
+                  {v}
+                </text>
+              </g>
+            ))}
+
+            {/* X-axis baseline */}
+            <line
+              x1={L}
+              y1={H - B}
+              x2={W - R}
+              y2={H - B}
+              stroke="#cbd5e1"
+              strokeWidth="1"
+            />
+
+            {/* X labels (every ~3 points) */}
+            {labels.map((lab, i) => {
+              const n = labels.length;
+              const step = Math.max(1, Math.floor(n / 8));
+              if (i % step !== 0 && i !== n - 1) return null;
+              const xPos = x(i, n);
+              return (
+                <text key={lab + i} x={xPos} y={H - 10} textAnchor="middle" fontSize="12" fill="#64748b">
+                  {lab}
+                </text>
+              );
+            })}
+
+            {/* Lines (no external libs) */}
+            <polyline points={loud} fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points={stress} fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points={sleep} fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            
+            {/* Legend */}
+            <g>
+              <rect x={L} y={T} width="12" height="12" fill="#2563eb" />
+              <text x={L + 18} y={T + 11} fontSize="14" fill="#0f172a">Loudness</text>
+
+              <rect x={L + 120} y={T} width="12" height="12" fill="#ef4444" />
+              <text x={L + 138} y={T + 11} fontSize="14" fill="#0f172a">Stress</text>
+
+              <rect x={L + 220} y={T} width="12" height="12" fill="#16a34a" />
+              <text x={L + 238} y={T + 11} fontSize="14" fill="#0f172a">Sleep</text>
+            </g>
+          </svg>
         )}
       </div>
     </div>
   );
 };
+
 
 // --- TIPS COMPONENT ---
 const TipsInfo = () => (
