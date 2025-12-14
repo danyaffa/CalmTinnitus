@@ -68,7 +68,7 @@ const downloadProgressData = (
 };
 
 // -----------------------------------------------------
-// ✅ PROGRESS CHART: PURE SVG (Dependency-free fix with points)
+// ✅ PROGRESS CHART: PURE SVG (Dependency-free fix with updated points)
 // -----------------------------------------------------
 const ProgressChartPlaceholder = ({
   enrollment,
@@ -102,7 +102,7 @@ const ProgressChartPlaceholder = ({
     H = 320,
     L = 44,
     R = 16,
-    T = 36, // <-- UPDATED: Top padding increased for '10' label visibility
+    T = 36, // Top padding increased for '10' label visibility
     B = 32;
 
   const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
@@ -241,7 +241,7 @@ const ProgressChartPlaceholder = ({
               );
             })}
 
-            {/* Lines */}
+            {/* LINES */}
             <polyline
               points={ptsStr(loudPts)}
               fill="none"
@@ -267,13 +267,13 @@ const ProgressChartPlaceholder = ({
               strokeLinejoin="round"
             />
 
-            {/* POINTS (order matters for overlap: Loudness last) */}
+            {/* POINTS (draw order so nothing hides) */}
             {sleepPts.map((p, i) => (
               <circle
                 key={"q" + i}
                 cx={p.x}
                 cy={p.y}
-                r="5"
+                r="6"
                 fill="#16a34a"
                 stroke="#ffffff"
                 strokeWidth="2"
@@ -284,7 +284,7 @@ const ProgressChartPlaceholder = ({
                 key={"s" + i}
                 cx={p.x}
                 cy={p.y}
-                r="5"
+                r="6"
                 fill="#ef4444"
                 stroke="#ffffff"
                 strokeWidth="2"
@@ -295,12 +295,13 @@ const ProgressChartPlaceholder = ({
                 key={"l" + i}
                 cx={p.x}
                 cy={p.y}
-                r="6" // <-- UPDATED: Loudness dot size increased for prominence
+                r="7" // Loudness dot is slightly larger
                 fill="#2563eb"
                 stroke="#ffffff"
                 strokeWidth="2"
               />
             ))}
+
 
             {/* Legend - MOVED TO TOP MARGIN */}
             <g>
