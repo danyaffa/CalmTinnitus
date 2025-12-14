@@ -68,7 +68,7 @@ const downloadProgressData = (
 };
 
 // -----------------------------------------------------
-// ✅ PROGRESS CHART: PURE SVG (Dependency-free fix)
+// ✅ PROGRESS CHART: PURE SVG (Dependency-free fix with points)
 // -----------------------------------------------------
 const ProgressChartPlaceholder = ({
   enrollment,
@@ -98,18 +98,37 @@ const ProgressChartPlaceholder = ({
   }, [userId, enrollment.startDate]);
 
   // SVG helpers
-  const W = 900, H = 320, L = 44, R = 16, T = 12, B = 32;
-  const y = (v: number) => T + (1 - Math.max(0, Math.min(1, v / 10))) * (H - T - B);
-  const x = (i: number, n: number) => n <= 1 ? L : L + (i / (n - 1)) * (W - L - R);
-  const pts = (a: number[]) => a.map((v, i) => `${x(i, a.length)},${y(v)}`).join(" ");
+  const W = 900,
+    H = 320,
+    L = 44,
+    R = 16,
+    T = 12,
+    B = 32;
 
-  const loud = pts(chartHistory.map(v => Number(v.loudness) || 0));
-  const stress = pts(chartHistory.map(v => Number(v.stress) || 0));
-  const sleep = pts(chartHistory.map(v => Number(v.sleepQuality) || 0));
-  
-  const labels = chartHistory.map((x) => `D${x.dayNumber}`);
-  const hasData = !loading && chartHistory.length > 0;
+  const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+  const y = (v: number) =>
+    T + (1 - clamp01((Number(v) || 0) / 10)) * (H - T - B);
+  const x = (i: number, n: number) =>
+    n <= 1 ? L : L + (i / (n - 1)) * (W - L - R);
 
+  const n = chartHistory.length;
+
+  const loudVals = chartHistory.map((v) => Number(v.loudness) || 0);
+  const stressVals = chartHistory.map((v) => Number(v.stress) || 0);
+  const sleepVals = chartHistory.map((v) => Number(v.sleepQuality) || 0);
+
+  const mkPts = (vals: number[]) =>
+    vals.map((v, i) => ({ x: x(i, n), y: y(v) }));
+
+  const loudPts = mkPts(loudVals);
+  const stressPts = mkPts(stressVals);
+  const sleepPts = mkPts(sleepVals);
+
+  const ptsStr = (pts: { x: number; y: number }[]) =>
+    pts.map((p) => `${p.x},${p.y}`).join(" ");
+
+  const labels = chartHistory.map((d) => `D${d.dayNumber}`);
+  const hasData = !loading && n > 0;
 
   return (
     <div className="nq-panel nq-chart-view">
@@ -140,7 +159,7 @@ const ProgressChartPlaceholder = ({
       </div>
 
       <p className="nq-subtitle">
-        Loudness, Stress, Sleep Quality (0–10). Days tracked: {chartHistory.length}
+        Loudness, Stress, Sleep Quality (0–10). Days tracked: {n}
       </p>
 
       <div
@@ -153,25 +172,41 @@ const ProgressChartPlaceholder = ({
         }}
       >
         {loading ? (
-          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             Loading data for chart...
           </div>
         ) : !hasData ? (
-          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+            }}
+          >
             Your progress chart will appear as you complete daily check-ins.
           </div>
         ) : (
-          <svg
-            viewBox={`0 0 ${W} ${H}`}
-            width="100%"
-            height="100%"
-            role="img"
-            aria-label="Progress chart"
-          >
+          <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%">
             {/* Grid lines (0..10) */}
-            {[0, 2, 4, 6, 8, 10].map(v => (
+            {[0, 2, 4, 6, 8, 10].map((v) => (
               <g key={v}>
-                <line x1={L} y1={y(v)} x2={W-R} y2={y(v)} stroke="#e2e8f0" strokeWidth="1" />
+                <line
+                  x1={L}
+                  y1={y(v)}
+                  x2={W - R}
+                  y2={y(v)}
+                  stroke="#e2e8f0"
+                  strokeWidth="1"
+                />
                 <text x={8} y={y(v) + 4} fontSize="14" fill="#64748b">
                   {v}
                 </text>
@@ -190,32 +225,99 @@ const ProgressChartPlaceholder = ({
 
             {/* X labels (every ~3 points) */}
             {labels.map((lab, i) => {
-              const n = labels.length;
               const step = Math.max(1, Math.floor(n / 8));
               if (i % step !== 0 && i !== n - 1) return null;
-              const xPos = x(i, n);
               return (
-                <text key={lab + i} x={xPos} y={H - 10} textAnchor="middle" fontSize="12" fill="#64748b">
+                <text
+                  key={lab + i}
+                  x={x(i, n)}
+                  y={H - 10}
+                  textAnchor="middle"
+                  fontSize="12"
+                  fill="#64748b"
+                >
                   {lab}
                 </text>
               );
             })}
 
-            {/* Lines (no external libs) */}
-            <polyline points={loud} fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points={stress} fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points={sleep} fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            
+            {/* Lines */}
+            <polyline
+              points={ptsStr(loudPts)}
+              fill="none"
+              stroke="#2563eb"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <polyline
+              points={ptsStr(stressPts)}
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <polyline
+              points={ptsStr(sleepPts)}
+              fill="none"
+              stroke="#16a34a"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            {/* ✅ POINTS (for single-day visibility) */}
+            {loudPts.map((p, i) => (
+              <circle
+                key={"l" + i}
+                cx={p.x}
+                cy={p.y}
+                r="5"
+                fill="#2563eb"
+                stroke="#ffffff"
+                strokeWidth="2"
+              />
+            ))}
+            {stressPts.map((p, i) => (
+              <circle
+                key={"s" + i}
+                cx={p.x}
+                cy={p.y}
+                r="5"
+                fill="#ef4444"
+                stroke="#ffffff"
+                strokeWidth="2"
+              />
+            ))}
+            {sleepPts.map((p, i) => (
+              <circle
+                key={"q" + i}
+                cx={p.x}
+                cy={p.y}
+                r="5"
+                fill="#16a34a"
+                stroke="#ffffff"
+                strokeWidth="2"
+              />
+            ))}
+
             {/* Legend */}
             <g>
               <rect x={L} y={T} width="12" height="12" fill="#2563eb" />
-              <text x={L + 18} y={T + 11} fontSize="14" fill="#0f172a">Loudness</text>
+              <text x={L + 18} y={T + 11} fontSize="14" fill="#0f172a">
+                Loudness
+              </text>
 
               <rect x={L + 120} y={T} width="12" height="12" fill="#ef4444" />
-              <text x={L + 138} y={T + 11} fontSize="14" fill="#0f172a">Stress</text>
+              <text x={L + 138} y={T + 11} fontSize="14" fill="#0f172a">
+                Stress
+              </text>
 
               <rect x={L + 220} y={T} width="12" height="12" fill="#16a34a" />
-              <text x={L + 238} y={T + 11} fontSize="14" fill="#0f172a">Sleep</text>
+              <text x={L + 238} y={T + 11} fontSize="14" fill="#0f172a">
+                Sleep
+              </text>
             </g>
           </svg>
         )}
