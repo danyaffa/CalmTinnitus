@@ -1,8 +1,9 @@
-// /app/AuthProvider.tsx
+// FILE: /app/AuthProvider.tsx
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
+  firebaseReady,
   auth,
   db,
   onAuthStateChanged,
@@ -45,6 +46,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [sessionHistory, setSessionHistory] = useState<SessionLog[]>([]);
 
   useEffect(() => {
+    if (!firebaseReady || !auth || !db) {
+      setUser(null);
+      setSessionHistory([]);
+      setLoading(false);
+      return;
+    }
+
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setLoading(false);
@@ -54,15 +62,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSessionHistory([]);
       }
     });
+
     return () => unsub();
   }, []);
 
   const loadSessions = async (uid: string) => {
+    if (!db) return;
+
     const q = query(
       collection(db, "sessions"),
       where("userId", "==", uid),
       orderBy("date", "desc")
     );
+
     const snap = await getDocs(q);
     const data: SessionLog[] = snap.docs.map((d) => {
       const v = d.data() as any;
@@ -75,49 +87,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         tinnitusPitch: v.tinnitusPitch,
       };
     });
+
     setSessionHistory(data);
   };
 
-  const saveSessionToCloud = async (log: Omit<SessionLog, "id">) => {
+  const refreshCloudSessions = async () => {
     if (!user) return;
-    await addDoc(collection(db, "sessions"), {
-      userId: user.uid,
-      ...log,
-      date: Timestamp.fromMillis(log.date),
-    });
     await loadSessions(user.uid);
   };
 
-  const refreshCloudSessions = async () => {
-    if (user) {
-      await loadSessions(user.uid);
-    }
+  const saveSessionToCloud = async (log: Omit<SessionLog, "id">) => {
+    if (!user || !db) return;
+
+    await addDoc(collection(db, "sessions"), {
+      ...log,
+      userId: user.uid,
+      date: Timestamp.fromMillis(log.date),
+    });
+
+    await loadSessions(user.uid);
   };
 
-  const value: AuthContextType = {
-    user,
-    loading,
-    sessionHistory,
-    setSessionHistory,
-    saveSessionToCloud,
-    refreshCloudSessions,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        sessionHistory,
+        setSessionHistory,
+        saveSessionToCloud,
+        refreshCloudSessions,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
-export const useAuthCtx = () => {
+export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    // SAFE FALLBACK (fixes "useAuthCtx must be used within AuthProvider" at build time)
-    return {
-      user: null,
-      loading: true,
-      sessionHistory: [],
-      setSessionHistory: () => {},
-      saveSessionToCloud: async () => {},
-      refreshCloudSessions: async () => {},
-    };
-  }
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 };
