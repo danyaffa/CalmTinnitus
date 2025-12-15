@@ -87,8 +87,16 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
-const PRELOAD_CRASH_SCRIPT = `
+const ANDROID_ONLY_CRASH_SCRIPT = `
 (function () {
+  // Only show this overlay inside Android WebView / Capacitor.
+  // (Website remains unchanged.)
+  try {
+    var ua = navigator.userAgent || '';
+    var isWebView = /; wv\\)|\\bwv\\b/i.test(ua) || /Capacitor|Cordova|Android/i.test(ua);
+    if (!isWebView) return;
+  } catch (e) {}
+
   function show(title, detail) {
     try {
       var el = document.getElementById('__crash_overlay__');
@@ -119,7 +127,8 @@ const PRELOAD_CRASH_SCRIPT = `
     show('CRASH: unhandledrejection', reason);
   });
 
-  show('Boot', 'Preload crash handler installed. If the app dies early, details should appear here.');
+  // Show boot message in Android WebView only.
+  show('Boot', 'Android-only crash handler installed. If the app crashes, the real error will appear here.');
 })();
 `;
 
@@ -131,11 +140,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* EARLY crash overlay (runs before React/Next hydration) */}
+        {/* Android-only crash overlay (website stays clean) */}
         <Script
-          id="preload-crash-overlay"
+          id="android-only-crash-overlay"
           strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: PRELOAD_CRASH_SCRIPT }}
+          dangerouslySetInnerHTML={{ __html: ANDROID_ONLY_CRASH_SCRIPT }}
         />
 
         {/* Mobile friendly */}
