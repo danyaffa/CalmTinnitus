@@ -1,57 +1,31 @@
-// FILE: /app/page.tsx
+// FILE: app/page.tsx
 "use client";
 
-import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
-import { ReviewWidget } from "../components/ReviewWidgets";
+import dynamic from "next/dynamic";
+import React, { useEffect, useMemo, useState } from "react";
+
+// ✅ Load ReviewWidget only on the client, and only after hydration
+const ReviewWidget = dynamic(
+  async () => {
+    const mod = await import("../components/ReviewWidgets");
+    return mod.ReviewWidget;
+  },
+  { ssr: false }
+);
 
 export default function HomePage() {
-  const year = new Date().getFullYear();
-  const siteUrl = "https://calmtinnitus.com";
+  const year = useMemo(() => new Date().getFullYear(), []);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // Ensures Android WebView doesn’t execute widget code before hydration
+    setMounted(true);
+  }, []);
 
   return (
     <>
-      {/* ✅ Global SEO + verification for this page */}
-      <Head>
-        {/* BASIC SEO */}
-        <title>CalmTinnitus – Gentle Sound Support for Tinnitus Relief</title>
-        <meta
-          name="description"
-          content="CalmTinnitus is a calm, at-home sound tool created by someone who has lived with tinnitus for over 50 years, using gentle sound, training routines and education."
-        />
-
-        {/* CANONICAL */}
-        <link rel="canonical" href={`${siteUrl}/`} />
-
-        {/* INDEXING */}
-        <meta name="robots" content="index,follow" />
-
-        {/* VERIFICATION */}
-        <meta
-          name="msvalidate.01"
-          content="1A5F9E495867B41926D6E2C113347122"
-        />
-        <meta
-          name="google-site-verification"
-          content="1-hMw5VR5fPWM2BohUpP3BBUCgc3f_tuqvOjuV2Fnl0"
-        />
-
-        {/* SOCIAL PREVIEW */}
-        <meta property="og:type" content="website" />
-        <meta
-          property="og:title"
-          content="CalmTinnitus – Gentle Sound Support for Tinnitus"
-        />
-        <meta
-          property="og:description"
-          content="Tools and sound support to help you live calmer with tinnitus."
-        />
-        <meta property="og:url" content={`${siteUrl}/`} />
-        <meta property="og:site_name" content="CalmTinnitus" />
-        <meta property="og:image" content={`${siteUrl}/CalmTinnitus-Logo.png`} />
-      </Head>
-
       <main className="nq-landing">
         {/* 🌅 TOP GRADIENT SHELL (Header + Hero) */}
         <div className="nq-hero-shell">
@@ -66,6 +40,7 @@ export default function HomePage() {
                     width={150}
                     height={150}
                     className="nq-logo"
+                    priority
                   />
                 </Link>
               </div>
@@ -85,7 +60,6 @@ export default function HomePage() {
             {/* HERO */}
             <section className="nq-hero">
               <div className="nq-hero-text">
-                {/* NEW PROGRAM LINK ADDED HERE */}
                 <Link href="/program" className="nq-research-link">
                   7–30 Day Relief Program + Tracking
                 </Link>
@@ -126,6 +100,7 @@ export default function HomePage() {
                   width={500}
                   height={360}
                   className="nq-hero-photo"
+                  priority
                 />
               </div>
             </section>
@@ -194,7 +169,7 @@ export default function HomePage() {
           <div className="nq-footer-links">
             <Link href="/about">About</Link>
             <Link href="/research">Research</Link>
-            <Link href="/program">7–30 Day Program</Link> {/* NEW PROGRAM LINK ADDED HERE */}
+            <Link href="/program">7–30 Day Program</Link>
             <Link href="/legal">Legal</Link>
             <Link href="/disclaimers">Disclaimers</Link>
             <Link href="/company-policy">Company Policy</Link>
@@ -216,7 +191,6 @@ export default function HomePage() {
               sans-serif;
           }
 
-          /* 🌅 GRADIENT TOP WRAPPER */
           .nq-hero-shell {
             background: radial-gradient(
                 circle at top left,
@@ -235,7 +209,6 @@ export default function HomePage() {
             margin: 0 auto;
           }
 
-          /* HEADER */
           .nq-header {
             display: flex;
             align-items: center;
@@ -289,7 +262,6 @@ export default function HomePage() {
             background: #020617;
           }
 
-          /* HERO */
           .nq-hero {
             display: grid;
             grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
@@ -372,7 +344,6 @@ export default function HomePage() {
             box-shadow: 0 22px 50px rgba(15, 23, 42, 0.55);
           }
 
-          /* RESEARCH LINK */
           .nq-research-link {
             display: inline-flex;
             align-items: center;
@@ -385,18 +356,17 @@ export default function HomePage() {
             background: rgba(191, 219, 254, 0.55);
             border-radius: 999px;
             text-decoration: none;
-            margin-right: 0.75rem; /* Add spacing between multiple links */
+            margin-right: 0.75rem;
           }
-          
+
           .nq-research-link:last-of-type {
-              margin-right: 0;
+            margin-right: 0;
           }
 
           .nq-research-link:hover {
             background: rgba(191, 219, 254, 0.9);
           }
 
-          /* SECTIONS */
           .nq-section {
             margin-bottom: 2.5rem;
           }
@@ -432,7 +402,6 @@ export default function HomePage() {
             margin-bottom: 2.75rem;
           }
 
-          /* --- PASTEL BOX --- */
           .nq-card-dark {
             background: linear-gradient(135deg, #bae6fd, #e0f2fe);
             border-radius: 1.2rem;
@@ -463,7 +432,6 @@ export default function HomePage() {
             color: #64748b;
           }
 
-          /* FOOTER */
           .nq-footer {
             border-top: 1px solid #e5e7eb;
             padding-top: 1.4rem;
@@ -498,7 +466,6 @@ export default function HomePage() {
             margin: 0;
           }
 
-          /* MOBILE */
           @media (max-width: 768px) {
             .nq-landing {
               padding: 1rem 0.8rem 2.2rem;
@@ -551,12 +518,14 @@ export default function HomePage() {
           }
         `}</style>
 
-        {/* Floating review widget: button + feedback panel */}
-        <ReviewWidget
-          appName="CalmTinnitus"
-          appStoreUrl="https://apps.apple.com"
-          feedbackEndpoint="/api/feedback"
-        />
+        {/* ✅ Render the widget only after hydration (Android-safe) */}
+        {mounted ? (
+          <ReviewWidget
+            appName="CalmTinnitus"
+            appStoreUrl="https://apps.apple.com"
+            feedbackEndpoint="/api/feedback"
+          />
+        ) : null}
       </main>
     </>
   );
