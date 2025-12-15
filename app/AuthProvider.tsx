@@ -21,7 +21,7 @@ export type TherapyType = "notch" | "cr";
 
 export type SessionLog = {
   id: string;
-  date: number;
+  date: number; // millis
   therapyType: TherapyType;
   mode: TherapyMode;
   duration: number;
@@ -57,56 +57,65 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
 
       if (u) {
-        await loadSessions(u.uid);
+        // Never allow an unhandled rejection to crash Android WebView
+        try {
+          await loadSessions(u.uid);
+        } catch (e) {
+          console.error("loadSessions failed:", e);
+          setSessionHistory([]);
+        }
       } else {
         setSessionHistory([]);
       }
     });
 
     return () => unsub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadSessions = async (uid: string) => {
     if (!db) return;
 
-    try {
-      // IMPORTANT:
-      // We intentionally do NOT use orderBy("date") here.
-      // where(userId==uid) + orderBy(date) requires a composite Firestore index.
-      // On Android WebView this was throwing an unhandled rejection and crashing the app.
-      const q = query(collection(db, "sessions"), where("userId", "==", uid));
+    // ✅ IMPORTANT:
+    // Avoid composite index requirement by NOT using orderBy("date").
+    // We'll sort client-side instead.
+    const q = query(collection(db, "sessions"), where("userId", "==", uid));
 
-      const snap = await getDocs(q);
+    const snap = await getDocs(q);
 
-      const data: SessionLog[] = snap.docs.map((d) => {
-        const v = d.data() as any;
-        const dateMs =
-          v.date?.toMillis ? v.date.toMillis() : typeof v.date === "number" ? v.date : 0;
+    const data: SessionLog[] = snap.docs.map((d) => {
+      const v = d.data() as any;
 
-        return {
-          id: d.id,
-          date: dateMs,
-          therapyType: v.therapyType,
-          mode: v.mode,
-          duration: v.duration,
-          tinnitusPitch: v.tinnitusPitch,
-        };
-      });
+      const dateMillis =
+        typeof v.date === "number"
+          ? v.date
+          : v.date?.toMillis
+          ? v.date.toMillis()
+          : Date.now();
 
-      // Sort locally (newest first) — no Firestore composite index required
-      data.sort((a, b) => (b.date || 0) - (a.date || 0));
+      return {
+        id: d.id,
+        date: dateMillis,
+        therapyType: v.therapyType,
+        mode: v.mode,
+        duration: v.duration,
+        tinnitusPitch: v.tinnitusPitch,
+      };
+    });
 
-      setSessionHistory(data);
-    } catch (err) {
-      // Never let this crash the app
-      console.error("loadSessions failed:", err);
-      setSessionHistory([]);
-    }
+    // Sort newest first (no Firestore index needed)
+    data.sort((a, b) => b.date - a.date);
+
+    setSessionHistory(data);
   };
 
   const refreshCloudSessions = async () => {
     if (!user) return;
-    await loadSessions(user.uid);
+    try {
+      await loadSessions(user.uid);
+    } catch (e) {
+      console.error("refreshCloudSessions failed:", e);
+    }
   };
 
   const saveSessionToCloud = async (log: Omit<SessionLog, "id">) => {
@@ -119,10 +128,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         date: Timestamp.fromMillis(log.date),
       });
 
+      // Refresh after saving (also protected)
       await loadSessions(user.uid);
-    } catch (err) {
-      console.error("saveSessionToCloud failed:", err);
-      // keep app alive even if write fails
+    } catch (e) {
+      console.error("saveSessionToCloud failed:", e);
+      // Do not throw — avoid crashing Android WebView
     }
   };
 
