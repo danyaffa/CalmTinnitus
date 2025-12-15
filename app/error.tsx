@@ -1,7 +1,7 @@
-// FILE: /app/error.tsx
+// FILE: app/error.tsx
 "use client";
 
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 
 export default function GlobalError({
   error,
@@ -11,29 +11,57 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.error("[App Error Boundary]", error);
+    console.error("App Router error boundary caught:", error);
   }, [error]);
 
   return (
-    <div style={{ padding: 20, fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial" }}>
-      <h2 style={{ margin: "0 0 8px 0" }}>Something went wrong.</h2>
-      <p style={{ margin: "0 0 16px 0", lineHeight: 1.4 }}>
-        The app hit a client-side runtime error during startup. Please try again.
-      </p>
-      <button
-        onClick={() => reset()}
+    <html>
+      <body
         style={{
-          padding: "10px 14px",
-          borderRadius: 10,
-          border: "1px solid #ccc",
-          background: "#fff",
-          cursor: "pointer",
-          fontWeight: 600,
+          margin: 0,
+          padding: 0,
+          fontFamily: "system-ui, -apple-system, BlinkMacSystemFont",
+          background: "#f5f7fa",
+          color: "#111",
         }}
       >
-        Reload
-      </button>
-    </div>
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            textAlign: "center",
+          }}
+        >
+          <div style={{ maxWidth: 420 }}>
+            <h2 style={{ marginBottom: 12 }}>
+              CalmTinnitus is loading…
+            </h2>
+
+            <p style={{ opacity: 0.75, marginBottom: 20 }}>
+              We’re preparing the app environment.  
+              If this takes more than a few seconds, tap below.
+            </p>
+
+            <button
+              onClick={() => reset()}
+              style={{
+                padding: "10px 18px",
+                borderRadius: 8,
+                border: "none",
+                background: "#087a93",
+                color: "#fff",
+                fontSize: 16,
+                cursor: "pointer",
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </body>
+    </html>
   );
 }
