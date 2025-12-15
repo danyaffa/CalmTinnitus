@@ -1,14 +1,26 @@
+// FILE: app/AuthProvider.tsx
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { onAuthStateChanged, signInAnonymously, type User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 
 export type SessionLog = {
   id?: string;
   userId: string;
-  date: any; // number | string | Firestore Timestamp
+  date: any;
   loudness?: number;
   stress?: number;
   sleep?: number;
@@ -37,9 +49,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authReady, setAuthReady] = useState(false);
   const [cloudSessions, setCloudSessions] = useState<SessionLog[]>([]);
 
+  // 🔥 CRITICAL: Catch Android WebView crashes BEFORE React dies
+  useEffect(() => {
+    const handler = (event: PromiseRejectionEvent) => {
+      alert(
+        "ANDROID CRASH (Promise Rejection):\n\n" +
+          (event.reason?.message || JSON.stringify(event.reason))
+      );
+      event.preventDefault();
+    };
+
+    window.addEventListener("unhandledrejection", handler);
+    return () => window.removeEventListener("unhandledrejection", handler);
+  }, []);
+
   const loadSessions = async (uid: string) => {
     try {
-      const q = query(collection(db, "sessions"), where("userId", "==", uid));
+      const q = query(
+        collection(db, "sessions"),
+        where("userId", "==", uid)
+      );
+
       const snap = await getDocs(q);
 
       const data: SessionLog[] = snap.docs.map((d) => ({
@@ -56,11 +86,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return 0;
       };
 
-      // Sort client-side (avoids composite index requirement)
-      data.sort((a: any, b: any) => toMillis(b?.date) - toMillis(a?.date));
+      data.sort((a, b) => toMillis(b.date) - toMillis(a.date));
       setCloudSessions(data);
-    } catch (err) {
-      console.error("[AuthProvider] loadSessions failed:", err);
+    } catch (err: any) {
+      alert(
+        "ANDROID FIRESTORE ERROR:\n\n" +
+          (err?.message || JSON.stringify(err))
+      );
       setCloudSessions([]);
     }
   };
@@ -83,8 +115,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUserId(u.uid);
           await loadSessions(u.uid);
         }
-      } catch (err) {
-        console.error("[AuthProvider] auth init failed:", err);
+      } catch (err: any) {
+        alert(
+          "ANDROID AUTH ERROR:\n\n" +
+            (err?.message || JSON.stringify(err))
+        );
         setUser(null);
         setUserId(null);
       } finally {
@@ -93,15 +128,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsub();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value = useMemo(
-    () => ({ user, userId, authReady, cloudSessions, refreshSessions }),
+    () => ({
+      user,
+      userId,
+      authReady,
+      cloudSessions,
+      refreshSessions,
+    }),
     [user, userId, authReady, cloudSessions]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export default AuthProvider;
