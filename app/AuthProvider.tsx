@@ -10,12 +10,7 @@ import React, {
 } from "react";
 import { onAuthStateChanged, signInAnonymously, type User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 
 export type SessionLog = {
   id?: string;
@@ -49,7 +44,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authReady, setAuthReady] = useState(false);
   const [cloudSessions, setCloudSessions] = useState<SessionLog[]>([]);
 
-  // 🔥 CRITICAL: Catch Android WebView crashes BEFORE React dies
+  // ✅ If Firebase config is missing (common in Android/Capacitor static builds
+  // when env vars were not present at build time), do NOT crash the app.
+  const firebaseAvailable = !!auth && !!db;
+
+  // 🔥 Optional crash visibility (kept, harmless)
   useEffect(() => {
     const handler = (event: PromiseRejectionEvent) => {
       alert(
@@ -58,18 +57,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
       event.preventDefault();
     };
-
     window.addEventListener("unhandledrejection", handler);
     return () => window.removeEventListener("unhandledrejection", handler);
   }, []);
 
   const loadSessions = async (uid: string) => {
     try {
-      const q = query(
-        collection(db, "sessions"),
-        where("userId", "==", uid)
-      );
-
+      const q = query(collection(db as any, "sessions"), where("userId", "==", uid));
       const snap = await getDocs(q);
 
       const data: SessionLog[] = snap.docs.map((d) => ({
@@ -89,10 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data.sort((a, b) => toMillis(b.date) - toMillis(a.date));
       setCloudSessions(data);
     } catch (err: any) {
-      alert(
-        "ANDROID FIRESTORE ERROR:\n\n" +
-          (err?.message || JSON.stringify(err))
-      );
+      alert("ANDROID FIRESTORE ERROR:\n\n" + (err?.message || JSON.stringify(err)));
       setCloudSessions([]);
     }
   };
@@ -103,10 +94,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
+    // ✅ Critical: if Firebase isn't configured, don't call Firebase SDK.
+    if (!firebaseAvailable) {
+      setUser(null);
+      setUserId(null);
+      setCloudSessions([]);
+      setAuthReady(true);
+      return;
+    }
+
+    const unsub = onAuthStateChanged(auth as any, async (u) => {
       try {
         if (!u) {
-          const res = await signInAnonymously(auth);
+          const res = await signInAnonymously(auth as any);
           setUser(res.user);
           setUserId(res.user.uid);
           await loadSessions(res.user.uid);
@@ -116,10 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await loadSessions(u.uid);
         }
       } catch (err: any) {
-        alert(
-          "ANDROID AUTH ERROR:\n\n" +
-            (err?.message || JSON.stringify(err))
-        );
+        alert("ANDROID AUTH ERROR:\n\n" + (err?.message || JSON.stringify(err)));
         setUser(null);
         setUserId(null);
       } finally {
@@ -128,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsub();
-  }, []);
+  }, [firebaseAvailable]);
 
   const value = useMemo(
     () => ({
@@ -141,11 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [user, userId, authReady, cloudSessions]
   );
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export default AuthProvider;
