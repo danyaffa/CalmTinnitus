@@ -1,151 +1,125 @@
-// FILE: /app/AuthProvider.tsx
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { onAuthStateChanged, signInAnonymously, type User } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
 import {
-  firebaseReady,
-  auth,
-  db,
-  onAuthStateChanged,
   collection,
-  addDoc,
+  getDocs,
   query,
   where,
-  getDocs,
-  Timestamp,
-} from "../lib/firebase";
-import type { User } from "../lib/firebase";
-
-export type TherapyMode = "standard" | "sleep" | "relief";
-export type TherapyType = "notch" | "cr";
+} from "firebase/firestore";
 
 export type SessionLog = {
-  id: string;
-  date: number;
-  therapyType: TherapyType;
-  mode: TherapyMode;
-  duration: number;
-  tinnitusPitch: number;
+  id?: string;
+  userId: string;
+  date: any; // can be number | string | Firestore Timestamp
+  loudness?: number;
+  stress?: number;
+  sleep?: number;
+  note?: string;
 };
 
 type AuthContextType = {
   user: User | null;
-  loading: boolean;
-  sessionHistory: SessionLog[];
-  setSessionHistory: React.Dispatch<React.SetStateAction<SessionLog[]>>;
-  saveSessionToCloud: (log: Omit<SessionLog, "id">) => Promise<void>;
-  refreshCloudSessions: () => Promise<void>;
+  userId: string | null;
+  authReady: boolean;
+
+  cloudSessions: SessionLog[];
+  refreshSessions: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}
+
+export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [sessionHistory, setSessionHistory] = useState<SessionLog[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+
+  const [cloudSessions, setCloudSessions] = useState<SessionLog[]>([]);
+
+  const loadSessions = async (uid: string) => {
+    try {
+      const q = query(
+        collection(db, "sessions"),
+        where("userId", "==", uid)
+      );
+
+      const snap = await getDocs(q);
+
+      const data: SessionLog[] = snap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as any),
+      }));
+
+      const toMillis = (v: any) => {
+        if (!v) return 0;
+        if (typeof v === "number") return v;
+        if (typeof v === "string") return Date.parse(v) || 0;
+        if (typeof v?.toMillis === "function") return v.toMillis();
+        if (typeof v?.seconds === "number") return v.seconds * 1000;
+        return 0;
+      };
+
+      // ✅ Sort client-side to avoid requiring a composite Firestore index (where + orderBy)
+      data.sort((a: any, b: any) => toMillis(b?.date) - toMillis(a?.date));
+
+      setCloudSessions(data);
+    } catch (err) {
+      console.error("[AuthProvider] loadSessions failed:", err);
+      // ✅ IMPORTANT: never crash the entire Android WebView
+      setCloudSessions([]);
+    }
+  };
+
+  const refreshSessions = async () => {
+    if (!userId) return;
+    await loadSessions(userId);
+  };
 
   useEffect(() => {
-    if (!firebaseReady || !auth || !db) {
-      setUser(null);
-      setSessionHistory([]);
-      setLoading(false);
-      return;
-    }
-
     const unsub = onAuthStateChanged(auth, async (u) => {
       try {
-        setUser(u);
-        setLoading(false);
-
-        if (u) {
-          await loadSessions(u.uid);
+        if (!u) {
+          const res = await signInAnonymously(auth);
+          setUser(res.user);
+          setUserId(res.user.uid);
+          await loadSessions(res.user.uid);
         } else {
-          setSessionHistory([]);
+          setUser(u);
+          setUserId(u.uid);
+          await loadSessions(u.uid);
         }
       } catch (err) {
-        // Never crash the entire app because Firestore query failed (Android WebView will show grey screen)
-        console.error("[AuthProvider] onAuthStateChanged handler failed:", err);
-        setSessionHistory([]);
+        console.error("[AuthProvider] auth init failed:", err);
+        // Don't hard-crash Android if auth fails for any reason
+        setUser(null);
+        setUserId(null);
+      } finally {
+        setAuthReady(true);
       }
     });
 
     return () => unsub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadSessions = async (uid: string) => {
-    if (!db) return;
-
-    try {
-      // IMPORTANT:
-      // Avoid composite index requirement by NOT using orderBy here.
-      // We'll sort locally instead. This prevents the “query requires an index” crash on Android.
-      const q = query(collection(db, "sessions"), where("userId", "==", uid));
-
-      const snap = await getDocs(q);
-
-      const data: SessionLog[] = snap.docs
-        .map((d) => {
-          const v = d.data() as any;
-          return {
-            id: d.id,
-            date: v.date?.toMillis ? v.date.toMillis() : v.date,
-            therapyType: v.therapyType,
-            mode: v.mode,
-            duration: v.duration,
-            tinnitusPitch: v.tinnitusPitch,
-          } as SessionLog;
-        })
-        // Local sort (desc) replaces Firestore orderBy
-        .sort((a, b) => (b.date || 0) - (a.date || 0));
-
-      setSessionHistory(data);
-    } catch (err) {
-      // This is where your Android crash was coming from.
-      console.error("[AuthProvider] loadSessions failed:", err);
-      setSessionHistory([]);
-    }
-  };
-
-  const refreshCloudSessions = async () => {
-    if (!user) return;
-    await loadSessions(user.uid);
-  };
-
-  const saveSessionToCloud = async (log: Omit<SessionLog, "id">) => {
-    if (!user || !db) return;
-
-    try {
-      await addDoc(collection(db, "sessions"), {
-        ...log,
-        userId: user.uid,
-        date: Timestamp.fromMillis(log.date),
-      });
-
-      await loadSessions(user.uid);
-    } catch (err) {
-      console.error("[AuthProvider] saveSessionToCloud failed:", err);
-      // Do not crash app
-    }
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        sessionHistory,
-        setSessionHistory,
-        saveSessionToCloud,
-        refreshCloudSessions,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      userId,
+      authReady,
+      cloudSessions,
+      refreshSessions,
+    }),
+    [user, userId, authReady, cloudSessions]
   );
-};
 
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
-};
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
