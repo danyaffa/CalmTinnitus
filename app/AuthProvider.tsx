@@ -11,7 +11,6 @@ import {
   addDoc,
   query,
   where,
-  orderBy,
   getDocs,
   Timestamp,
 } from "../lib/firebase";
@@ -56,6 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setLoading(false);
+
       if (u) {
         await loadSessions(u.uid);
       } else {
@@ -69,30 +69,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const loadSessions = async (uid: string) => {
     if (!db) return;
 
-    const q = query(
-      collection(db, "sessions"),
-      where("userId", "==", uid),
-      orderBy("date", "desc")
-    );
-
     try {
+      // IMPORTANT:
+      // We intentionally do NOT use orderBy("date") here.
+      // where(userId==uid) + orderBy(date) requires a composite Firestore index.
+      // On Android WebView this was throwing an unhandled rejection and crashing the app.
+      const q = query(collection(db, "sessions"), where("userId", "==", uid));
+
       const snap = await getDocs(q);
 
       const data: SessionLog[] = snap.docs.map((d) => {
         const v = d.data() as any;
+        const dateMs =
+          v.date?.toMillis ? v.date.toMillis() : typeof v.date === "number" ? v.date : 0;
+
         return {
           id: d.id,
-          date: v.date?.toMillis ? v.date.toMillis() : Number(v.date || 0),
-          therapyType: (v.therapyType || "notch") as TherapyType,
-          mode: (v.mode || "standard") as TherapyMode,
-          duration: Number(v.duration || 0),
-          tinnitusPitch: Number(v.tinnitusPitch || 0),
+          date: dateMs,
+          therapyType: v.therapyType,
+          mode: v.mode,
+          duration: v.duration,
+          tinnitusPitch: v.tinnitusPitch,
         };
       });
 
+      // Sort locally (newest first) — no Firestore composite index required
+      data.sort((a, b) => (b.date || 0) - (a.date || 0));
+
       setSessionHistory(data);
     } catch (err) {
-      // Critical: never crash the app in Android WebView.
+      // Never let this crash the app
       console.error("loadSessions failed:", err);
       setSessionHistory([]);
     }
@@ -116,6 +122,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await loadSessions(user.uid);
     } catch (err) {
       console.error("saveSessionToCloud failed:", err);
+      // keep app alive even if write fails
     }
   };
 
