@@ -4,11 +4,8 @@ const isCapacitor = process.env.CAPACITOR === "true";
 
 const nextConfig = {
   reactStrictMode: true,
-  images: {
-    unoptimized: true,
-  },
+  images: { unoptimized: true },
 
-  // ✅ Only export when building mobile assets
   ...(isCapacitor
     ? {
         output: "export",
