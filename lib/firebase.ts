@@ -74,11 +74,43 @@ export const authClient = authInstance;
 export const dbClient = dbInstance;
 
 // Backward-compatible names used across the repo
+// NOTE: These remain nullable for "safe init" behavior.
 export const auth = authClient;
 export const db = dbClient;
 
 export const provider = new GoogleAuthProvider();
 export const googleProvider = provider;
+
+// ✅ NEW: Non-null accessors (stop TypeScript chasing everywhere)
+//
+// Use these in pages/components where Firebase is REQUIRED.
+// They throw a clear error if Firebase isn't configured, instead of causing TS null issues.
+export function requireAuth(): Auth {
+  if (!authInstance) {
+    throw new Error(
+      "Firebase Auth is not initialised. Check NEXT_PUBLIC_FIREBASE_* env vars."
+    );
+  }
+  return authInstance;
+}
+
+export function requireDb(): Firestore {
+  if (!dbInstance) {
+    throw new Error(
+      "Firebase Firestore is not initialised. Check NEXT_PUBLIC_FIREBASE_* env vars."
+    );
+  }
+  return dbInstance;
+}
+
+export function requireFirebase(): { app: FirebaseApp; auth: Auth; db: Firestore } {
+  if (!firebaseAppInstance || !authInstance || !dbInstance) {
+    throw new Error(
+      "Firebase is not initialised. Check NEXT_PUBLIC_FIREBASE_* env vars."
+    );
+  }
+  return { app: firebaseAppInstance, auth: authInstance, db: dbInstance };
+}
 
 // ---- Re-export helpers ----
 export {
