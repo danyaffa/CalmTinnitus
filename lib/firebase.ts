@@ -1,33 +1,43 @@
 // FILE: /lib/firebase.ts
-// 🔒 STABLE FIREBASE API – do NOT change pages anymore
+// 🔒 DO NOT CHANGE CALLERS. THIS FILE IS THE CONTRACT.
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import {
   getAuth,
-  signInAnonymously,
+  GoogleAuthProvider,
+  signInAnonymously as _signInAnonymously,
+  onAuthStateChanged,
   type Auth,
   type User,
 } from "firebase/auth";
 import {
   getFirestore,
   collection,
+  doc,
   addDoc,
+  setDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
   serverTimestamp,
   type Firestore,
 } from "firebase/firestore";
 
 /* ------------------------------------------------------------------ */
-/*  SAFE INITIALISATION (NO BUILD / SSR CRASH)                          */
+/* SAFE SINGLETON INIT                                                  */
 /* ------------------------------------------------------------------ */
 
-let app: FirebaseApp | null = null;
-let auth: Auth | null = null;
-let db: Firestore | null = null;
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
 
-function ensureFirebase() {
-  if (app && auth && db) return { app, auth, db };
+function init() {
+  if (app && auth && db) return;
 
-  const firebaseConfig = {
+  const config = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -36,32 +46,57 @@ function ensureFirebase() {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   };
 
-  if (!firebaseConfig.projectId) {
+  if (!config.projectId) {
     throw new Error("Firebase env vars missing");
   }
 
-  app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  app = getApps().length ? getApp() : initializeApp(config);
   auth = getAuth(app);
   db = getFirestore(app);
+}
 
-  return { app, auth, db };
+init();
+
+/* ------------------------------------------------------------------ */
+/* 🔒 LEGACY EXPORTS (DO NOT REMOVE)                                    */
+/* ------------------------------------------------------------------ */
+
+export { auth, db };
+export const googleProvider = new GoogleAuthProvider();
+export const firebaseReady = true;
+
+/* ------------------------------------------------------------------ */
+/* AUTH HELPERS (LEGACY SAFE)                                           */
+/* ------------------------------------------------------------------ */
+
+export async function signInAnonymously() {
+  return _signInAnonymously(auth);
+}
+
+export function requireAuth(cb: (user: User | null) => void) {
+  return onAuthStateChanged(auth, cb);
 }
 
 /* ------------------------------------------------------------------ */
-/*  AUTH (ANONYMOUS – SAFE)                                             */
+/* FIRESTORE RE-EXPORTS (PAGES EXPECT THESE HERE)                       */
 /* ------------------------------------------------------------------ */
 
-export async function getAnonymousUser(): Promise<User> {
-  const { auth } = ensureFirebase();
-
-  if (auth.currentUser) return auth.currentUser;
-
-  const cred = await signInAnonymously(auth);
-  return cred.user;
-}
+export {
+  collection,
+  doc,
+  addDoc,
+  setDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+  serverTimestamp,
+};
 
 /* ------------------------------------------------------------------ */
-/*  REVIEWS – BACKWARD + FORWARD COMPATIBLE                             */
+/* REVIEW API – BACKWARD COMPATIBLE                                    */
 /* ------------------------------------------------------------------ */
 
 type ReviewPayload = {
@@ -71,11 +106,6 @@ type ReviewPayload = {
   appName: string;
 };
 
-/**
- * ✅ ACCEPTS BOTH:
- *  addReview({ userId, rating, comment, appName })
- *  addReview(userId, rating, comment, appName)
- */
 export async function addReview(payload: ReviewPayload): Promise<void>;
 export async function addReview(
   userId: string,
@@ -90,31 +120,13 @@ export async function addReview(
   c?: string,
   d?: string
 ): Promise<void> {
-  const { db } = ensureFirebase();
-
   const data: ReviewPayload =
     typeof a === "string"
-      ? {
-          userId: a,
-          rating: b ?? 0,
-          comment: c ?? "",
-          appName: d ?? "unknown",
-        }
+      ? { userId: a, rating: b ?? 0, comment: c ?? "", appName: d ?? "" }
       : a;
 
   await addDoc(collection(db, "reviews"), {
-    userId: data.userId,
-    rating: data.rating,
-    comment: data.comment,
-    appName: data.appName,
+    ...data,
     createdAt: serverTimestamp(),
   });
-}
-
-/* ------------------------------------------------------------------ */
-/*  EXPORTS (LOCKED)                                                    */
-/* ------------------------------------------------------------------ */
-
-export function getFirebase() {
-  return ensureFirebase();
 }
