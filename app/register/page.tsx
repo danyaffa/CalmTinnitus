@@ -1,4 +1,4 @@
-// /app/register/page.tsx
+// FILE: /app/register/page.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -9,13 +9,6 @@ import {
 } from "firebase/auth";
 import { auth, googleProvider } from "../../lib/firebase";
 
-// --- NEW CONSTANT FOR DEVELOPER ACCESS ---
-const DEVELOPER_EMAIL = "leffleryd@gmail.com"; 
-// -----------------------------------------
-
-const STRIPE_LINK =
-  "https://buy.stripe.com/fZu4gz44u2XS1UL9xG4F20e"; // your live payment link
-
 const RegisterPage: React.FC = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -24,28 +17,31 @@ const RegisterPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // --- MODIFIED FUNCTION ---
-  const handleSuccessfulAuth = (userEmail: string) => {
-    // Check for developer bypass
-    if (userEmail.toLowerCase() === DEVELOPER_EMAIL) {
-      router.push("/therapy");
-    } else {
-      // Normal user flow: go to payment
-      window.location.href = STRIPE_LINK;
-    }
+  const handleSuccessfulAuth = (userEmail: string | null) => {
+    router.push("/therapy");
   };
-  // -------------------------
 
   const handleEmailRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // Use the new function to handle redirection
-      handleSuccessfulAuth(userCredential.user.email || email);
 
+    // ✅ CRITICAL FIX — narrow Auth | null
+    const authInstance = auth;
+    if (!authInstance) {
+      setError("Authentication is not ready yet. Please refresh and try again.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        authInstance,
+        email,
+        password
+      );
+
+      handleSuccessfulAuth(userCredential.user.email || email);
     } catch (err: any) {
       setError(err.message ?? "Registration failed");
     } finally {
@@ -56,12 +52,22 @@ const RegisterPage: React.FC = () => {
   const handleGoogleRegister = async () => {
     setError(null);
     setLoading(true);
-    try {
-      const userCredential = await signInWithPopup(auth, googleProvider);
-      
-      // Use the new function to handle redirection
-      handleSuccessfulAuth(userCredential.user.email || ''); 
 
+    // ✅ CRITICAL FIX — narrow Auth | null
+    const authInstance = auth;
+    if (!authInstance) {
+      setError("Authentication is not ready yet. Please refresh and try again.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const userCredential = await signInWithPopup(
+        authInstance,
+        googleProvider
+      );
+
+      handleSuccessfulAuth(userCredential.user.email);
     } catch (err: any) {
       setError(err.message ?? "Google sign-up failed");
     } finally {
@@ -74,8 +80,7 @@ const RegisterPage: React.FC = () => {
       <div className="auth-card">
         <h1>Create your CalmTinnitus account</h1>
         <p className="auth-sub">
-          We&apos;ll keep your tinnitus profiles and history synced across
-          devices.
+          Start your personalised tinnitus relief journey.
         </p>
 
         <form className="auth-form" onSubmit={handleEmailRegister}>
@@ -117,7 +122,7 @@ const RegisterPage: React.FC = () => {
             className="btn btn-primary auth-btn"
             disabled={loading}
           >
-            {loading ? "Creating account…" : "Register & go to payment"}
+            {loading ? "Creating account…" : "Create account"}
           </button>
         </form>
 
@@ -127,7 +132,7 @@ const RegisterPage: React.FC = () => {
           onClick={handleGoogleRegister}
           disabled={loading}
         >
-          Sign up with Google & go to payment
+          Sign up with Google
         </button>
 
         <p className="auth-footer">
@@ -136,6 +141,7 @@ const RegisterPage: React.FC = () => {
             Log in
           </a>
         </p>
+
         <p className="auth-footer">
           <a href="/" className="btn-link">
             ← Back to CalmTinnitus
