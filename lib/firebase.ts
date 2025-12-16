@@ -1,4 +1,5 @@
 // FILE: /lib/firebase.ts
+// 🔒 FINAL CONTRACT — pages depend on THIS, not the other way around
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import {
@@ -25,17 +26,16 @@ import {
   type Firestore,
 } from "firebase/firestore";
 
-let app: FirebaseApp | null = null;
-let auth: Auth | null = null;
-let db: Firestore | null = null;
+/* ------------------------------------------------------------------ */
+/* SINGLETON INIT                                                       */
+/* ------------------------------------------------------------------ */
 
-function hasFirebaseEnv() {
-  return !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-}
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
 
 function init() {
   if (app && auth && db) return;
-  if (!hasFirebaseEnv()) return; // ✅ don't crash; caller will see a useful error
 
   const config = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -46,6 +46,8 @@ function init() {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   };
 
+  if (!config.projectId) throw new Error("Firebase env missing");
+
   app = getApps().length ? getApp() : initializeApp(config);
   auth = getAuth(app);
   db = getFirestore(app);
@@ -53,50 +55,79 @@ function init() {
 
 init();
 
-export function requireAuth(): Auth {
-  init();
-  if (!auth) throw new Error("Firebase Auth not ready (missing NEXT_PUBLIC_FIREBASE_* in this build).");
-  return auth;
-}
+/* ------------------------------------------------------------------ */
+/* 🔒 LEGACY EXPORTS (EVERY PAGE EXPECTS THESE)                          */
+/* ------------------------------------------------------------------ */
 
-export function requireDb(): Firestore {
-  init();
-  if (!db) throw new Error("Firestore not ready (missing NEXT_PUBLIC_FIREBASE_* in this build).");
-  return db;
-}
-
-// ✅ Legacy exports (pages expect these names)
+export { auth, db };
 export const googleProvider = new GoogleAuthProvider();
 export const firebaseReady = true;
 
-// Keep compatibility: signInAnonymously() OR signInAnonymously(auth)
+/* ------------------------------------------------------------------ */
+/* AUTH — ACCEPTS ANY CALL SHAPE                                        */
+/* ------------------------------------------------------------------ */
+
+// pages call: signInAnonymously()
+// pages call: signInAnonymously(requireAuth())
 export async function signInAnonymously(_ignored?: any) {
-  return _signInAnonymously(requireAuth());
+  return _signInAnonymously(auth);
 }
 
-// Keep compatibility: requireAuth(cb?) used like onAuthStateChanged wrapper
-export function requireAuthListener(cb?: (user: User | null) => void) {
-  return onAuthStateChanged(requireAuth(), cb ?? (() => {}));
+// pages call: requireAuth()
+export function requireAuth(cb?: (user: User | null) => void) {
+  return onAuthStateChanged(auth, cb ?? (() => {}));
 }
 
-export { collection, doc, addDoc, setDoc, getDoc, getDocs, query, where, orderBy, limit, serverTimestamp };
+/* ------------------------------------------------------------------ */
+/* FIRESTORE RE-EXPORTS (DO NOT REMOVE)                                 */
+/* ------------------------------------------------------------------ */
 
-// Back-compat exports (but now always non-null when used properly)
-export const authExport = () => requireAuth();
-export const dbExport = () => requireDb();
+export {
+  collection,
+  doc,
+  addDoc,
+  setDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+  serverTimestamp,
+};
 
-// If you still import { auth, db } somewhere:
-export const auth = null as any;
-export const db = null as any;
+/* ------------------------------------------------------------------ */
+/* REVIEWS — BACKWARD + FORWARD SAFE                                   */
+/* ------------------------------------------------------------------ */
 
-// Reviews helper (your existing signature support)
-type ReviewPayload = { userId: string; rating: number; comment: string; appName: string };
+type ReviewPayload = {
+  userId: string;
+  rating: number;
+  comment: string;
+  appName: string;
+};
 
 export async function addReview(payload: ReviewPayload): Promise<void>;
-export async function addReview(userId: string, rating: number, comment: string, appName: string): Promise<void>;
-export async function addReview(a: ReviewPayload | string, b?: number, c?: string, d?: string): Promise<void> {
-  const data: ReviewPayload =
-    typeof a === "string" ? { userId: a, rating: b ?? 0, comment: c ?? "", appName: d ?? "" } : a;
+export async function addReview(
+  userId: string,
+  rating: number,
+  comment: string,
+  appName: string
+): Promise<void>;
 
-  await addDoc(collection(requireDb(), "reviews"), { ...data, createdAt: serverTimestamp() });
+export async function addReview(
+  a: ReviewPayload | string,
+  b?: number,
+  c?: string,
+  d?: string
+): Promise<void> {
+  const data: ReviewPayload =
+    typeof a === "string"
+      ? { userId: a, rating: b ?? 0, comment: c ?? "", appName: d ?? "" }
+      : a;
+
+  await addDoc(collection(db, "reviews"), {
+    ...data,
+    createdAt: serverTimestamp(),
+  });
 }
