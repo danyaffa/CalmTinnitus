@@ -1,5 +1,5 @@
 // FILE: /lib/firebase.ts
-// 🔒 DO NOT CHANGE CALLERS. THIS FILE IS THE CONTRACT.
+// 🔒 FINAL CONTRACT — pages depend on THIS, not the other way around
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import {
@@ -27,7 +27,7 @@ import {
 } from "firebase/firestore";
 
 /* ------------------------------------------------------------------ */
-/* SAFE SINGLETON INIT                                                  */
+/* SINGLETON INIT                                                       */
 /* ------------------------------------------------------------------ */
 
 let app: FirebaseApp;
@@ -46,9 +46,7 @@ function init() {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   };
 
-  if (!config.projectId) {
-    throw new Error("Firebase env vars missing");
-  }
+  if (!config.projectId) throw new Error("Firebase env missing");
 
   app = getApps().length ? getApp() : initializeApp(config);
   auth = getAuth(app);
@@ -58,7 +56,7 @@ function init() {
 init();
 
 /* ------------------------------------------------------------------ */
-/* 🔒 LEGACY EXPORTS (DO NOT REMOVE)                                    */
+/* 🔒 LEGACY EXPORTS (EVERY PAGE EXPECTS THESE)                          */
 /* ------------------------------------------------------------------ */
 
 export { auth, db };
@@ -66,19 +64,22 @@ export const googleProvider = new GoogleAuthProvider();
 export const firebaseReady = true;
 
 /* ------------------------------------------------------------------ */
-/* AUTH HELPERS (LEGACY SAFE)                                           */
+/* AUTH — ACCEPTS ANY CALL SHAPE                                        */
 /* ------------------------------------------------------------------ */
 
-export async function signInAnonymously() {
+// pages call: signInAnonymously()
+// pages call: signInAnonymously(requireAuth())
+export async function signInAnonymously(_ignored?: any) {
   return _signInAnonymously(auth);
 }
 
-export function requireAuth(cb: (user: User | null) => void) {
-  return onAuthStateChanged(auth, cb);
+// pages call: requireAuth()
+export function requireAuth(cb?: (user: User | null) => void) {
+  return onAuthStateChanged(auth, cb ?? (() => {}));
 }
 
 /* ------------------------------------------------------------------ */
-/* FIRESTORE RE-EXPORTS (PAGES EXPECT THESE HERE)                       */
+/* FIRESTORE RE-EXPORTS (DO NOT REMOVE)                                 */
 /* ------------------------------------------------------------------ */
 
 export {
@@ -96,7 +97,7 @@ export {
 };
 
 /* ------------------------------------------------------------------ */
-/* REVIEW API – BACKWARD COMPATIBLE                                    */
+/* REVIEWS — BACKWARD + FORWARD SAFE                                   */
 /* ------------------------------------------------------------------ */
 
 type ReviewPayload = {
