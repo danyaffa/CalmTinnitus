@@ -1,23 +1,52 @@
 // FILE: /lib/firestore.ts
+// 🔒 STABLE FACADE — keeps all callers working
 
-import { collection, addDoc, Timestamp } from "firebase/firestore";
-import { firebaseReady, db } from "./firebase";
+import {
+  db,
+  collection,
+  addDoc,
+  serverTimestamp,
+} from "./firebase";
 
-export type ReviewDoc = {
-  id?: string;
-  userId?: string;
-  appName?: string;
+/* ------------------------------------------------------------------ */
+/* REVIEWS — ACCEPT ALL CALL SHAPES                                    */
+/* ------------------------------------------------------------------ */
+
+type ReviewPayload = {
+  userId: string;
   rating: number;
-  comment?: string;
-  createdAt: Timestamp;
+  comment: string;
+  appName: string;
 };
 
-export async function addReview(payload: Omit<ReviewDoc, "createdAt" | "id">) {
-  if (!firebaseReady || !db) return;
+// legacy + new overloads
+export async function addReview(payload: ReviewPayload): Promise<void>;
+export async function addReview(
+  userId: string,
+  rating: number,
+  comment: string,
+  appName: string
+): Promise<void>;
 
-  const reviewsRef = collection(db, "reviews");
-  return await addDoc(reviewsRef, {
-    ...payload,
-    createdAt: Timestamp.now(),
+// single implementation
+export async function addReview(
+  a: ReviewPayload | string,
+  b?: number,
+  c?: string,
+  d?: string
+): Promise<void> {
+  const data: ReviewPayload =
+    typeof a === "string"
+      ? {
+          userId: a,
+          rating: b ?? 0,
+          comment: c ?? "",
+          appName: d ?? "unknown",
+        }
+      : a;
+
+  await addDoc(collection(db, "reviews"), {
+    ...data,
+    createdAt: serverTimestamp(),
   });
 }
