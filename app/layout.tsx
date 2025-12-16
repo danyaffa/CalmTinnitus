@@ -3,7 +3,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import Script from "next/script";
 import { AuthProvider } from "./AuthProvider";
 import JsonLd from "@/components/JsonLd";
 import ReviewWidgets from "@/components/ReviewWidgets";
@@ -87,51 +86,6 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
-const ANDROID_ONLY_CRASH_SCRIPT = `
-(function () {
-  // Only show this overlay inside Android WebView / Capacitor.
-  // (Website remains unchanged.)
-  try {
-    var ua = navigator.userAgent || '';
-    var isWebView = /; wv\\)|\\bwv\\b/i.test(ua) || /Capacitor|Cordova|Android/i.test(ua);
-    if (!isWebView) return;
-  } catch (e) {}
-
-  function show(title, detail) {
-    try {
-      var el = document.getElementById('__crash_overlay__');
-      if (!el) {
-        el = document.createElement('pre');
-        el.id = '__crash_overlay__';
-        el.style.cssText =
-          'position:fixed;inset:0;z-index:2147483647;padding:16px;margin:0;' +
-          'background:#fff;color:#111;white-space:pre-wrap;overflow:auto;font:14px/1.4 monospace;';
-        document.documentElement.appendChild(el);
-      }
-      el.textContent = title + "\\n\\n" + detail;
-    } catch (e) {}
-  }
-
-  window.addEventListener('error', function (e) {
-    var msg = (e && e.message) ? e.message : 'Unknown error';
-    var src = (e && e.filename) ? e.filename : '';
-    var line = (e && e.lineno) ? e.lineno : '';
-    var col  = (e && e.colno) ? e.colno : '';
-    show('CRASH: window.error', msg + "\\n" + src + ":" + line + ":" + col);
-  }, true);
-
-  window.addEventListener('unhandledrejection', function (e) {
-    var reason = (e && e.reason)
-      ? (e.reason.stack || e.reason.message || String(e.reason))
-      : 'Unknown rejection';
-    show('CRASH: unhandledrejection', reason);
-  });
-
-  // Show boot message in Android WebView only.
-  show('Boot', 'Android-only crash handler installed. If the app crashes, the real error will appear here.');
-})();
-`;
-
 export default function RootLayout({
   children,
 }: {
@@ -140,13 +94,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Android-only crash overlay (website stays clean) */}
-        <Script
-          id="android-only-crash-overlay"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: ANDROID_ONLY_CRASH_SCRIPT }}
-        />
-
         {/* Mobile friendly */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
