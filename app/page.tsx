@@ -19,46 +19,9 @@ export default function HomePage() {
   const year = useMemo(() => new Date().getFullYear(), []);
   const [mounted, setMounted] = useState(false);
 
-  // ✅ DEBUG OVERLAY STATE (added)
-  const [debug, setDebug] = useState<string[]>([]);
-
   useEffect(() => {
     // Ensures Android WebView doesn’t execute widget code before hydration
     setMounted(true);
-
-    // ✅ DEBUG: capture earliest visible errors on Android WebView (added)
-    try {
-      const push = (line: string) =>
-        setDebug((d) => [...d, `${new Date().toISOString()}  ${line}`]);
-
-      push("Homepage mounted");
-      push(`UA: ${typeof navigator !== "undefined" ? navigator.userAgent : "no-navigator"}`);
-
-      const onError = (event: ErrorEvent) => {
-        const msg = event?.message || "unknown error";
-        const file = (event as any)?.filename || "";
-        const line = (event as any)?.lineno ?? "";
-        const col = (event as any)?.colno ?? "";
-        push(`window.error: ${msg} @ ${file}:${line}:${col}`);
-      };
-
-      const onRejection = (event: PromiseRejectionEvent) => {
-        const reason: any = (event as any)?.reason;
-        const text = reason?.message || (typeof reason === "string" ? reason : JSON.stringify(reason));
-        push(`unhandledrejection: ${text}`);
-        event.preventDefault();
-      };
-
-      window.addEventListener("error", onError);
-      window.addEventListener("unhandledrejection", onRejection);
-
-      return () => {
-        window.removeEventListener("error", onError);
-        window.removeEventListener("unhandledrejection", onRejection);
-      };
-    } catch (e: any) {
-      setDebug((d) => [...d, `DEBUG INIT FAILED: ${String(e?.message || e)}`]);
-    }
   }, []);
 
   return (
@@ -563,34 +526,6 @@ export default function HomePage() {
             feedbackEndpoint="/api/feedback"
           />
         ) : null}
-
-        {/* ✅ DEBUG OVERLAY (added) */}
-        <div
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.90)",
-            color: "#00ff7f",
-            fontFamily: "monospace",
-            fontSize: 11,
-            padding: "8px 10px",
-            zIndex: 999999,
-            maxHeight: "35vh",
-            overflow: "auto",
-            borderTop: "1px solid rgba(255,255,255,0.15)",
-          }}
-        >
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>
-            ANDROID DEBUG (remove later)
-          </div>
-          {debug.length === 0 ? (
-            <div>No logs yet…</div>
-          ) : (
-            debug.map((line, idx) => <div key={idx}>{line}</div>)
-          )}
-        </div>
       </main>
     </>
   );
