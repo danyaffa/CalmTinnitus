@@ -60,8 +60,9 @@ export default function GrowthDashboard() {
 
   // --- LOAD DATA FROM FIRESTORE ---
   useEffect(() => {
-    // ✅ Critical fix: db can be null in types; never call doc(db, ...) unless db exists.
-    if (!db) {
+    // ✅ Critical fix: create a local reference so TS narrows correctly
+    const dbi = db;
+    if (!dbi) {
       setLoading(false);
       return;
     }
@@ -70,7 +71,7 @@ export default function GrowthDashboard() {
 
     const loadData = async () => {
       try {
-        const docRef = doc(db, "internal_stats", "growth_checklist");
+        const docRef = doc(dbi, "internal_stats", "growth_checklist");
         const snap = await getDoc(docRef);
         if (cancelled) return;
         if (snap.exists()) setCompleted(snap.data() as any);
@@ -87,21 +88,22 @@ export default function GrowthDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [db]);
+  }, []);
 
   // --- TOGGLE ---
   const toggleItem = async (id: string) => {
     const newState = { ...completed, [id]: !completed[id] };
     setCompleted(newState);
 
-    // ✅ Critical fix: db can be null; block save until it exists.
-    if (!db) {
+    // ✅ Same TS-narrowing fix here
+    const dbi = db;
+    if (!dbi) {
       console.error("Firestore db is not initialized yet; cannot save checklist.");
       return;
     }
 
     try {
-      await setDoc(doc(db, "internal_stats", "growth_checklist"), newState, {
+      await setDoc(doc(dbi, "internal_stats", "growth_checklist"), newState, {
         merge: true,
       });
     } catch (e) {
@@ -284,7 +286,10 @@ export default function GrowthDashboard() {
             are firing.
           </p>
 
-          <ReviewWidget appName="CalmTinnitus" feedbackEndpoint="/api/review-feedback" />
+          <ReviewWidget
+            appName="CalmTinnitus"
+            feedbackEndpoint="/api/review-feedback"
+          />
         </div>
       </div>
     </div>
