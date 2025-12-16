@@ -8,8 +8,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { onAuthStateChanged, signInAnonymously, User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { onAuthStateChanged, User } from "firebase/auth";
+import {
+  auth,
+  requireAuth,
+  signInAnonymously,
+} from "@/lib/firebase";
 import { createSavedProfile } from "@/lib/therapyStorage";
 import Link from "next/link"; 
 
@@ -484,7 +488,7 @@ function TherapyInner() {
       if (u) {
         setUser(u);
       } else {
-        signInAnonymously(auth).catch((err) => {
+        signInAnonymously(requireAuth()).catch((err) => {
           console.error("Anonymous sign-in failed", err);
         });
       }
@@ -938,7 +942,7 @@ function TherapyInner() {
             </p>
             <p style={{ marginTop: "0.35rem" }}>
               <strong>
-                30 minutes is the standard recommended session duration
+                30 minutes is the standard session duration
               </strong>{" "}
               for most people. You can still choose shorter or longer sessions
               if it suits you better.
