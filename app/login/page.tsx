@@ -1,17 +1,14 @@
-// /app/login/page.tsx
+// FILE: /app/login/page.tsx
 "use client";
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  signInWithEmailAndPassword,
-  signInWithPopup,
-} from "firebase/auth";
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../../lib/firebase";
 
 // --- NEW CONSTANT FOR DEVELOPER ACCESS ---
 // Assuming the correct email is leffleryd@gmail.com
-const DEVELOPER_EMAIL = "leffleryd@gmail.com"; 
+const DEVELOPER_EMAIL = "leffleryd@gmail.com";
 // -----------------------------------------
 
 const LoginPage: React.FC = () => {
@@ -38,12 +35,24 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    // ✅ CRITICAL FIX: auth can be Auth | null. Narrow it BEFORE calling Firebase.
+    const authInstance = auth;
+    if (!authInstance) {
+      setError("Authentication is not ready yet. Please refresh and try again.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
+      const userCredential = await signInWithEmailAndPassword(
+        authInstance,
+        email,
+        password
+      );
+
       // Use the new function to handle redirection
       handleRedirection(userCredential.user.email);
-      
     } catch (err: any) {
       setError(err.message ?? "Login failed");
     } finally {
@@ -54,12 +63,20 @@ const LoginPage: React.FC = () => {
   const handleGoogleLogin = async () => {
     setError(null);
     setLoading(true);
+
+    // ✅ CRITICAL FIX: auth can be Auth | null. Narrow it BEFORE calling Firebase.
+    const authInstance = auth;
+    if (!authInstance) {
+      setError("Authentication is not ready yet. Please refresh and try again.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const userCredential = await signInWithPopup(auth, googleProvider);
-      
+      const userCredential = await signInWithPopup(authInstance, googleProvider);
+
       // Use the new function to handle redirection
       handleRedirection(userCredential.user.email);
-      
     } catch (err: any) {
       setError(err.message ?? "Google sign-in failed");
     } finally {
