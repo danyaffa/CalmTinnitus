@@ -165,16 +165,15 @@ export default function HomePage() {
               reserved.
             </span>
             <span>CalmTinnitus™ – Tinnitus Relief Companion.</span>
-          </div>
-          <div className="nq-footer-links">
-            <Link href="/about">About</Link>
-            <Link href="/research">Research</Link>
-            <ink href="/program">7–30 Day Program</Link>
-            <Link href="/terms">Terms</Link>
-            <Link href="/legal">Legal</Link>
-            <Link href="/disclaimers">Disclaimers</Link>
-            <Link href="/company-policy">Company Policy</Link>
-          </div>
+      </div>
+      <div className="nq-footer-links">
+        <Link href="/about">About</Link>
+        <Link href="/research">Research</Link>
+        <Link href="/program">7–30 Day Program</Link>
+        <Link href="/terms">Terms</Link>
+        <Link href="/disclaimers">Disclaimers</Link>
+        <Link href="/company-policy">Company Policy</Link>
+      </div>
           <p className="nq-footer-note">
             CalmTinnitus™ is a trade mark of Leffler International Investments
             Pty Ltd. This app does not diagnose, treat, cure, or prevent
