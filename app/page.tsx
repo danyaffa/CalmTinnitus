@@ -80,7 +80,7 @@ export default function HomePage() {
                 <div className="nq-plan-group">
                   <p className="nq-plan">
                     <span className="nq-plan-price">$19.80 / month</span>
-                    <span className="nq-plan-detail"> — cancel anytime</span>
+                    <span className="nq-plan-detail"> — cancel anytime, link is in the Terms</span>
                   </p>
                   <p className="nq-plan-sub">
                     One simple plan. No hidden upgrades. Just an affordable tool
