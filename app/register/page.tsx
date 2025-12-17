@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Head from "next/head";
 
 import {
   createUserWithEmailAndPassword,
@@ -18,21 +18,23 @@ export default function RegisterPage() {
   const router = useRouter();
   const year = useMemo(() => new Date().getFullYear(), []);
 
-  // Optional name capture (matches your uploaded layout)
+  // Layout fields (based on your preferred style)
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
+  // Auth fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
 
+  // UI state
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const checkoutUrl =
-    process.env.NEXT_PUBLIC_STRIPE_CHECKOUT_URL ||
-    process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_URL ||
-    "";
+  // ✅ Hardcoded Stripe Payment Link (as you requested)
+  // NOTE: If Stripe shows "The link is no longer active", you must re-enable/recreate it in Stripe.
+  const checkoutUrl = "https://buy.stripe.com/fZu4gz44u2XS1UL9xG4F20e";
 
   const isNative = () =>
     typeof window !== "undefined" &&
@@ -59,13 +61,13 @@ export default function RegisterPage() {
 
   const goToStripe = (prefillEmail?: string) => {
     if (!checkoutUrl) {
-      setError(
-        "Stripe checkout URL is missing. Set NEXT_PUBLIC_STRIPE_CHECKOUT_URL in Vercel."
-      );
+      setError("Stripe checkout URL is missing.");
       return;
     }
+
     const url = new URL(checkoutUrl);
     if (prefillEmail) url.searchParams.set("prefilled_email", prefillEmail);
+
     window.location.href = url.toString();
   };
 
@@ -83,16 +85,10 @@ export default function RegisterPage() {
       return setError("Password must be at least 6 characters.");
     if (password !== confirm) return setError("Passwords do not match.");
 
-    // IMPORTANT: Stripe in native builds can violate store rules (warning)
+    // ⚠️ Keep this warning so you don’t get surprised with Play/App Store policy later
     if (isNative()) {
       return setError(
         "You are using the mobile (native) build. Stripe checkout may not be allowed inside store apps. Use the website for Stripe payments, or switch to in-app purchases for Google Play later."
-      );
-    }
-
-    if (!checkoutUrl) {
-      return setError(
-        "Stripe checkout URL is missing. Set NEXT_PUBLIC_STRIPE_CHECKOUT_URL in Vercel."
       );
     }
 
@@ -109,10 +105,10 @@ export default function RegisterPage() {
       // 1) Create Firebase Auth user
       const cred = await createUserWithEmailAndPassword(authInstance, em, password);
 
-      // 2) Update display name (nice to have)
+      // 2) Set display name
       await updateProfile(cred.user, { displayName: `${fn} ${ln}` });
 
-      // 3) Write Firestore user doc (this is what you’re missing today)
+      // 3) Create Firestore user doc (so you see it in Firestore)
       await ensureUserDoc(cred.user, {
         email: em,
         firstName: fn,
@@ -121,10 +117,11 @@ export default function RegisterPage() {
         provider: "email",
       });
 
-      // 4) Redirect to Stripe (payment required BEFORE access)
+      // 4) Redirect to Stripe payment BEFORE access
       goToStripe(em);
 
-      // NOTE: do NOT push to /therapy here
+      // NOTE: we do NOT route into the app here.
+      // router.push("/therapy") must only happen after confirmed payment (webhook/return page).
     } catch (err: any) {
       const msg = err?.message ? String(err.message) : String(err);
 
@@ -151,12 +148,6 @@ export default function RegisterPage() {
       );
     }
 
-    if (!checkoutUrl) {
-      return setError(
-        "Stripe checkout URL is missing. Set NEXT_PUBLIC_STRIPE_CHECKOUT_URL in Vercel."
-      );
-    }
-
     const authInstance = auth;
     if (!authInstance) {
       return setError(
@@ -175,7 +166,6 @@ export default function RegisterPage() {
       const ln = (parts.slice(1).join(" ") || lastName || "").trim();
       const em = (cred.user.email || email || "").trim().toLowerCase();
 
-      // Write Firestore user doc
       await ensureUserDoc(cred.user, {
         email: em || null,
         firstName: fn || null,
@@ -184,7 +174,6 @@ export default function RegisterPage() {
         provider: "google",
       });
 
-      // Redirect to Stripe
       goToStripe(em || undefined);
     } catch (err: any) {
       const msg = err?.message ? String(err.message) : String(err);
@@ -211,7 +200,9 @@ export default function RegisterPage() {
               src="/logo.png"
               alt="CalmTinnitus"
               style={{ height: 42 }}
-              onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+              onError={(e) =>
+                ((e.currentTarget as HTMLImageElement).style.display = "none")
+              }
             />
           </div>
 
@@ -230,8 +221,8 @@ export default function RegisterPage() {
           <div style={styles.card}>
             <h1 style={styles.h1}>Create your account</h1>
             <p style={styles.p}>
-              Register first (Firebase account), then complete payment (Stripe).
-              After that you can log in anytime.
+              Step 1: Register (Firebase). Step 2: Pay (Stripe). After payment,
+              you can log in anytime.
             </p>
 
             {error ? <div style={styles.error}>{error}</div> : null}
@@ -277,7 +268,7 @@ export default function RegisterPage() {
                   <label style={styles.label}>Password</label>
                   <input
                     style={styles.input}
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="new-password"
@@ -288,7 +279,7 @@ export default function RegisterPage() {
                   <label style={styles.label}>Confirm</label>
                   <input
                     style={styles.input}
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     autoComplete="new-password"
@@ -296,6 +287,15 @@ export default function RegisterPage() {
                   />
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                disabled={loading}
+                style={styles.pwToggle}
+              >
+                {showPassword ? "Hide password" : "See password"}
+              </button>
 
               <button style={styles.button} disabled={loading}>
                 {loading ? "Creating account…" : "Register & Pay"}
@@ -312,6 +312,11 @@ export default function RegisterPage() {
 
               <p style={styles.small}>
                 Already registered? <Link href="/login">Log in</Link>
+              </p>
+
+              <p style={styles.smallMuted}>
+                If Stripe shows “The link is no longer active”, the payment link
+                must be re-enabled in your Stripe dashboard.
               </p>
             </form>
           </div>
@@ -391,6 +396,16 @@ const styles: Record<string, React.CSSProperties> = {
     outline: "none",
     fontSize: 14,
   },
+  pwToggle: {
+    background: "none",
+    border: "none",
+    color: "#0f172a",
+    fontWeight: 800,
+    cursor: "pointer",
+    textAlign: "left",
+    padding: 0,
+    marginTop: -2,
+  },
   button: {
     marginTop: 6,
     padding: "12px 14px",
@@ -411,6 +426,7 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
   small: { marginTop: 6, color: "#475569", fontSize: 13 },
+  smallMuted: { marginTop: 2, color: "#64748b", fontSize: 12 },
   footer: {
     maxWidth: 980,
     margin: "40px auto 0",
