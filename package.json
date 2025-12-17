@@ -2,33 +2,46 @@
   "name": "calmtinnitus",
   "version": "1.0.0",
   "private": true,
+
   "scripts": {
     "dev": "next dev",
+
     "build": "next build",
-    "build:android": "CAPACITOR=true next build",
     "start": "next start",
+
+    "build:web": "next build",
+
+    "build:android": "CAPACITOR=true next build && next export",
+
     "lint": "next lint"
   },
+
   "dependencies": {
     "@capacitor/android": "^6.2.1",
     "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^6.2.1",
+
     "firebase": "10.12.0",
     "firebase-admin": "^11.11.1",
+
     "next": "14.2.5",
-    "nodemailer": "6.9.11",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+
     "react-firebase-hooks": "5.1.1",
+    "nodemailer": "6.9.11",
     "resend": "^3.2.0"
   },
+
   "devDependencies": {
     "@types/node": "20.11.30",
-    "@types/nodemailer": "6.4.14",
     "@types/react": "18.2.66",
     "@types/react-dom": "18.2.22",
+    "@types/nodemailer": "6.4.14",
+
+    "typescript": "5.6.3",
+
     "eslint": "8.57.0",
-    "eslint-config-next": "14.2.5",
-    "typescript": "5.6.3"
+    "eslint-config-next": "14.2.5"
   }
 }
