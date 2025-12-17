@@ -169,7 +169,8 @@ export default function HomePage() {
           <div className="nq-footer-links">
             <Link href="/about">About</Link>
             <Link href="/research">Research</Link>
-            <Link href="/program">7–30 Day Program</Link>
+            <ink href="/program">7–30 Day Program</Link>
+            <Link href="/terms">Terms</Link>
             <Link href="/legal">Legal</Link>
             <Link href="/disclaimers">Disclaimers</Link>
             <Link href="/company-policy">Company Policy</Link>
