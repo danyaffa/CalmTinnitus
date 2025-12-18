@@ -8,19 +8,17 @@ import JsonLd from "@/components/JsonLd";
 import ReviewWidgets from "@/components/ReviewWidgets";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://calmtinnitus.com"),
+  // ✅ FIX: canonical BASE must be www
+  metadataBase: new URL("https://www.calmtinnitus.com"),
 
-  // PAGE TITLES
   title: {
     default: "CalmTinnitus | Tinnitus Relief & Neuromodulation App",
     template: "%s | CalmTinnitus",
   },
 
-  // MAIN DESCRIPTION
   description:
     "CalmTinnitus is an AI-guided tinnitus relief and neuromodulation app that helps you match your tinnitus pitch, create sound therapy, and relax with masking sounds like white noise, rain, and ocean waves.",
 
-  // KEYWORDS FOR SEO + AI DISCOVERY
   keywords: [
     "tinnitus",
     "tinnitus relief",
@@ -44,8 +42,9 @@ export const metadata: Metadata = {
     "hearing health app",
   ],
 
+  // ✅ FIX: canonical must match indexed URL
   alternates: {
-    canonical: "https://calmtinnitus.com/",
+    canonical: "https://www.calmtinnitus.com/",
   },
 
   robots: {
@@ -60,14 +59,14 @@ export const metadata: Metadata = {
 
   openGraph: {
     type: "website",
-    url: "https://calmtinnitus.com",
+    url: "https://www.calmtinnitus.com",
     title: "CalmTinnitus | Tinnitus Relief & Neuromodulation App",
     description:
       "Match your tinnitus pitch, generate neuromodulation therapy and relax with masking sounds. Built by a 50-year tinnitus veteran for real-world relief.",
     siteName: "CalmTinnitus",
     images: [
       {
-        url: "https://calmtinnitus.com/CalmTinnitus-Logo.png",
+        url: "https://www.calmtinnitus.com/CalmTinnitus-Logo.png",
         width: 1200,
         height: 630,
         alt: "CalmTinnitus – Tinnitus Relief & Neuromodulation App",
@@ -80,7 +79,7 @@ export const metadata: Metadata = {
     title: "CalmTinnitus | Tinnitus Relief & Neuromodulation App",
     description:
       "AI-guided tinnitus sound therapy, masking and neuromodulation to help reduce the impact of ringing in your ears.",
-    images: ["https://calmtinnitus.com/CalmTinnitus-Logo.png"],
+    images: ["https://www.calmtinnitus.com/CalmTinnitus-Logo.png"],
   },
 
   manifest: "/manifest.json",
@@ -94,10 +93,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Mobile friendly */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-        {/* Extra meta for trust + PWA + app stores */}
         <meta name="author" content="CalmTinnitus" />
         <meta name="publisher" content="CalmTinnitus" />
         <meta
@@ -113,13 +109,8 @@ export default function RootLayout({
       </head>
 
       <body>
-        {/* JSON-LD schema for AI / search */}
         <JsonLd />
-
-        {/* Auth + app content */}
         <AuthProvider>{children}</AuthProvider>
-
-        {/* ⭐ Floating review widget on all pages */}
         <ReviewWidgets appName="CalmTinnitus" />
       </body>
     </html>
