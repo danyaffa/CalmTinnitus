@@ -1,6 +1,7 @@
 // FILE: app/page.tsx
 "use client";
 
+import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -26,6 +27,16 @@ export default function HomePage() {
 
   return (
     <>
+      <Head>
+        <link rel="canonical" href="https://www.calmtinnitus.com/" />
+        <meta name="robots" content="index,follow" />
+        <meta
+          name="description"
+          content="CalmTinnitus is a gentle, at-home sound therapy tool designed by a long-term tinnitus sufferer to support quieter days, better focus, and improved sleep."
+        />
+        <title>CalmTinnitus – Train Your Brain Toward Quieter Days</title>
+      </Head>
+
       <main className="nq-landing">
         {/* 🌅 TOP GRADIENT SHELL (Header + Hero) */}
         <div className="nq-hero-shell">
@@ -80,7 +91,10 @@ export default function HomePage() {
                 <div className="nq-plan-group">
                   <p className="nq-plan">
                     <span className="nq-plan-price">$19.80 / month</span>
-                    <span className="nq-plan-detail"> — cancel anytime, link is in the Terms</span>
+                    <span className="nq-plan-detail">
+                      {" "}
+                      — cancel anytime, link is in the Terms
+                    </span>
                   </p>
                   <p className="nq-plan-sub">
                     One simple plan. No hidden upgrades. Just an affordable tool
@@ -165,15 +179,15 @@ export default function HomePage() {
               reserved.
             </span>
             <span>CalmTinnitus™ – Tinnitus Relief Companion.</span>
-      </div>
-      <div className="nq-footer-links">
-        <Link href="/about">About</Link>
-        <Link href="/research">Research</Link>
-        <Link href="/program">7–30 Day Program</Link>
-        <Link href="/terms">Terms</Link>
-        <Link href="/disclaimers">Disclaimers</Link>
-        <Link href="/company-policy">Company Policy</Link>
-      </div>
+          </div>
+          <div className="nq-footer-links">
+            <Link href="/about">About</Link>
+            <Link href="/research">Research</Link>
+            <Link href="/program">7–30 Day Program</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/disclaimers">Disclaimers</Link>
+            <Link href="/company-policy">Company Policy</Link>
+          </div>
           <p className="nq-footer-note">
             CalmTinnitus™ is a trade mark of Leffler International Investments
             Pty Ltd. This app does not diagnose, treat, cure, or prevent
