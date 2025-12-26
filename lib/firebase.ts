@@ -1,4 +1,4 @@
-// FILE: /lib/firebase.ts
+// FILE: lib/firebase.ts
 // 🔒 FINAL CONTRACT — pages depend on THIS, not the other way around
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
@@ -18,6 +18,8 @@ import {
   setDoc,
   getDoc,
   getDocs,
+  updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -27,7 +29,7 @@ import {
 } from "firebase/firestore";
 
 /* ------------------------------------------------------------------ */
-/* SINGLETON INIT                                                       */
+/* INIT                                                               */
 /* ------------------------------------------------------------------ */
 
 let app: FirebaseApp;
@@ -46,7 +48,16 @@ function init() {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   };
 
-  if (!config.projectId) throw new Error("Firebase env missing");
+  // ✅ FIX: Do NOT crash the whole app at import time (Android/WebView).
+  // If env is missing, we let the UI load; Firebase features will be unavailable.
+  if (!config.projectId) {
+    if (typeof window !== "undefined") {
+      console.warn(
+        "[Firebase] Missing NEXT_PUBLIC_FIREBASE_PROJECT_ID. App will run without Firebase."
+      );
+    }
+    return;
+  }
 
   app = getApps().length ? getApp() : initializeApp(config);
   auth = getAuth(app);
@@ -79,25 +90,7 @@ export function requireAuth(cb?: (user: User | null) => void) {
 }
 
 /* ------------------------------------------------------------------ */
-/* FIRESTORE RE-EXPORTS (DO NOT REMOVE)                                 */
-/* ------------------------------------------------------------------ */
-
-export {
-  collection,
-  doc,
-  addDoc,
-  setDoc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  limit,
-  serverTimestamp,
-};
-
-/* ------------------------------------------------------------------ */
-/* REVIEWS — BACKWARD + FORWARD SAFE                                   */
+/* FIRESTORE — ACCEPT ALL CALL SHAPES                                   */
 /* ------------------------------------------------------------------ */
 
 type ReviewPayload = {
@@ -107,16 +100,10 @@ type ReviewPayload = {
   appName: string;
 };
 
-export async function addReview(payload: ReviewPayload): Promise<void>;
+// pages call: addReview(userId, rating, comment, appName)
+// widgets call: addReview({ userId, rating, comment, appName })
 export async function addReview(
-  userId: string,
-  rating: number,
-  comment: string,
-  appName: string
-): Promise<void>;
-
-export async function addReview(
-  a: ReviewPayload | string,
+  a: string | ReviewPayload,
   b?: number,
   c?: string,
   d?: string
@@ -131,3 +118,23 @@ export async function addReview(
     createdAt: serverTimestamp(),
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* RE-EXPORTS USED ACROSS APP                                           */
+/* ------------------------------------------------------------------ */
+
+export {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  serverTimestamp,
+};
