@@ -1,5 +1,6 @@
 // FILE: lib/firebase.ts
-// 🔒 FINAL CONTRACT — pages depend on THIS, not the other way around
+// 🔒 FINAL CONTRACT — STRICT VERSION
+// This forces the build to fail if keys are missing, preventing empty-key builds.
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import {
@@ -29,93 +30,64 @@ import {
 } from "firebase/firestore";
 
 /* ------------------------------------------------------------------ */
-/* INIT                                                               */
+/* 1. CONFIGURATION & SANITY CHECK                                    */
 /* ------------------------------------------------------------------ */
 
-let app!: FirebaseApp;
-let auth!: Auth;
-let db!: Firestore;
+const config = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
 
-// We keep the “don’t crash at import time” behavior,
-// BUT we also keep exports strongly typed so pages compile.
-let _firebaseReady = false;
-
-function init() {
-  if (_firebaseReady) return;
-
-  const config = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
-  };
-
-  // ✅ Don’t crash at import time on Android/WebView.
-  // If env is missing, we mark firebaseReady=false and keep the app running.
-  if (!config.projectId) {
-    if (typeof window !== "undefined") {
-      console.warn(
-        "[Firebase] Missing NEXT_PUBLIC_FIREBASE_PROJECT_ID. Firebase will be disabled at runtime."
-      );
-    }
-    _firebaseReady = false;
-    return;
+// 🛑 HARD STOP: If these are missing during build, THROW ERROR.
+// This prevents "Collecting page data" hangs and "api-key-not-valid" at runtime.
+Object.entries(config).forEach(([key, value]) => {
+  if (!value) {
+    const errorMsg = `❌ FATAL BUILD ERROR: Missing 'NEXT_PUBLIC_FIREBASE_${key.replace(/([A-Z])/g, "_$1").toUpperCase()}' in .env.local`;
+    console.error(errorMsg);
+    // Throwing here stops the build immediately if variables aren't found.
+    if (typeof window === "undefined") throw new Error(errorMsg);
   }
+});
 
-  app = getApps().length ? getApp() : initializeApp(config);
+/* ------------------------------------------------------------------ */
+/* 2. INITIALIZATION                                                  */
+/* ------------------------------------------------------------------ */
+
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+
+try {
+  // Singleton pattern: if app exists, use it; otherwise init
+  app = getApps().length ? getApp() : initializeApp(config as any);
   auth = getAuth(app);
   db = getFirestore(app);
-
-  _firebaseReady = true;
+} catch (error) {
+  console.error("Firebase Initialization Failed:", error);
+  // Re-throw so we know it broke
+  throw error;
 }
 
-init();
-
-/* ------------------------------------------------------------------ */
-/* 🔒 LEGACY EXPORTS (EVERY PAGE EXPECTS THESE)                        */
-/* ------------------------------------------------------------------ */
-
-// ✅ Strongly typed exports so TypeScript doesn’t break all pages.
+// Export instances directly
 export { auth, db };
-
 export const googleProvider = new GoogleAuthProvider();
-
-// ✅ Accurate readiness flag
-export const firebaseReady = _firebaseReady;
+export const firebaseReady = true;
 
 /* ------------------------------------------------------------------ */
-/* AUTH — ACCEPTS ANY CALL SHAPE                                       */
+/* 3. HELPERS (Updated to use the reliable instances)                 */
 /* ------------------------------------------------------------------ */
 
-// pages call: signInAnonymously()
-// pages call: signInAnonymously(requireAuth())
-export async function signInAnonymously(_ignored?: any) {
-  init();
-  if (!_firebaseReady) {
-    return Promise.reject(
-      new Error("Firebase not configured (missing NEXT_PUBLIC_FIREBASE_*).")
-    );
-  }
+export async function signInAnonymously() {
   return _signInAnonymously(auth);
 }
 
-// pages call: requireAuth()
 export function requireAuth(cb?: (user: User | null) => void) {
-  init();
-  if (!_firebaseReady) {
-    try {
-      cb?.(null);
-    } catch {}
-    return () => {};
-  }
   return onAuthStateChanged(auth, cb ?? (() => {}));
 }
-
-/* ------------------------------------------------------------------ */
-/* FIRESTORE — ACCEPT ALL CALL SHAPES                                  */
-/* ------------------------------------------------------------------ */
 
 type ReviewPayload = {
   userId: string;
@@ -124,20 +96,12 @@ type ReviewPayload = {
   appName: string;
 };
 
-// pages call: addReview(userId, rating, comment, appName)
-// widgets call: addReview({ userId, rating, comment, appName })
 export async function addReview(
   a: string | ReviewPayload,
   b?: number,
   c?: string,
   d?: string
 ): Promise<void> {
-  init();
-  if (!_firebaseReady) {
-    console.warn("[Firebase] addReview skipped (Firebase not configured).");
-    return;
-  }
-
   const data: ReviewPayload =
     typeof a === "string"
       ? { userId: a, rating: b ?? 0, comment: c ?? "", appName: d ?? "" }
@@ -150,7 +114,7 @@ export async function addReview(
 }
 
 /* ------------------------------------------------------------------ */
-/* RE-EXPORTS USED ACROSS APP                                          */
+/* 4. RE-EXPORTS                                                      */
 /* ------------------------------------------------------------------ */
 
 export {
