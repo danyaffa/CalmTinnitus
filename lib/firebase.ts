@@ -32,76 +32,58 @@ import {
 /* INIT                                                               */
 /* ------------------------------------------------------------------ */
 
-let app: FirebaseApp | undefined;
-let auth: Auth | undefined;
-let db: Firestore | undefined;
+let app!: FirebaseApp;
+let auth!: Auth;
+let db!: Firestore;
 
-function hasConfig(cfg: Record<string, any>) {
-  // projectId is the hard requirement; the rest are also required for real auth
-  return Boolean(
-    cfg?.apiKey &&
-      cfg?.authDomain &&
-      cfg?.projectId &&
-      cfg?.storageBucket &&
-      cfg?.messagingSenderId &&
-      cfg?.appId
-  );
-}
-
-function readConfig() {
-  // 1) Standard Next env (baked at build time)
-  const envCfg = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  };
-
-  // 2) Optional runtime injection (useful in WebView / edge cases)
-  const winCfg =
-    typeof window !== "undefined"
-      ? (window as any).__FIREBASE_CONFIG__
-      : undefined;
-
-  return hasConfig(envCfg) ? envCfg : winCfg;
-}
+// We keep the “don’t crash at import time” behavior,
+// BUT we also keep exports strongly typed so pages compile.
+let _firebaseReady = false;
 
 function init() {
-  if (app && auth && db) return true;
+  if (_firebaseReady) return;
 
-  const config = readConfig();
+  const config = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
+  };
 
-  // ✅ Never crash at import-time. If config is missing, app still loads.
-  if (!config || !hasConfig(config)) {
+  // ✅ Don’t crash at import time on Android/WebView.
+  // If env is missing, we mark firebaseReady=false and keep the app running.
+  if (!config.projectId) {
     if (typeof window !== "undefined") {
       console.warn(
-        "[Firebase] Config missing. Firebase disabled.\n" +
-          "Expected NEXT_PUBLIC_FIREBASE_* env vars at build-time (or window.__FIREBASE_CONFIG__)."
+        "[Firebase] Missing NEXT_PUBLIC_FIREBASE_PROJECT_ID. Firebase will be disabled at runtime."
       );
     }
-    return false;
+    _firebaseReady = false;
+    return;
   }
 
   app = getApps().length ? getApp() : initializeApp(config);
   auth = getAuth(app);
   db = getFirestore(app);
-  return true;
+
+  _firebaseReady = true;
 }
+
+init();
 
 /* ------------------------------------------------------------------ */
 /* 🔒 LEGACY EXPORTS (EVERY PAGE EXPECTS THESE)                        */
 /* ------------------------------------------------------------------ */
 
-// Keep named exports. They may be undefined if Firebase is not configured.
+// ✅ Strongly typed exports so TypeScript doesn’t break all pages.
 export { auth, db };
 
-// Provider is safe to create even if Firebase isn't ready yet.
 export const googleProvider = new GoogleAuthProvider();
 
-// ✅ Accurate readiness flag (NOT always true)
-export const firebaseReady = init();
+// ✅ Accurate readiness flag
+export const firebaseReady = _firebaseReady;
 
 /* ------------------------------------------------------------------ */
 /* AUTH — ACCEPTS ANY CALL SHAPE                                       */
@@ -110,12 +92,10 @@ export const firebaseReady = init();
 // pages call: signInAnonymously()
 // pages call: signInAnonymously(requireAuth())
 export async function signInAnonymously(_ignored?: any) {
-  if (!init() || !auth) {
-    // Don’t crash UI; reject so callers can handle it.
+  init();
+  if (!_firebaseReady) {
     return Promise.reject(
-      new Error(
-        "Firebase not configured (missing NEXT_PUBLIC_FIREBASE_*). Cannot sign in."
-      )
+      new Error("Firebase not configured (missing NEXT_PUBLIC_FIREBASE_*).")
     );
   }
   return _signInAnonymously(auth);
@@ -123,8 +103,8 @@ export async function signInAnonymously(_ignored?: any) {
 
 // pages call: requireAuth()
 export function requireAuth(cb?: (user: User | null) => void) {
-  if (!init() || !auth) {
-    // No-op unsubscribe + callback with null (keeps app running)
+  init();
+  if (!_firebaseReady) {
     try {
       cb?.(null);
     } catch {}
@@ -152,7 +132,8 @@ export async function addReview(
   c?: string,
   d?: string
 ): Promise<void> {
-  if (!init() || !db) {
+  init();
+  if (!_firebaseReady) {
     console.warn("[Firebase] addReview skipped (Firebase not configured).");
     return;
   }
