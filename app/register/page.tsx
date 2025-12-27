@@ -1,3 +1,4 @@
+// FILE: app/register/page.tsx
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -12,7 +13,7 @@ import {
   type User,
 } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
-import { auth, googleProvider, db } from "../../lib/firebase";
+import { auth, googleProvider, db, firebaseReady } from "../../lib/firebase";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -46,6 +47,9 @@ export default function RegisterPage() {
     window.Capacitor.isNativePlatform();
 
   const ensureUserDoc = async (user: User, payload: any) => {
+    // ✅ FIX (no layout change): prevent runtime crash if Firebase env isn’t present in native/WebView
+    if (!firebaseReady) return;
+
     const ref = doc(db, "users", user.uid);
     await setDoc(
       ref,
