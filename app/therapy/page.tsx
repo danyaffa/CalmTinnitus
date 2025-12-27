@@ -488,7 +488,7 @@ function TherapyInner() {
       if (u) {
         setUser(u);
       } else {
-        signInAnonymously(requireAuth()).catch((err) => {
+        signInAnonymously().catch((err) => {
           console.error("Anonymous sign-in failed", err);
         });
       }
