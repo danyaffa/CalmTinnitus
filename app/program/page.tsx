@@ -17,6 +17,7 @@ import {
 } from "@/lib/program";
 
 // DELETE: Chart.js imports and registration have been removed to fix Vercel build.
+// (Replaced with Pure SVG solution below)
 
 // --- TYPES & CONSTANTS ---
 type CheckIn = Omit<
@@ -68,7 +69,7 @@ const downloadProgressData = (
 };
 
 // -----------------------------------------------------
-// ✅ PROGRESS CHART: PURE SVG (Dependency-free fix with updated points)
+// ✅ PROGRESS CHART: PURE SVG (Dependency-free fix)
 // -----------------------------------------------------
 const ProgressChartPlaceholder = ({
   enrollment,
@@ -102,7 +103,7 @@ const ProgressChartPlaceholder = ({
     H = 320,
     L = 44,
     R = 16,
-    T = 36, // Top padding increased for '10' label visibility
+    T = 36, // Top padding
     B = 32;
 
   const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
@@ -267,7 +268,7 @@ const ProgressChartPlaceholder = ({
               strokeLinejoin="round"
             />
 
-            {/* POINTS (draw order so nothing hides) */}
+            {/* POINTS */}
             {sleepPts.map((p, i) => (
               <circle
                 key={"q" + i}
@@ -295,24 +296,29 @@ const ProgressChartPlaceholder = ({
                 key={"l" + i}
                 cx={p.x}
                 cy={p.y}
-                r="7" // Loudness dot is slightly larger
+                r="7"
                 fill="#2563eb"
                 stroke="#ffffff"
                 strokeWidth="2"
               />
             ))}
 
-
-            {/* Legend - MOVED TO TOP MARGIN */}
+            {/* Legend */}
             <g>
               <rect x={L} y={10} width="12" height="12" fill="#2563eb" />
-              <text x={L + 18} y={21} fontSize="14" fill="#0f172a">Loudness</text>
+              <text x={L + 18} y={21} fontSize="14" fill="#0f172a">
+                Loudness
+              </text>
 
               <rect x={L + 120} y={10} width="12" height="12" fill="#ef4444" />
-              <text x={L + 138} y={21} fontSize="14" fill="#0f172a">Stress</text>
+              <text x={L + 138} y={21} fontSize="14" fill="#0f172a">
+                Stress
+              </text>
 
               <rect x={L + 220} y={10} width="12" height="12" fill="#16a34a" />
-              <text x={L + 238} y={21} fontSize="14" fill="#0f172a">Sleep</text>
+              <text x={L + 238} y={21} fontSize="14" fill="#0f172a">
+                Sleep
+              </text>
             </g>
           </svg>
         )}
@@ -320,7 +326,6 @@ const ProgressChartPlaceholder = ({
     </div>
   );
 };
-
 
 // --- TIPS COMPONENT ---
 const TipsInfo = () => (
@@ -401,7 +406,6 @@ const CheckInModal = ({
 }) => {
   const [form, setForm] = useState<CheckIn>(initialData);
 
-  // FIX: range inputs must be converted to numbers
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -733,6 +737,7 @@ export default function ProgramPage() {
     );
   }
 
+  // NOTE: This inner component is kept as requested to preserve layout structure
   const ProgramView = () => {
     if (loading) {
       return <div className="nq-info-box">Loading active program status...</div>;
