@@ -14,6 +14,8 @@ import {
 } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, googleProvider, db, firebaseReady } from "../../lib/firebase";
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
+import { Capacitor } from '@capacitor/core';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -34,7 +36,6 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
 
   // ✅ Hardcoded Stripe Payment Link (as you requested)
-  // NOTE: If Stripe shows "The link is no longer active", you must re-enable/recreate it in Stripe.
   const checkoutUrl = "https://buy.stripe.com/fZu4gz44u2XS1UL9xG4F20e";
 
   const isNative = () =>
@@ -47,7 +48,6 @@ export default function RegisterPage() {
     window.Capacitor.isNativePlatform();
 
   const ensureUserDoc = async (user: User, payload: any) => {
-    // ✅ FIX (no layout change): prevent runtime crash if Firebase env isn’t present in native/WebView
     if (!firebaseReady) return;
 
     const ref = doc(db, "users", user.uid);
@@ -89,30 +89,16 @@ export default function RegisterPage() {
       return setError("Password must be at least 6 characters.");
     if (password !== confirm) return setError("Passwords do not match.");
 
-    // ⚠️ Keep this warning so you don’t get surprised with Play/App Store policy later
-    if (isNative()) {
-      return setError(
-        "You are using the mobile (native) build. Stripe checkout may not be allowed inside store apps. Use the website for Stripe payments, or switch to in-app purchases for Google Play later."
-      );
-    }
-
     const authInstance = auth;
     if (!authInstance) {
-      return setError(
-        "Authentication is not ready yet. Please refresh and try again."
-      );
+      return setError("Authentication is not ready yet. Please refresh and try again.");
     }
 
     try {
       setLoading(true);
 
-      // 1) Create Firebase Auth user
       const cred = await createUserWithEmailAndPassword(authInstance, em, password);
-
-      // 2) Set display name
       await updateProfile(cred.user, { displayName: `${fn} ${ln}` });
-
-      // 3) Create Firestore user doc (so you see it in Firestore)
       await ensureUserDoc(cred.user, {
         email: em,
         firstName: fn,
@@ -121,23 +107,10 @@ export default function RegisterPage() {
         provider: "email",
       });
 
-      // 4) Redirect to Stripe payment BEFORE access
       goToStripe(em);
-
-      // NOTE: we do NOT route into the app here.
-      // router.push("/therapy") must only happen after confirmed payment (webhook/return page).
     } catch (err: any) {
       const msg = err?.message ? String(err.message) : String(err);
-
-      if (msg.includes("auth/email-already-in-use")) {
-        setError("This email is already registered. Please log in instead.");
-      } else if (msg.includes("auth/invalid-email")) {
-        setError("That email looks invalid. Please check and try again.");
-      } else if (msg.includes("auth/weak-password")) {
-        setError("Password is too weak. Please use at least 6 characters.");
-      } else {
-        setError(msg);
-      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -146,39 +119,41 @@ export default function RegisterPage() {
   async function handleGoogleSubmit() {
     setError("");
 
-    if (isNative()) {
-      return setError(
-        "You are using the mobile (native) build. Stripe checkout may not be allowed inside store apps. Use the website for Stripe payments, or switch to in-app purchases for Google Play later."
-      );
-    }
-
     const authInstance = auth;
     if (!authInstance) {
-      return setError(
-        "Authentication is not ready yet. Please refresh and try again."
-      );
+      return setError("Authentication is not ready yet. Please refresh and try again.");
     }
 
     try {
       setLoading(true);
 
-      const cred = await signInWithPopup(authInstance, googleProvider);
+      let user;
+      // ✅ Updated logic for Android
+      if (Capacitor.isNativePlatform()) {
+        const result = await FirebaseAuthentication.signInWithGoogle();
+        user = result.user;
+      } else {
+        const cred = await signInWithPopup(authInstance, googleProvider);
+        user = cred.user;
+      }
 
-      const displayName = cred.user.displayName || "";
-      const parts = displayName.split(" ").filter(Boolean);
-      const fn = (parts[0] || firstName || "").trim();
-      const ln = (parts.slice(1).join(" ") || lastName || "").trim();
-      const em = (cred.user.email || email || "").trim().toLowerCase();
+      if (user) {
+        const displayName = user.displayName || "";
+        const parts = displayName.split(" ").filter(Boolean);
+        const fn = (parts[0] || firstName || "").trim();
+        const ln = (parts.slice(1).join(" ") || lastName || "").trim();
+        const em = (user.email || email || "").trim().toLowerCase();
 
-      await ensureUserDoc(cred.user, {
-        email: em || null,
-        firstName: fn || null,
-        lastName: ln || null,
-        displayName: displayName || `${fn} ${ln}`.trim() || null,
-        provider: "google",
-      });
+        await ensureUserDoc(user as User, {
+          email: em || null,
+          firstName: fn || null,
+          lastName: ln || null,
+          displayName: displayName || `${fn} ${ln}`.trim() || null,
+          provider: "google",
+        });
 
-      goToStripe(em || undefined);
+        goToStripe(em || undefined);
+      }
     } catch (err: any) {
       const msg = err?.message ? String(err.message) : String(err);
       setError(msg || "Google sign-up failed");
