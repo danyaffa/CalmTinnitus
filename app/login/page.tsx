@@ -5,11 +5,11 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../../lib/firebase";
+// NEW: Imports for Android compatibility
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
+import { Capacitor } from '@capacitor/core';
 
-// --- NEW CONSTANT FOR DEVELOPER ACCESS ---
-// Assuming the correct email is leffleryd@gmail.com
 const DEVELOPER_EMAIL = "leffleryd@gmail.com";
-// -----------------------------------------
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
@@ -19,24 +19,19 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // --- NEW FUNCTION TO HANDLE REDIRECTION ---
   const handleRedirection = (userEmail: string | null) => {
     if (userEmail?.toLowerCase() === DEVELOPER_EMAIL) {
-      // Developer bypass: Go directly to therapy page
       router.push("/therapy");
     } else {
-      // Standard user: Go to home page (or wherever the auth provider redirects non-paying users)
       router.push("/");
     }
   };
-  // --------------------------------------------
 
   const handleEmailLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    // ✅ CRITICAL FIX: auth can be Auth | null. Narrow it BEFORE calling Firebase.
     const authInstance = auth;
     if (!authInstance) {
       setError("Authentication is not ready yet. Please refresh and try again.");
@@ -50,8 +45,6 @@ const LoginPage: React.FC = () => {
         email,
         password
       );
-
-      // Use the new function to handle redirection
       handleRedirection(userCredential.user.email);
     } catch (err: any) {
       setError(err.message ?? "Login failed");
@@ -64,7 +57,6 @@ const LoginPage: React.FC = () => {
     setError(null);
     setLoading(true);
 
-    // ✅ CRITICAL FIX: auth can be Auth | null. Narrow it BEFORE calling Firebase.
     const authInstance = auth;
     if (!authInstance) {
       setError("Authentication is not ready yet. Please refresh and try again.");
@@ -73,10 +65,15 @@ const LoginPage: React.FC = () => {
     }
 
     try {
-      const userCredential = await signInWithPopup(authInstance, googleProvider);
-
-      // Use the new function to handle redirection
-      handleRedirection(userCredential.user.email);
+      if (Capacitor.isNativePlatform()) {
+        // Native Android Login Flow
+        const result = await FirebaseAuthentication.signInWithGoogle();
+        handleRedirection(result.user?.email || null);
+      } else {
+        // Standard Web Login Flow
+        const userCredential = await signInWithPopup(authInstance, googleProvider);
+        handleRedirection(userCredential.user.email);
+      }
     } catch (err: any) {
       setError(err.message ?? "Google sign-in failed");
     } finally {
