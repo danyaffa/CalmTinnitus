@@ -1,5 +1,4 @@
 // FILE: android/app/build.gradle
-
 apply plugin: 'com.android.application'
 
 android {
@@ -11,16 +10,33 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
 
-        // ✅ v19 (IMPORTANT)
+        // ✅ v19
         versionCode 19
         versionName "1.0.19"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
         aaptOptions {
-            // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-            // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/>
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+
+    // ✅ RELEASE SIGNING (uses android/keystore.properties)
+    signingConfigs {
+        release {
+            def propsFile = rootProject.file("keystore.properties")
+            if (propsFile.exists()) {
+                def props = new Properties()
+                props.load(new FileInputStream(propsFile))
+
+                storeFile file(props["storeFile"])
+                storePassword props["storePassword"]
+                keyAlias props["keyAlias"]
+                keyPassword props["keyPassword"]
+            } else {
+                // If you don't have keystore.properties, build will still work,
+                // but the AAB will be UNSIGNED (Play Console will reject).
+                logger.lifecycle("keystore.properties not found — release bundle will be unsigned.")
+            }
         }
     }
 
@@ -28,6 +44,12 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+
+            // ✅ Apply signing only if keystore.properties exists
+            def propsFile = rootProject.file("keystore.properties")
+            if (propsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
