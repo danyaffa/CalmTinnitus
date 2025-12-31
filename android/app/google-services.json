@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "25709333814",
+    "project_id": "neuroquiet-daa36",
+    "storage_bucket": "neuroquiet-daa36.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:25709333814:android:666cb6af41686ced18b797",
+        "android_client_info": {
+          "package_name": "com.calmtinnitus.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "25709333814-j3fa66j7uss6igkmpi32dpt5ep18j2t8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLacahsgMU9IxJ9l05kCXNnoVF2CpoVeY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "25709333814-j3fa66j7uss6igkmpi32dpt5ep18j2t8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
