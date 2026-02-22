@@ -32,3 +32,4 @@ android/capacitor-cordova-android-plugins/
 .DS_Store
 .next.config.js.save
 next.config.js.save
+*.tsbuildinfo
