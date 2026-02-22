@@ -1,7 +1,6 @@
 // FILE: app/page.tsx
 "use client";
 
-import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -16,6 +15,11 @@ const ReviewWidget = dynamic(
   { ssr: false }
 );
 
+const InstallAppButton = dynamic(
+  () => import("../components/InstallAppButton"),
+  { ssr: false }
+);
+
 export default function HomePage() {
   const year = useMemo(() => new Date().getFullYear(), []);
   const [mounted, setMounted] = useState(false);
@@ -27,16 +31,6 @@ export default function HomePage() {
 
   return (
     <>
-      <Head>
-        <link rel="canonical" href="https://www.calmtinnitus.com/" />
-        <meta name="robots" content="index,follow" />
-        <meta
-          name="description"
-          content="CalmTinnitus is a gentle, at-home sound therapy tool designed by a long-term tinnitus sufferer to support quieter days, better focus, and improved sleep."
-        />
-        <title>CalmTinnitus – Train Your Brain Toward Quieter Days</title>
-      </Head>
-
       <main className="nq-landing">
         {/* 🌅 TOP GRADIENT SHELL (Header + Hero) */}
         <div className="nq-hero-shell">
@@ -65,6 +59,7 @@ export default function HomePage() {
                 <Link href="/register" className="nq-header-btn">
                   Register
                 </Link>
+                {mounted && <InstallAppButton />}
               </nav>
             </header>
 
@@ -104,6 +99,9 @@ export default function HomePage() {
                   <Link href="/register" className="nq-primary-cta">
                     Start training now
                   </Link>
+                  <div className="nq-install-row">
+                    {mounted && <InstallAppButton />}
+                  </div>
                 </div>
               </div>
 
@@ -342,6 +340,10 @@ export default function HomePage() {
 
           .nq-primary-cta:hover {
             filter: brightness(1.03);
+          }
+
+          .nq-install-row {
+            margin-top: 0.75rem;
           }
 
           .nq-hero-image {

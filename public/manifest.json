@@ -1,22 +1,40 @@
-
 {
-  "name": "Calm-Tinnitus – Tinnitus Neuromodulation",
-  "short_name": "Calm-Tinnitus",
+  "name": "CalmTinnitus – Tinnitus Neuromodulation",
+  "short_name": "CalmTinnitus",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f4f8fb",
   "theme_color": "#087a93",
-  "description": "Tinnitus neuromodulation sound tool using Notch Therapy and Coordinated Reset (CR).",
+  "description": "Tinnitus neuromodulation sound tool using Notch Therapy and Coordinated Reset (CR). Match your tinnitus pitch and train your brain toward quieter days.",
+  "categories": ["health", "medical", "lifestyle"],
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
 }

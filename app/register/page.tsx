@@ -1,8 +1,7 @@
 // FILE: app/register/page.tsx
 "use client";
 
-import React, { useMemo, useState } from "react";
-import Head from "next/head";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -14,38 +13,40 @@ import {
 } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, googleProvider, db, firebaseReady } from "../../lib/firebase";
-import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
-import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
+import { Capacitor } from "@capacitor/core";
+
+// PayPal subscription plan ID — replace with your real PayPal plan ID
+const PAYPAL_PLAN_ID = "P-XXXXXXXXXXXXXXXXXXXXXXXX";
+// PayPal client ID — replace with your real PayPal client ID
+const PAYPAL_CLIENT_ID = "YOUR_PAYPAL_CLIENT_ID";
+
+declare global {
+  interface Window {
+    paypal?: any;
+  }
+}
 
 export default function RegisterPage() {
   const router = useRouter();
   const year = useMemo(() => new Date().getFullYear(), []);
 
-  // Layout fields (based on your preferred style)
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
-  // Auth fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
 
-  // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ✅ Hardcoded Stripe Payment Link (as you requested)
-  const checkoutUrl = "https://buy.stripe.com/fZu4gz44u2XS1UL9xG4F20e";
-
-  const isNative = () =>
-    typeof window !== "undefined" &&
-    // @ts-ignore
-    !!window.Capacitor &&
-    // @ts-ignore
-    typeof window.Capacitor.isNativePlatform === "function" &&
-    // @ts-ignore
-    window.Capacitor.isNativePlatform();
+  // Step tracking: "register" -> "pay"
+  const [step, setStep] = useState<"register" | "pay">("register");
+  const [registeredUser, setRegisteredUser] = useState<User | null>(null);
+  const paypalContainerRef = useRef<HTMLDivElement>(null);
+  const paypalScriptLoaded = useRef(false);
 
   const ensureUserDoc = async (user: User, payload: any) => {
     if (!firebaseReady) return;
@@ -63,17 +64,83 @@ export default function RegisterPage() {
     );
   };
 
-  const goToStripe = (prefillEmail?: string) => {
-    if (!checkoutUrl) {
-      setError("Stripe checkout URL is missing.");
+  const activateSubscription = async (
+    user: User,
+    subscriptionId: string
+  ) => {
+    if (!firebaseReady) return;
+
+    const ref = doc(db, "users", user.uid);
+    await setDoc(
+      ref,
+      {
+        subscriptionStatus: "active",
+        paypalSubscriptionId: subscriptionId,
+        paymentProvider: "paypal",
+        subscribedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  };
+
+  // Load PayPal SDK and render button when entering the pay step
+  useEffect(() => {
+    if (step !== "pay" || !paypalContainerRef.current || !registeredUser) return;
+
+    const renderPayPalButton = () => {
+      if (!window.paypal || !paypalContainerRef.current) return;
+
+      // Clear any existing buttons
+      paypalContainerRef.current.innerHTML = "";
+
+      window.paypal
+        .Buttons({
+          style: {
+            shape: "pill",
+            color: "blue",
+            layout: "vertical",
+            label: "subscribe",
+          },
+          createSubscription: (_data: any, actions: any) => {
+            return actions.subscription.create({
+              plan_id: PAYPAL_PLAN_ID,
+            });
+          },
+          onApprove: async (data: any) => {
+            try {
+              await activateSubscription(registeredUser, data.subscriptionID);
+              router.push("/therapy");
+            } catch (err) {
+              console.error("Failed to activate subscription:", err);
+              setError(
+                "Payment received but account activation failed. Please contact support."
+              );
+            }
+          },
+          onError: (err: any) => {
+            console.error("PayPal error:", err);
+            setError("Payment failed. Please try again.");
+          },
+        })
+        .render(paypalContainerRef.current);
+    };
+
+    if (window.paypal) {
+      renderPayPalButton();
       return;
     }
 
-    const url = new URL(checkoutUrl);
-    if (prefillEmail) url.searchParams.set("prefilled_email", prefillEmail);
-
-    window.location.href = url.toString();
-  };
+    if (!paypalScriptLoaded.current) {
+      paypalScriptLoaded.current = true;
+      const script = document.createElement("script");
+      script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&vault=true&intent=subscription`;
+      script.setAttribute("data-sdk-integration-source", "button-factory");
+      script.onload = renderPayPalButton;
+      script.onerror = () =>
+        setError("Failed to load PayPal. Please refresh and try again.");
+      document.body.appendChild(script);
+    }
+  }, [step, registeredUser, router]);
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -91,13 +158,19 @@ export default function RegisterPage() {
 
     const authInstance = auth;
     if (!authInstance) {
-      return setError("Authentication is not ready yet. Please refresh and try again.");
+      return setError(
+        "Authentication is not ready yet. Please refresh and try again."
+      );
     }
 
     try {
       setLoading(true);
 
-      const cred = await createUserWithEmailAndPassword(authInstance, em, password);
+      const cred = await createUserWithEmailAndPassword(
+        authInstance,
+        em,
+        password
+      );
       await updateProfile(cred.user, { displayName: `${fn} ${ln}` });
       await ensureUserDoc(cred.user, {
         email: em,
@@ -107,7 +180,8 @@ export default function RegisterPage() {
         provider: "email",
       });
 
-      goToStripe(em);
+      setRegisteredUser(cred.user);
+      setStep("pay");
     } catch (err: any) {
       const msg = err?.message ? String(err.message) : String(err);
       setError(msg);
@@ -121,14 +195,15 @@ export default function RegisterPage() {
 
     const authInstance = auth;
     if (!authInstance) {
-      return setError("Authentication is not ready yet. Please refresh and try again.");
+      return setError(
+        "Authentication is not ready yet. Please refresh and try again."
+      );
     }
 
     try {
       setLoading(true);
 
       let user;
-      // ✅ Updated logic for Android
       if (Capacitor.isNativePlatform()) {
         const result = await FirebaseAuthentication.signInWithGoogle();
         user = result.user;
@@ -152,7 +227,8 @@ export default function RegisterPage() {
           provider: "google",
         });
 
-        goToStripe(em || undefined);
+        setRegisteredUser(user as User);
+        setStep("pay");
       }
     } catch (err: any) {
       const msg = err?.message ? String(err.message) : String(err);
@@ -163,149 +239,164 @@ export default function RegisterPage() {
   }
 
   return (
-    <>
-      <Head>
-        <title>Register — CalmTinnitus</title>
-        <meta
-          name="description"
-          content="Create your CalmTinnitus account and activate access."
-        />
-      </Head>
+    <div style={styles.page}>
+      <header style={styles.header}>
+        <div style={styles.brand}>
+          <img
+            src="/CalmTinnitus-Logo.png"
+            alt="CalmTinnitus"
+            style={{ height: 42 }}
+            onError={(e) =>
+              ((e.currentTarget as HTMLImageElement).style.display = "none")
+            }
+          />
+        </div>
 
-      <div style={styles.page}>
-        <header style={styles.header}>
-          <div style={styles.brand}>
-            <img
-              src="/logo.png"
-              alt="CalmTinnitus"
-              style={{ height: 42 }}
-              onError={(e) =>
-                ((e.currentTarget as HTMLImageElement).style.display = "none")
-              }
-            />
-          </div>
+        <nav style={styles.nav}>
+          <Link href="/qa" style={styles.link}>
+            Q&amp;A
+          </Link>
+          <Link href="/login" style={styles.link}>
+            Log in
+          </Link>
+          <span style={styles.activePill}>Register</span>
+        </nav>
+      </header>
 
-          <nav style={styles.nav}>
-            <Link href="/qa" style={styles.link}>
-              Q&amp;A
-            </Link>
-            <Link href="/login" style={styles.link}>
-              Log in
-            </Link>
-            <span style={styles.activePill}>Register</span>
-          </nav>
-        </header>
-
-        <main style={styles.main}>
-          <div style={styles.card}>
-            <h1 style={styles.h1}>Create your account</h1>
-            <p style={styles.p}>
-              Step 1: Register (Firebase). Step 2: Pay (Stripe). After payment,
-              you can log in anytime.
-            </p>
-
-            {error ? <div style={styles.error}>{error}</div> : null}
-
-            <form onSubmit={handleEmailSubmit} style={styles.form}>
-              <div style={styles.row}>
-                <div style={styles.field}>
-                  <label style={styles.label}>First name</label>
-                  <input
-                    style={styles.input}
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    autoComplete="given-name"
-                    disabled={loading}
-                  />
-                </div>
-                <div style={styles.field}>
-                  <label style={styles.label}>Last name</label>
-                  <input
-                    style={styles.input}
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    autoComplete="family-name"
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>Email</label>
-                <input
-                  style={styles.input}
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  disabled={loading}
-                />
-              </div>
-
-              <div style={styles.row}>
-                <div style={styles.field}>
-                  <label style={styles.label}>Password</label>
-                  <input
-                    style={styles.input}
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="new-password"
-                    disabled={loading}
-                  />
-                </div>
-                <div style={styles.field}>
-                  <label style={styles.label}>Confirm</label>
-                  <input
-                    style={styles.input}
-                    type={showPassword ? "text" : "password"}
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    autoComplete="new-password"
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                disabled={loading}
-                style={styles.pwToggle}
-              >
-                {showPassword ? "Hide password" : "See password"}
-              </button>
-
-              <button style={styles.button} disabled={loading}>
-                {loading ? "Creating account…" : "Register & Pay"}
-              </button>
-
-              <button
-                type="button"
-                style={styles.buttonSecondary}
-                onClick={handleGoogleSubmit}
-                disabled={loading}
-              >
-                {loading ? "Please wait…" : "Register with Google & Pay"}
-              </button>
-
-              <p style={styles.small}>
-                Already registered? <Link href="/login">Log in</Link>
+      <main style={styles.main}>
+        <div style={styles.card}>
+          {step === "register" ? (
+            <>
+              <h1 style={styles.h1}>Create your account</h1>
+              <p style={styles.p}>
+                Step 1: Register. Step 2: Subscribe via PayPal. After payment,
+                you can log in anytime.
               </p>
+
+              {error ? <div style={styles.error}>{error}</div> : null}
+
+              <form onSubmit={handleEmailSubmit} style={styles.form}>
+                <div style={styles.row}>
+                  <div style={styles.field}>
+                    <label style={styles.label}>First name</label>
+                    <input
+                      style={styles.input}
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      autoComplete="given-name"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label}>Last name</label>
+                    <input
+                      style={styles.input}
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      autoComplete="family-name"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div style={styles.field}>
+                  <label style={styles.label}>Email</label>
+                  <input
+                    style={styles.input}
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div style={styles.row}>
+                  <div style={styles.field}>
+                    <label style={styles.label}>Password</label>
+                    <input
+                      style={styles.input}
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="new-password"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label}>Confirm</label>
+                    <input
+                      style={styles.input}
+                      type={showPassword ? "text" : "password"}
+                      value={confirm}
+                      onChange={(e) => setConfirm(e.target.value)}
+                      autoComplete="new-password"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  disabled={loading}
+                  style={styles.pwToggle}
+                >
+                  {showPassword ? "Hide password" : "See password"}
+                </button>
+
+                <button style={styles.button} disabled={loading}>
+                  {loading ? "Creating account..." : "Register & Continue to Payment"}
+                </button>
+
+                <button
+                  type="button"
+                  style={styles.buttonSecondary}
+                  onClick={handleGoogleSubmit}
+                  disabled={loading}
+                >
+                  {loading ? "Please wait..." : "Register with Google"}
+                </button>
+
+                <p style={styles.small}>
+                  Already registered? <Link href="/login">Log in</Link>
+                </p>
+              </form>
+            </>
+          ) : (
+            <>
+              <h1 style={styles.h1}>Subscribe to CalmTinnitus</h1>
+              <p style={styles.p}>
+                Account created! Complete your subscription below via PayPal to
+                get full access.
+              </p>
+
+              <div style={styles.priceBox}>
+                <span style={styles.priceAmount}>$19.80 / month</span>
+                <span style={styles.priceDetail}>Cancel anytime</span>
+              </div>
+
+              {error ? <div style={styles.error}>{error}</div> : null}
+
+              <div
+                ref={paypalContainerRef}
+                id="paypal-button-container"
+                style={{ minHeight: 55, marginTop: 16 }}
+              />
 
               <p style={styles.smallMuted}>
-                If Stripe shows “The link is no longer active”, the payment link
-                must be re-enabled in your Stripe dashboard.
+                Payments are processed securely by PayPal. You can cancel your
+                subscription anytime from your PayPal account settings.
               </p>
-            </form>
-          </div>
-        </main>
+            </>
+          )}
+        </div>
+      </main>
 
-        <footer style={styles.footer}>
-          © {year} Leffler International Investments Pty Ltd
-        </footer>
-      </div>
-    </>
+      <footer style={styles.footer}>
+        &copy; {year} Leffler International Investments Pty Ltd
+      </footer>
+    </div>
   );
 }
 
@@ -325,9 +416,11 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "10px 0 20px",
+    flexWrap: "wrap" as const,
+    gap: 10,
   },
   brand: { display: "flex", alignItems: "center", gap: 10 },
-  nav: { display: "flex", alignItems: "center", gap: 14 },
+  nav: { display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" as const },
   link: { textDecoration: "none", color: "#0f172a", fontWeight: 600 },
   activePill: {
     background: "#0f172a",
@@ -394,6 +487,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: "white",
     fontWeight: 800,
     cursor: "pointer",
+    fontSize: 14,
   },
   buttonSecondary: {
     padding: "12px 14px",
@@ -403,9 +497,29 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#0f172a",
     fontWeight: 800,
     cursor: "pointer",
+    fontSize: 14,
+  },
+  priceBox: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 4,
+    padding: "16px",
+    background: "#f0f9ff",
+    borderRadius: 12,
+    border: "1px solid #bae6fd",
+  },
+  priceAmount: {
+    fontWeight: 800,
+    fontSize: 22,
+    color: "#0369a1",
+  },
+  priceDetail: {
+    fontSize: 13,
+    color: "#64748b",
   },
   small: { marginTop: 6, color: "#475569", fontSize: 13 },
-  smallMuted: { marginTop: 2, color: "#64748b", fontSize: 12 },
+  smallMuted: { marginTop: 12, color: "#64748b", fontSize: 12, textAlign: "center" as const },
   footer: {
     maxWidth: 980,
     margin: "40px auto 0",
