@@ -687,3 +687,160 @@ hr {
   resize: vertical;
   margin-bottom: 0.8rem;
 }
+
+/* ===========================================
+   MOBILE RESPONSIVENESS ENHANCEMENTS
+   =========================================== */
+
+/* Safe area insets for notched devices */
+html {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Prevent text inflation on mobile */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure tappable targets are at least 44px (WCAG) */
+button, a, input, select, textarea, [role="button"] {
+  min-height: 44px;
+}
+
+/* Better touch feedback */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: rgba(8, 122, 147, 0.15);
+}
+
+/* Prevent zoom on input focus (iOS) */
+input, select, textarea {
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  /* Therapy page mobile */
+  .therapy-page {
+    padding: 1.25rem 0.75rem 2rem;
+  }
+
+  .therapy-header {
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .logo-text-main {
+    font-size: 1.3rem;
+  }
+
+  .session-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .timer-value {
+    font-size: 1.8rem;
+  }
+
+  .pitch-buttons {
+    flex-wrap: wrap;
+  }
+
+  /* Card padding on mobile */
+  .card {
+    padding: 1.1rem 1rem;
+  }
+
+  /* Main shell mobile */
+  .main-shell {
+    padding: 1.25rem 0.75rem 2rem;
+  }
+
+  /* Auth card mobile */
+  .auth-card {
+    padding: 1.5rem 1.2rem;
+  }
+
+  /* Info pages mobile */
+  .info-page {
+    padding: 1.5rem 0.75rem;
+  }
+
+  .info-card {
+    padding: 1.5rem 1.2rem;
+  }
+
+  /* History items stack on mobile */
+  .history-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  /* Pill row scrollable on very small screens */
+  .pill-row {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.25rem;
+  }
+
+  .pill {
+    flex-shrink: 0;
+  }
+
+  /* Tab container scrollable */
+  .tab-container {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.25rem;
+  }
+
+  .tab-button {
+    flex-shrink: 0;
+  }
+
+  /* Button row wraps nicely */
+  .button-row {
+    justify-content: center;
+  }
+
+  .session-controls {
+    gap: 0.6rem;
+  }
+
+  /* Header right stacks */
+  .header-right {
+    align-items: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-title {
+    font-size: 1.3rem;
+  }
+
+  .card h2 {
+    font-size: 1.1rem;
+  }
+
+  /* Full width buttons on small screens */
+  .primary-btn, .secondary-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* PWA standalone mode adjustments */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+  }
+}

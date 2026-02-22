@@ -5,7 +5,6 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AuthProvider } from "./AuthProvider";
 import JsonLd from "@/components/JsonLd";
-import ReviewWidgets from "@/components/ReviewWidgets";
 
 export const metadata: Metadata = {
   // ✅ FIX: canonical BASE must be www
@@ -106,12 +105,23 @@ export default function RootLayout({
           name="apple-mobile-web-app-status-bar-style"
           content="black-translucent"
         />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
 
       <body>
         <JsonLd />
         <AuthProvider>{children}</AuthProvider>
-        <ReviewWidgets appName="CalmTinnitus" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function() {});
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

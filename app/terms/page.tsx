@@ -26,7 +26,7 @@ export default function TermsPage() {
           <h2>Subscription & Billing</h2>
           <p>
             CalmTinnitus is billed on a recurring monthly basis unless cancelled.
-            Payments are processed securely via Stripe. Pricing, taxes, and
+            Payments are processed securely via PayPal. Pricing, taxes, and
             billing frequency are clearly displayed at checkout.
           </p>
         </section>
@@ -54,16 +54,16 @@ export default function TermsPage() {
             Termination will be effective on the date your account is closed.
           </p>
           <p>
-            Payment information management and cancellation instructions are
-            available via Stripe’s secure platform:
+            You can manage or cancel your subscription at any time through your
+            PayPal account:
           </p>
           <p>
             <a
-              href="https://support.link.com/how-to-delete-your-saved-payment-information"
+              href="https://www.paypal.com/myaccount/autopay/"
               target="_blank"
               rel="noopener noreferrer"
             >
-              https://support.link.com/how-to-delete-your-saved-payment-information
+              Manage PayPal Subscriptions
             </a>
           </p>
         </section>
