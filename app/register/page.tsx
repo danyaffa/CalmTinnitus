@@ -211,7 +211,7 @@ export default function RegisterPage() {
           onApprove: async (data: any) => {
             try {
               await activateSubscription(registeredUser, data.subscriptionID);
-              router.push("/therapy");
+              window.location.href = "/therapy";
             } catch (err) {
               console.error("Failed to activate subscription:", err);
               setError(
@@ -278,7 +278,7 @@ export default function RegisterPage() {
 
       setPromoSuccess(true);
       setTimeout(() => {
-        router.push("/therapy");
+        window.location.href = "/therapy";
       }, 1500);
     } catch (err) {
       console.error("Promo activation failed:", err);
@@ -373,7 +373,7 @@ export default function RegisterPage() {
         const ok = await activatePromoForUser(userToUse, regPromoCode);
         if (ok) {
           setPromoSuccess(true);
-          setTimeout(() => router.push("/therapy"), 1200);
+          setTimeout(() => { window.location.href = "/therapy"; }, 1200);
           return;
         } else {
           // Invalid promo code — still proceed to payment step
@@ -432,7 +432,7 @@ export default function RegisterPage() {
           const ok = await activatePromoForUser(user as User, regPromoCode);
           if (ok) {
             setPromoSuccess(true);
-            setTimeout(() => router.push("/therapy"), 1200);
+            setTimeout(() => { window.location.href = "/therapy"; }, 1200);
             return;
           } else {
             setError("Invalid promo code. You can try again on the payment step or subscribe via PayPal.");
