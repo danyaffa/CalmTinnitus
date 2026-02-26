@@ -25,9 +25,6 @@ export default function CompanyPolicyPage() {
           </li>
         </ul>
         <p>
-          For formal documentation or questions, contact{" "}
-          <a href="mailto:support@neuroquiet.app">support@neuroquiet.app</a>.
-        </p>
         <p>
           <Link href="/">← Back to CalmTinnitus</Link>
         </p>
