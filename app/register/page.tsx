@@ -1,3 +1,6 @@
+I understand—you want the complete, updated code ready to copy and paste. I have integrated all the logic improvements, including the `friendlyFirebaseError` mapper and the existing account check, directly into your `RegisterPage`.
+
+```tsx
 // FILE: app/register/page.tsx
 "use client";
 
@@ -9,6 +12,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   updateProfile,
+  fetchSignInMethodsForEmail,
   type User,
 } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
@@ -20,13 +24,38 @@ import { Capacitor } from "@capacitor/core";
 const PAYPAL_PLAN_ID = process.env.NEXT_PUBLIC_PAYPAL_PLAN_ID || "";
 const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
-// Promo code from env var (same pattern as VITE_PROMO_CODE)
+// Promo code from env var
 const PROMO_CODE = process.env.NEXT_PUBLIC_PROMO_CODE || "";
 
 declare global {
   interface Window {
     paypal?: any;
   }
+}
+
+/**
+ * Maps technical Firebase error codes to user-friendly messages.
+ */
+function friendlyFirebaseError(err: any) {
+  const code = String(err?.code || "");
+  const msg = String(err?.message || err || "");
+
+  if (code === "auth/email-already-in-use" || msg.toLowerCase().includes("email-already-in-use")) {
+    return "This email is already registered. Please click Log in (top right). If you forgot your password, use Forgot Password on the login page.";
+  }
+  if (code === "auth/operation-not-allowed") {
+    return "Google sign-in is not enabled. Please contact support.";
+  }
+  if (code === "auth/unauthorized-domain") {
+    return "Google sign-in is blocked for this domain. Please contact support.";
+  }
+  if (code === "auth/popup-closed-by-user") {
+    return "Sign-in window was closed before completion. Please try again.";
+  }
+  if (code === "auth/network-request-failed") {
+    return "Network issue. Please check your connection and try again.";
+  }
+  return msg || "Something went wrong. Please try again.";
 }
 
 export default function RegisterPage() {
@@ -190,7 +219,7 @@ export default function RegisterPage() {
     }
   }, [step, registeredUser, router]);
 
-  // Handle promo code — simple env var comparison, same pattern as VITE_PROMO_CODE
+  // Handle promo code 
   const handlePromoSubmit = async () => {
     if (!registeredUser || !promoCode.trim()) return;
 
@@ -208,7 +237,6 @@ export default function RegisterPage() {
         return;
       }
 
-      // Valid — activate access directly (same as PayPal flow)
       if (firebaseReady && db) {
         const ref = doc(db, "users", registeredUser.uid);
         await setDoc(
@@ -258,6 +286,16 @@ export default function RegisterPage() {
     try {
       setLoading(true);
 
+      // ✅ Check if user already exists before attempting registration
+      const methods = await fetchSignInMethodsForEmail(auth, em);
+      if (methods && methods.length > 0) {
+        setError(friendlyFirebaseError({ code: "auth/email-already-in-use" }));
+        setLoading(false);
+        // Redirect to login with email pre-filled
+        router.push(`/login?email=${encodeURIComponent(em)}`);
+        return;
+      }
+
       const cred = await createUserWithEmailAndPassword(auth, em, password);
       await updateProfile(cred.user, { displayName: `${fn} ${ln}` });
       await ensureUserDoc(cred.user, {
@@ -272,8 +310,7 @@ export default function RegisterPage() {
       setRegisteredUser(cred.user);
       setStep("pay");
     } catch (err: any) {
-      const msg = err?.message ? String(err.message) : String(err);
-      setError(msg);
+      setError(friendlyFirebaseError(err));
     } finally {
       setLoading(false);
     }
@@ -320,8 +357,7 @@ export default function RegisterPage() {
         setStep("pay");
       }
     } catch (err: any) {
-      const msg = err?.message ? String(err.message) : String(err);
-      setError(msg || "Google sign-up failed");
+      setError(friendlyFirebaseError(err));
     } finally {
       setLoading(false);
     }
@@ -752,7 +788,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     textAlign: "center",
   },
-  // Promo code styles
   promoSection: {
     marginTop: 20,
     borderTop: "1px solid rgba(15, 23, 42, 0.08)",
@@ -832,7 +867,6 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.5,
     textAlign: "center" as const,
   },
-  // Intake styles
   intakeSection: {
     borderTop: "1px solid rgba(15, 23, 42, 0.08)",
     paddingTop: 14,
