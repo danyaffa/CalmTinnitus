@@ -483,6 +483,7 @@ class ErrorBoundary extends React.Component<
 function TherapyInner() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     if (!auth) return;
@@ -495,6 +496,7 @@ function TherapyInner() {
           console.error("Anonymous sign-in failed", err);
         });
       }
+      setAuthReady(true);
     });
 
     return () => unsub();
@@ -771,7 +773,8 @@ function TherapyInner() {
   };
 
   // Access gate — redirect non-subscribers (after all hooks)
-  if (user && !user.isAnonymous && !accessLoading && !hasAccess) {
+  // Wait for both auth and access check to fully resolve before deciding
+  if (authReady && user && !user.isAnonymous && !accessLoading && !hasAccess) {
     router.push("/register");
     return (
       <div style={{ padding: "3rem", textAlign: "center", color: "#64748b" }}>
@@ -780,7 +783,7 @@ function TherapyInner() {
     );
   }
 
-  if (user && !user.isAnonymous && accessLoading) {
+  if (!authReady || (user && !user.isAnonymous && accessLoading)) {
     return (
       <div style={{ padding: "3rem", textAlign: "center", color: "#64748b" }}>
         Checking your access...
