@@ -1,186 +1,250 @@
-// FILE: /app/login/page.tsx
+// FILE: app/login/page.tsx
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import React, { useMemo, useState } from "react";
 import {
+  GoogleAuthProvider,
   signInWithEmailAndPassword,
   signInWithPopup,
-  type User,
+  sendPasswordResetEmail,
+  fetchSignInMethodsForEmail,
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, googleProvider, db, firebaseReady } from "../../lib/firebase";
-import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
-import { Capacitor } from "@capacitor/core";
+import { auth } from "../../lib/firebase";
 
-const LoginPage: React.FC = () => {
-  const router = useRouter();
+function friendlyAuthError(codeOrMsg: string) {
+  const s = (codeOrMsg || "").toLowerCase();
+
+  if (s.includes("auth/invalid-credential") || s.includes("wrong-password")) {
+    return "Incorrect email or password. Try again, or use “Forgot password”.";
+  }
+  if (s.includes("auth/user-not-found")) {
+    return "No account found for this email. Please register.";
+  }
+  if (s.includes("auth/too-many-requests")) {
+    return "Too many attempts. Please wait a few minutes and try again.";
+  }
+  if (s.includes("auth/popup-closed-by-user")) {
+    return "Google sign-in popup was closed. Please try again.";
+  }
+  if (s.includes("auth/operation-not-allowed")) {
+    return "Google sign-in is not enabled in Firebase Auth yet. Enable Google provider.";
+  }
+  if (s.includes("auth/unauthorized-domain")) {
+    return "This domain is not authorized for Google sign-in. Add your domain in Firebase Auth settings.";
+  }
+  return "Login failed. Please try again.";
+}
+
+export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  // Check user's subscription status and redirect accordingly
-  const handleRedirection = async (user: User) => {
-    if (!firebaseReady || !db) {
-      router.push("/");
-      return;
-    }
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string>("");
 
-    try {
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        if (data.subscriptionStatus === "active") {
-          router.push("/therapy");
-          return;
-        }
-      }
-      // No active subscription — send to register to complete payment/promo
-      router.push("/register");
-    } catch (err) {
-      console.error("Failed to check subscription:", err);
-      router.push("/");
-    }
-  };
+  const canSubmit = useMemo(() => {
+    return email.trim().length > 3 && password.length >= 6;
+  }, [email, password]);
 
-  const handleEmailLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+  async function onLoginEmail(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    if (!auth) {
-      setError(
-        "Authentication is not ready yet. Please refresh and try again."
-      );
-      setLoading(false);
-      return;
-    }
-
+    setMsg("");
+    setBusy(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      await handleRedirection(userCredential.user);
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      window.location.href = "/therapy";
     } catch (err: any) {
-      setError(err.message ?? "Login failed");
+      setMsg(`Firebase: ${friendlyAuthError(err?.code || err?.message)}`);
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
-  };
+  }
 
-  const handleGoogleLogin = async () => {
-    setError(null);
-    setLoading(true);
+  async function onLoginGoogle() {
+    setMsg("");
+    setBusy(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await signInWithPopup(auth, provider);
+      window.location.href = "/therapy";
+    } catch (err: any) {
+      setMsg(`Firebase: ${friendlyAuthError(err?.code || err?.message)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
 
-    if (!auth) {
-      setError(
-        "Authentication is not ready yet. Please refresh and try again."
-      );
-      setLoading(false);
+  async function onForgotPassword() {
+    setMsg("");
+    const em = email.trim();
+    if (!em) {
+      setMsg("Enter your email above first, then click “Forgot password”.");
       return;
     }
 
+    setBusy(true);
     try {
-      let user: User;
-      if (Capacitor.isNativePlatform()) {
-        const result = await FirebaseAuthentication.signInWithGoogle();
-        user = result.user as unknown as User;
-      } else {
-        if (!googleProvider) {
-          setError("Google sign-in is not available.");
-          setLoading(false);
-          return;
-        }
-        const userCredential = await signInWithPopup(auth, googleProvider);
-        user = userCredential.user;
+      // Helpful check: if the email is not registered, say it clearly
+      const methods = await fetchSignInMethodsForEmail(auth, em);
+      if (!methods || methods.length === 0) {
+        setMsg("No account found for this email. Please register.");
+        return;
       }
 
-      await handleRedirection(user);
+      await sendPasswordResetEmail(auth, em);
+      setMsg("Password reset email sent. Check your inbox (and spam).");
     } catch (err: any) {
-      setError(err.message ?? "Google sign-in failed");
+      setMsg(`Firebase: ${friendlyAuthError(err?.code || err?.message)}`);
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
-  };
+  }
 
   return (
     <main className="auth-page">
-      <div className="auth-card">
-        <h1>Log in to CalmTinnitus</h1>
-        <p className="auth-sub">
-          Access your saved tinnitus sessions and progress from any device.
+      <div className="card">
+        <h1>Log in</h1>
+        <p className="muted">
+          Log in with your email/password or Google. If you forgot your password,
+          use the reset button.
         </p>
 
-        <form className="auth-form" onSubmit={handleEmailLogin}>
-          <label>
+        {msg ? <div className="alert">{msg}</div> : null}
+
+        <form onSubmit={onLoginEmail} className="form">
+          <label className="label">
             Email
             <input
-              type="email"
-              autoComplete="email"
+              className="input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
+              placeholder="you@example.com"
+              type="email"
+              autoComplete="email"
             />
           </label>
 
-          <label>
+          <label className="label">
             Password
-            <div className="pw-wrapper">
-              <input
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                className="pw-toggle"
-                onClick={() => setShowPassword((prev) => !prev)}
-              >
-                {showPassword ? "Hide" : "See"}
-              </button>
-            </div>
+            <input
+              className="input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Your password"
+              type="password"
+              autoComplete="current-password"
+            />
           </label>
 
-          {error && <p className="auth-error">{error}</p>}
+          <button className="btn" disabled={!canSubmit || busy} type="submit">
+            {busy ? "Working..." : "Log in"}
+          </button>
 
           <button
-            type="submit"
-            className="btn btn-primary auth-btn"
-            disabled={loading}
+            className="btn secondary"
+            type="button"
+            onClick={onForgotPassword}
+            disabled={busy}
           >
-            {loading ? "Logging in..." : "Log in"}
+            Forgot password
           </button>
+
+          <button
+            className="btn google"
+            type="button"
+            onClick={onLoginGoogle}
+            disabled={busy}
+          >
+            Continue with Google
+          </button>
+
+          <p className="small">
+            Don’t have an account? <Link href="/register">Register</Link>
+          </p>
         </form>
-
-        <button
-          type="button"
-          className="btn btn-secondary auth-btn"
-          onClick={handleGoogleLogin}
-          disabled={loading}
-        >
-          Continue with Google
-        </button>
-
-        <p className="auth-footer">
-          New here?{" "}
-          <a href="/register" className="btn-link">
-            Create an account
-          </a>
-        </p>
-        <p className="auth-footer">
-          <a href="/" className="btn-link">
-            Back to CalmTinnitus
-          </a>
-        </p>
       </div>
+
+      <style jsx>{`
+        .auth-page {
+          max-width: 980px;
+          margin: 0 auto;
+          padding: 1.25rem 1rem 2.5rem;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+            sans-serif;
+        }
+        .card {
+          max-width: 520px;
+          margin: 0 auto;
+          background: #fff;
+          border: 1px solid #e5e7eb;
+          border-radius: 1.25rem;
+          padding: 1.25rem;
+          box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
+        }
+        h1 {
+          margin: 0 0 0.5rem;
+        }
+        .muted {
+          margin: 0 0 1rem;
+          color: #475569;
+          line-height: 1.5;
+        }
+        .alert {
+          background: #fff7ed;
+          border: 1px solid #fed7aa;
+          color: #9a3412;
+          padding: 0.75rem;
+          border-radius: 0.9rem;
+          margin-bottom: 1rem;
+          font-weight: 600;
+        }
+        .form {
+          display: grid;
+          gap: 0.85rem;
+        }
+        .label {
+          display: grid;
+          gap: 0.35rem;
+          color: #0f172a;
+          font-weight: 600;
+        }
+        .input {
+          padding: 0.65rem 0.75rem;
+          border-radius: 0.85rem;
+          border: 1px solid #cbd5e1;
+          outline: none;
+          font-size: 1rem;
+        }
+        .btn {
+          padding: 0.65rem 0.9rem;
+          border-radius: 999px;
+          border: 1px solid #0f172a;
+          background: #0f172a;
+          color: #fff;
+          font-weight: 800;
+          cursor: pointer;
+        }
+        .btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        .btn.secondary {
+          background: #fff;
+          color: #0f172a;
+        }
+        .btn.google {
+          background: #fff;
+          color: #0f172a;
+          border-color: #cbd5e1;
+        }
+        .small {
+          margin: 0.5rem 0 0;
+          color: #475569;
+          font-size: 0.92rem;
+        }
+      `}</style>
     </main>
   );
-};
-
-export default LoginPage;
+}
