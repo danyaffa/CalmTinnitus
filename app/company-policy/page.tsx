@@ -8,11 +8,14 @@ export default function CompanyPolicyPage() {
     <main className="info-page">
       <div className="info-card">
         <h1>Company Policy</h1>
+
         <p>
-          CalmTinnitus is operated by <strong>Leffler International Investments
-          Pty Ltd</strong>
+          CalmTinnitus is operated by{" "}
+          <strong>Leffler International Investments Pty Ltd</strong>.
         </p>
+
         <p>Key points:</p>
+
         <ul>
           <li>The service is provided “as is” without performance guarantees.</li>
           <li>
@@ -24,7 +27,7 @@ export default function CompanyPolicyPage() {
             and sync sessions.
           </li>
         </ul>
-        <p>
+
         <p>
           <Link href="/">← Back to CalmTinnitus</Link>
         </p>
