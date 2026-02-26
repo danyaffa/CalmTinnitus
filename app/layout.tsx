@@ -10,6 +10,14 @@ export const metadata: Metadata = {
   // ✅ FIX: canonical BASE must be www
   metadataBase: new URL("https://www.calmtinnitus.com"),
 
+  icons: {
+    icon: [
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png" }],
+  },
+
   title: {
     default: "CalmTinnitus | Tinnitus Relief & Neuromodulation App",
     template: "%s | CalmTinnitus",
