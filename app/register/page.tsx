@@ -20,6 +20,9 @@ import { Capacitor } from "@capacitor/core";
 const PAYPAL_PLAN_ID = process.env.NEXT_PUBLIC_PAYPAL_PLAN_ID || "";
 const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
+// Promo code from env var (same pattern as VITE_PROMO_CODE)
+const PROMO_CODE = process.env.NEXT_PUBLIC_PROMO_CODE || "";
+
 declare global {
   interface Window {
     paypal?: any;
@@ -187,7 +190,7 @@ export default function RegisterPage() {
     }
   }, [step, registeredUser, router]);
 
-  // Handle promo code submission
+  // Handle promo code — simple env var comparison, same pattern as VITE_PROMO_CODE
   const handlePromoSubmit = async () => {
     if (!registeredUser || !promoCode.trim()) return;
 
@@ -195,20 +198,29 @@ export default function RegisterPage() {
     setPromoLoading(true);
 
     try {
-      const res = await fetch("/api/promo/validate/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: promoCode.trim(),
-          uid: registeredUser.uid,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setPromoError(data.error || "Invalid promo code.");
+      if (!PROMO_CODE) {
+        setPromoError("Promo codes are not enabled right now.");
         return;
+      }
+
+      if (promoCode.trim().toUpperCase() !== PROMO_CODE.trim().toUpperCase()) {
+        setPromoError("Invalid promo code.");
+        return;
+      }
+
+      // Valid — activate access directly (same as PayPal flow)
+      if (firebaseReady && db) {
+        const ref = doc(db, "users", registeredUser.uid);
+        await setDoc(
+          ref,
+          {
+            subscriptionStatus: "active",
+            accessType: "promo",
+            promoCodeUsed: promoCode.trim().toUpperCase(),
+            promoActivatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
       }
 
       setPromoSuccess(true);
@@ -216,7 +228,8 @@ export default function RegisterPage() {
         router.push("/therapy");
       }, 1500);
     } catch (err) {
-      setPromoError("Network error. Please try again.");
+      console.error("Promo activation failed:", err);
+      setPromoError("Something went wrong. Please try again.");
     } finally {
       setPromoLoading(false);
     }
