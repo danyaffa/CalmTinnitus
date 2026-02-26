@@ -50,40 +50,30 @@ export default function SettingsPage() {
     setMsg("");
 
     try {
-      // IMPORTANT:
-      // If Firebase requires a recent login, deleteUser() will fail.
-      // We must NOT delete Firestore first, otherwise the user can get stuck
-      // (Auth user still exists but profile doc is gone).
-
       // 1) Clear local device data used by the app
       try {
         if (typeof window !== "undefined") {
-          // Remove known CalmTinnitus local keys:
           window.localStorage.removeItem("calmtinnitus_low_stim");
-          // If you store any session prefs locally later, you can clear them too:
-          // window.localStorage.removeItem("calmtinnitus_sessions");
-          // As a strict privacy option:
-          // window.localStorage.clear();
         }
       } catch {
         // ignore
       }
 
-      // 2) Delete the authentication account
-      // Note: Firebase may require "recent login". If so, user must re-login then try again.
-      await deleteUser(user);
-
-      // 3) Delete Firestore user doc IF it exists (best-effort)
+      // 2) Delete Firestore user doc FIRST (while user is still authenticated)
+      const uid = user.uid;
       try {
-        const uid = user.uid;
         const userRef = doc(db, "users", uid);
         const snap = await getDoc(userRef);
         if (snap.exists()) {
           await deleteDoc(userRef);
         }
       } catch {
-        // ignore
+        // ignore — Firestore doc may not exist
       }
+
+      // 3) Delete the Firebase Auth account
+      // Note: Firebase may require "recent login". If so, user must re-login then try again.
+      await deleteUser(user);
 
       // 4) Redirect to home
       window.location.href = "/";

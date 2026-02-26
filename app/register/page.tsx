@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 
 import {
   createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signInWithPopup,
   updateProfile,
   fetchSignInMethodsForEmail,
@@ -83,12 +84,15 @@ export default function RegisterPage() {
   const paypalContainerRef = useRef<HTMLDivElement>(null);
   const paypalScriptLoaded = useRef(false);
 
-  // Promo code state
+  // Promo code state (step 2 - payment page)
   const [showPromo, setShowPromo] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState("");
   const [promoSuccess, setPromoSuccess] = useState(false);
+
+  // Promo code state (step 1 - registration form)
+  const [regPromoCode, setRegPromoCode] = useState("");
 
   // Intake capture state
   const [familyHistory, setFamilyHistory] = useState(false);
@@ -142,6 +146,26 @@ export default function RegisterPage() {
       },
       { merge: true }
     );
+  };
+
+  const activatePromoForUser = async (user: User, code: string): Promise<boolean> => {
+    if (!code.trim()) return false;
+    if (!PROMO_CODE) return false;
+    if (code.trim().toUpperCase() !== PROMO_CODE.trim().toUpperCase()) return false;
+    if (firebaseReady && db) {
+      const ref = doc(db, "users", user.uid);
+      await setDoc(
+        ref,
+        {
+          subscriptionStatus: "active",
+          accessType: "promo",
+          promoCodeUsed: code.trim().toUpperCase(),
+          promoActivatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
+    return true;
   };
 
   const activateSubscription = async (user: User, subscriptionId: string) => {
@@ -287,36 +311,77 @@ export default function RegisterPage() {
     try {
       setLoading(true);
 
-      // ✅ Check if user already exists before attempting registration
-      const methods = await fetchSignInMethodsForEmail(auth, em);
-      if (methods && methods.length > 0) {
-        if (!methods.includes("password") && methods.includes("google.com")) {
-          setError(
-            "This email is already registered with Google sign-in. Please click “Register with Google” below (or Log in)."
-          );
-          setLoading(false);
-          return;
-        }
+      // Check if user already exists before attempting registration
+      let userToUse: User | null = null;
 
-        setError(friendlyFirebaseError({ code: "auth/email-already-in-use" }));
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, em, password);
+        await updateProfile(cred.user, { displayName: `${fn} ${ln}` });
+        userToUse = cred.user;
+      } catch (createErr: any) {
+        const code = String(createErr?.code || "");
+
+        // If email already exists, try signing in with provided password
+        if (code === "auth/email-already-in-use") {
+          try {
+            const signInCred = await signInWithEmailAndPassword(auth, em, password);
+            userToUse = signInCred.user;
+          } catch (signInErr: any) {
+            const signInCode = String(signInErr?.code || "");
+            if (signInCode.includes("auth/wrong-password") || signInCode.includes("auth/invalid-credential")) {
+              // Check if this is a Google-only account
+              try {
+                const methods = await fetchSignInMethodsForEmail(auth, em);
+                if (methods?.includes("google.com") && !methods?.includes("password")) {
+                  setError(
+                    "This email is already registered with Google sign-in. Please click \u201cRegister with Google\u201d below (or Log in)."
+                  );
+                  setLoading(false);
+                  return;
+                }
+              } catch { /* ignore */ }
+              setError(
+                "This email is already registered but the password doesn\u2019t match. Please go to Login and use \u201cForgot password\u201d to reset it."
+              );
+              setLoading(false);
+              return;
+            }
+            throw signInErr;
+          }
+        } else {
+          throw createErr;
+        }
+      }
+
+      if (!userToUse) {
+        setError("Something went wrong. Please try again.");
         setLoading(false);
-        // Redirect to login with email pre-filled
-        router.push(`/login?email=${encodeURIComponent(em)}`);
         return;
       }
 
-      const cred = await createUserWithEmailAndPassword(auth, em, password);
-      await updateProfile(cred.user, { displayName: `${fn} ${ln}` });
-      await ensureUserDoc(cred.user, {
+      await ensureUserDoc(userToUse, {
         email: em,
         firstName: fn,
         lastName: ln,
         displayName: `${fn} ${ln}`,
         provider: "email",
       });
-      await saveIntakeData(cred.user);
+      await saveIntakeData(userToUse);
 
-      setRegisteredUser(cred.user);
+      // If promo code entered at registration, activate immediately and skip payment
+      if (regPromoCode.trim()) {
+        const ok = await activatePromoForUser(userToUse, regPromoCode);
+        if (ok) {
+          setPromoSuccess(true);
+          setTimeout(() => router.push("/therapy"), 1200);
+          return;
+        } else {
+          // Invalid promo code — still proceed to payment step
+          setError("Invalid promo code. You can try again on the payment step or subscribe via PayPal.");
+        }
+      }
+
+      setRegisteredUser(userToUse);
       setStep("pay");
     } catch (err: any) {
       setError(friendlyFirebaseError(err));
@@ -361,6 +426,18 @@ export default function RegisterPage() {
           provider: "google",
         });
         await saveIntakeData(user as User);
+
+        // If promo code entered at registration, activate immediately and skip payment
+        if (regPromoCode.trim()) {
+          const ok = await activatePromoForUser(user as User, regPromoCode);
+          if (ok) {
+            setPromoSuccess(true);
+            setTimeout(() => router.push("/therapy"), 1200);
+            return;
+          } else {
+            setError("Invalid promo code. You can try again on the payment step or subscribe via PayPal.");
+          }
+        }
 
         setRegisteredUser(user as User);
         setStep("pay");
@@ -408,6 +485,11 @@ export default function RegisterPage() {
               </p>
 
               {error ? <div style={styles.error}>{error}</div> : null}
+              {promoSuccess ? (
+                <div style={styles.promoSuccessBox}>
+                  Promo code activated! Redirecting to therapy...
+                </div>
+              ) : null}
 
               <form onSubmit={handleEmailSubmit} style={styles.form}>
                 <div style={styles.row}>
@@ -545,9 +627,34 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
+                {/* Promo code field */}
+                <div style={styles.field}>
+                  <label style={styles.label}>
+                    Promo Code{" "}
+                    <span style={{ fontWeight: 400, color: "#94a3b8", fontSize: 12 }}>
+                      (optional — skip payment with a valid code)
+                    </span>
+                  </label>
+                  <input
+                    style={{
+                      ...styles.input,
+                      letterSpacing: 1,
+                      textTransform: "uppercase" as const,
+                    }}
+                    value={regPromoCode}
+                    onChange={(e) => setRegPromoCode(e.target.value.toUpperCase())}
+                    placeholder="Enter promo code for free access"
+                    disabled={loading}
+                    maxLength={30}
+                    autoComplete="off"
+                  />
+                </div>
+
                 <button style={styles.button} disabled={loading}>
                   {loading
                     ? "Creating account..."
+                    : regPromoCode.trim()
+                    ? "Register & Activate Promo"
                     : "Register & Continue to Payment"}
                 </button>
 
