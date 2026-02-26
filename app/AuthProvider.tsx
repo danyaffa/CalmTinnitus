@@ -48,12 +48,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // when env vars were not present at build time), do NOT crash the app.
   const firebaseAvailable = !!auth && !!db;
 
-  // 🔥 Optional crash visibility (kept, harmless)
+  // Log unhandled promise rejections (non-blocking)
   useEffect(() => {
     const handler = (event: PromiseRejectionEvent) => {
-      alert(
-        "ANDROID CRASH (Promise Rejection):\n\n" +
-          (event.reason?.message || JSON.stringify(event.reason))
+      console.error(
+        "Unhandled Promise Rejection:",
+        event.reason?.message || event.reason
       );
       event.preventDefault();
     };
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data.sort((a, b) => toMillis(b.date) - toMillis(a.date));
       setCloudSessions(data);
     } catch (err: any) {
-      alert("ANDROID FIRESTORE ERROR:\n\n" + (err?.message || JSON.stringify(err)));
+      console.error("Firestore session load error:", err?.message || err);
       setCloudSessions([]);
     }
   };
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await loadSessions(u.uid);
         }
       } catch (err: any) {
-        alert("ANDROID AUTH ERROR:\n\n" + (err?.message || JSON.stringify(err)));
+        console.error("Auth state error:", err?.message || err);
         setUser(null);
         setUserId(null);
       } finally {
