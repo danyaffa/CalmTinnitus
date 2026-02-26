@@ -10,47 +10,42 @@ export default function PrivacyPage() {
         <h1>Privacy Policy</h1>
 
         <p>
-          This Privacy Policy explains how <strong>CalmTinnitus</strong> handles
-          information when you use the app.
+          <strong>CalmTinnitus</strong> is designed to work without collecting or
+          storing personal health data. Our goal is to keep the app simple and
+          privacy-first.
         </p>
 
-        <h2>What we collect</h2>
+        <h2>What we store</h2>
         <ul>
           <li>
-            <strong>Account details</strong> (such as email) if you register or
-            log in.
+            <strong>We do not store your therapy / session content.</strong>
           </li>
           <li>
-            <strong>Information you enter</strong> (such as preferences,
-            sessions, or wellbeing tracking you choose to record).
+            If you create an account, the only information involved is your{" "}
+            <strong>login identity</strong> (such as email) handled by the
+            authentication provider.
           </li>
-          <li>
-            <strong>Technical data</strong> required to operate the service
-            (basic device/browser info, error logs).
-          </li>
-        </ul>
-
-        <h2>How we use information</h2>
-        <ul>
-          <li>To provide login and app access.</li>
-          <li>To save your preferences and session history (if enabled).</li>
-          <li>To maintain security and improve reliability.</li>
         </ul>
 
         <h2>What we do not do</h2>
         <ul>
-          <li>We do not sell your personal information.</li>
-          <li>
-            We do not use your data to diagnose medical conditions. CalmTinnitus
-            is not a medical device.
-          </li>
+          <li>We do not sell your information.</li>
+          <li>We do not share your information for advertising.</li>
+          <li>We do not store medical or therapy notes about you.</li>
         </ul>
 
-        <h2>Data retention & deletion</h2>
+        <h2>Deleting your data</h2>
         <p>
-          You may request deletion of your account data. Where possible, we will
-          remove your personal information from our systems unless we must keep
-          certain records for legal, security, or fraud-prevention reasons.
+          You can delete your account and related app records at any time from{" "}
+          <strong>Account Settings</strong>. Once deleted, your access is
+          removed and associated records are deleted.
+        </p>
+
+        <h2>Medical disclaimer</h2>
+        <p>
+          CalmTinnitus is not a medical device and does not provide medical
+          diagnosis or treatment. Always consult a qualified clinician for
+          medical advice.
         </p>
 
         <p style={{ marginTop: 18 }}>
