@@ -53,12 +53,6 @@ export default function PrivacyPage() {
           certain records for legal, security, or fraud-prevention reasons.
         </p>
 
-        <h2>Contact</h2>
-        <p>
-          Privacy questions or deletion requests:{" "}
-          <strong>leffleryd@gmail.com</strong>
-        </p>
-
         <p style={{ marginTop: 18 }}>
           <Link href="/">← Back to Home</Link>
         </p>
