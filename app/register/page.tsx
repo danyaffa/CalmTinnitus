@@ -1,7 +1,3 @@
-I understand—you want the complete, updated code ready to copy and paste. I have integrated all the logic improvements, including the `friendlyFirebaseError` mapper and the existing account check, directly into your `RegisterPage`.
-
-```tsx
-// FILE: app/register/page.tsx
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -18,7 +14,7 @@ import {
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, googleProvider, db, firebaseReady } from "../../lib/firebase";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor } from "@capacitor-core";
 
 // PayPal config from env vars
 const PAYPAL_PLAN_ID = process.env.NEXT_PUBLIC_PAYPAL_PLAN_ID || "";
