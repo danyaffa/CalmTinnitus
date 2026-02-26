@@ -62,6 +62,10 @@ export default function RegisterPage() {
   const router = useRouter();
   const year = useMemo(() => new Date().getFullYear(), []);
 
+  const firebaseProjectId = useMemo(() => {
+    return (auth as any)?.app?.options?.projectId || "";
+  }, []);
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
@@ -286,6 +290,14 @@ export default function RegisterPage() {
       // ✅ Check if user already exists before attempting registration
       const methods = await fetchSignInMethodsForEmail(auth, em);
       if (methods && methods.length > 0) {
+        if (!methods.includes("password") && methods.includes("google.com")) {
+          setError(
+            "This email is already registered with Google sign-in. Please click “Register with Google” below (or Log in)."
+          );
+          setLoading(false);
+          return;
+        }
+
         setError(friendlyFirebaseError({ code: "auth/email-already-in-use" }));
         setLoading(false);
         // Redirect to login with email pre-filled
@@ -551,6 +563,10 @@ export default function RegisterPage() {
                 <p style={styles.small}>
                   Already registered? <Link href="/login">Log in</Link>
                 </p>
+
+              <p style={styles.tiny}>
+                Firebase project: <strong>{firebaseProjectId || "unknown"}</strong>
+              </p>
               </form>
             </>
           ) : (
@@ -772,6 +788,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#64748b",
   },
   small: { marginTop: 6, color: "#475569", fontSize: 13 },
+  tiny: { marginTop: 2, color: "#94a3b8", fontSize: 11 },
   smallMuted: {
     marginTop: 12,
     color: "#64748b",
