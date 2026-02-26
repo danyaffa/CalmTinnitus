@@ -844,3 +844,42 @@ input, select, textarea {
     padding-top: env(safe-area-inset-top);
   }
 }
+
+/* === Low Stimulation Mode === */
+html.low-stimulation,
+html.low-stimulation body {
+  background: #f0f0ed !important;
+  color: #3a3a3a !important;
+}
+
+html.low-stimulation * {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.05s !important;
+}
+
+html.low-stimulation img,
+html.low-stimulation video {
+  filter: saturate(0.6) contrast(0.9);
+}
+
+html.low-stimulation .nq-hero-shell,
+html.low-stimulation .nq-primary-cta,
+html.low-stimulation .nq-card-dark {
+  box-shadow: none !important;
+  filter: saturate(0.7) contrast(0.9);
+}
+
+html.low-stimulation .nq-header-btn,
+html.low-stimulation .primary-btn {
+  box-shadow: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.05s !important;
+    scroll-behavior: auto !important;
+  }
+}

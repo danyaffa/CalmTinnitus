@@ -3,13 +3,15 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "../../lib/firebase";
-// NEW: Imports for Android compatibility
-import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
-import { Capacitor } from '@capacitor/core';
-
-const DEVELOPER_EMAIL = "leffleryd@gmail.com";
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  type User,
+} from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, googleProvider, db, firebaseReady } from "../../lib/firebase";
+import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
+import { Capacitor } from "@capacitor/core";
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
@@ -19,10 +21,26 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleRedirection = (userEmail: string | null) => {
-    if (userEmail?.toLowerCase() === DEVELOPER_EMAIL) {
-      router.push("/therapy");
-    } else {
+  // Check user's subscription status and redirect accordingly
+  const handleRedirection = async (user: User) => {
+    if (!firebaseReady || !db) {
+      router.push("/");
+      return;
+    }
+
+    try {
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        if (data.subscriptionStatus === "active") {
+          router.push("/therapy");
+          return;
+        }
+      }
+      // No active subscription — send to register to complete payment/promo
+      router.push("/register");
+    } catch (err) {
+      console.error("Failed to check subscription:", err);
       router.push("/");
     }
   };
@@ -32,20 +50,21 @@ const LoginPage: React.FC = () => {
     setError(null);
     setLoading(true);
 
-    const authInstance = auth;
-    if (!authInstance) {
-      setError("Authentication is not ready yet. Please refresh and try again.");
+    if (!auth) {
+      setError(
+        "Authentication is not ready yet. Please refresh and try again."
+      );
       setLoading(false);
       return;
     }
 
     try {
       const userCredential = await signInWithEmailAndPassword(
-        authInstance,
+        auth,
         email,
         password
       );
-      handleRedirection(userCredential.user.email);
+      await handleRedirection(userCredential.user);
     } catch (err: any) {
       setError(err.message ?? "Login failed");
     } finally {
@@ -57,23 +76,30 @@ const LoginPage: React.FC = () => {
     setError(null);
     setLoading(true);
 
-    const authInstance = auth;
-    if (!authInstance) {
-      setError("Authentication is not ready yet. Please refresh and try again.");
+    if (!auth) {
+      setError(
+        "Authentication is not ready yet. Please refresh and try again."
+      );
       setLoading(false);
       return;
     }
 
     try {
+      let user: User;
       if (Capacitor.isNativePlatform()) {
-        // Native Android Login Flow
         const result = await FirebaseAuthentication.signInWithGoogle();
-        handleRedirection(result.user?.email || null);
+        user = result.user as unknown as User;
       } else {
-        // Standard Web Login Flow
-        const userCredential = await signInWithPopup(authInstance, googleProvider);
-        handleRedirection(userCredential.user.email);
+        if (!googleProvider) {
+          setError("Google sign-in is not available.");
+          setLoading(false);
+          return;
+        }
+        const userCredential = await signInWithPopup(auth, googleProvider);
+        user = userCredential.user;
       }
+
+      await handleRedirection(user);
     } catch (err: any) {
       setError(err.message ?? "Google sign-in failed");
     } finally {
@@ -128,7 +154,7 @@ const LoginPage: React.FC = () => {
             className="btn btn-primary auth-btn"
             disabled={loading}
           >
-            {loading ? "Logging in…" : "Log in"}
+            {loading ? "Logging in..." : "Log in"}
           </button>
         </form>
 
@@ -149,7 +175,7 @@ const LoginPage: React.FC = () => {
         </p>
         <p className="auth-footer">
           <a href="/" className="btn-link">
-            ← Back to CalmTinnitus
+            Back to CalmTinnitus
           </a>
         </p>
       </div>

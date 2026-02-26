@@ -1,6 +1,4 @@
 // FILE: lib/firebase.ts
-// 🔒 FINAL CONTRACT — STRICT VERSION
-// This forces the build to fail if keys are missing, preventing empty-key builds.
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import {
@@ -30,7 +28,7 @@ import {
 } from "firebase/firestore";
 
 /* ------------------------------------------------------------------ */
-/* 1. CONFIGURATION & SANITY CHECK                                    */
+/* 1. CONFIGURATION                                                    */
 /* ------------------------------------------------------------------ */
 
 const config = {
@@ -42,14 +40,16 @@ const config = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// 🛑 HARD STOP: If these are missing during build, THROW ERROR.
-// This prevents "Collecting page data" hangs and "api-key-not-valid" at runtime.
+// Check for missing config — warn but don't crash the build
+let configValid = true;
 Object.entries(config).forEach(([key, value]) => {
   if (!value) {
-    const errorMsg = `❌ FATAL BUILD ERROR: Missing 'NEXT_PUBLIC_FIREBASE_${key.replace(/([A-Z])/g, "_$1").toUpperCase()}' in .env.local`;
-    console.error(errorMsg);
-    // Throwing here stops the build immediately if variables aren't found.
-    if (typeof window === "undefined") throw new Error(errorMsg);
+    configValid = false;
+    console.warn(
+      `⚠ Missing NEXT_PUBLIC_FIREBASE_${key
+        .replace(/([A-Z])/g, "_$1")
+        .toUpperCase()} — Firebase features will be unavailable until set.`
+    );
   }
 });
 
@@ -58,34 +58,39 @@ Object.entries(config).forEach(([key, value]) => {
 /* ------------------------------------------------------------------ */
 
 let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
+let _auth: Auth;
+let _db: Firestore;
+let firebaseReady = false;
 
-try {
-  // Singleton pattern: if app exists, use it; otherwise init
-  app = getApps().length ? getApp() : initializeApp(config as any);
-  auth = getAuth(app);
-  db = getFirestore(app);
-} catch (error) {
-  console.error("Firebase Initialization Failed:", error);
-  // Re-throw so we know it broke
-  throw error;
+if (configValid) {
+  try {
+    app = getApps().length ? getApp() : initializeApp(config as any);
+    _auth = getAuth(app);
+    _db = getFirestore(app);
+    firebaseReady = true;
+  } catch (error) {
+    console.error("Firebase Initialization Failed:", error);
+  }
 }
 
-// Export instances directly
-export { auth, db };
-export const googleProvider = new GoogleAuthProvider();
-export const firebaseReady = true;
+// Exported as non-null for backward compatibility — check `firebaseReady` before use
+const auth = _auth!;
+const db = _db!;
+
+export { auth, db, firebaseReady };
+export const googleProvider = configValid ? new GoogleAuthProvider() : null;
 
 /* ------------------------------------------------------------------ */
-/* 3. HELPERS (Updated to use the reliable instances)                 */
+/* 3. HELPERS                                                          */
 /* ------------------------------------------------------------------ */
 
 export async function signInAnonymously() {
+  if (!auth) throw new Error("Firebase auth not initialized");
   return _signInAnonymously(auth);
 }
 
 export function requireAuth(cb?: (user: User | null) => void) {
+  if (!auth) return () => {};
   return onAuthStateChanged(auth, cb ?? (() => {}));
 }
 
@@ -102,6 +107,7 @@ export async function addReview(
   c?: string,
   d?: string
 ): Promise<void> {
+  if (!db) throw new Error("Firestore not initialized");
   const data: ReviewPayload =
     typeof a === "string"
       ? { userId: a, rating: b ?? 0, comment: c ?? "", appName: d ?? "" }

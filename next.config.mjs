@@ -1,15 +1,16 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  // ✅ Required for Next 14 static export (replaces `next export`)
-  output: "export",
+const isCapacitor = process.env.CAPACITOR === "true";
 
-  // ✅ Helps static export routing + Capacitor file:// style paths
+const nextConfig = {
+  // Static export only for Capacitor builds; Vercel uses server mode for API routes
+  ...(isCapacitor && { output: "export" }),
+
+  // Helps static export routing + Capacitor file:// style paths
   trailingSlash: true,
 
-  // ✅ Required because Next <Image> optimization needs a server
+  // Required because Next <Image> optimization needs a server
   images: { unoptimized: true },
 
-  // (Optional but fine)
   reactStrictMode: true,
 };
 
