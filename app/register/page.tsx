@@ -1,3 +1,4 @@
+// FILE: app/register/page.tsx
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -14,7 +15,7 @@ import {
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, googleProvider, db, firebaseReady } from "../../lib/firebase";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
-import { Capacitor } from "@capacitor-core";
+import { Capacitor } from "@capacitor/core"; // ✅ FIX: was "@capacitor-core"
 
 // PayPal config from env vars
 const PAYPAL_PLAN_ID = process.env.NEXT_PUBLIC_PAYPAL_PLAN_ID || "";
@@ -36,7 +37,10 @@ function friendlyFirebaseError(err: any) {
   const code = String(err?.code || "");
   const msg = String(err?.message || err || "");
 
-  if (code === "auth/email-already-in-use" || msg.toLowerCase().includes("email-already-in-use")) {
+  if (
+    code === "auth/email-already-in-use" ||
+    msg.toLowerCase().includes("email-already-in-use")
+  ) {
     return "This email is already registered. Please click Log in (top right). If you forgot your password, use Forgot Password on the login page.";
   }
   if (code === "auth/operation-not-allowed") {
@@ -136,10 +140,7 @@ export default function RegisterPage() {
     );
   };
 
-  const activateSubscription = async (
-    user: User,
-    subscriptionId: string
-  ) => {
+  const activateSubscription = async (user: User, subscriptionId: string) => {
     if (!firebaseReady || !db) return;
 
     const ref = doc(db, "users", user.uid);
@@ -215,7 +216,7 @@ export default function RegisterPage() {
     }
   }, [step, registeredUser, router]);
 
-  // Handle promo code 
+  // Handle promo code
   const handlePromoSubmit = async () => {
     if (!registeredUser || !promoCode.trim()) return;
 
@@ -324,7 +325,7 @@ export default function RegisterPage() {
     try {
       setLoading(true);
 
-      let user;
+      let user: any;
       if (Capacitor.isNativePlatform()) {
         const result = await FirebaseAuthentication.signInWithGoogle();
         user = result.user;
