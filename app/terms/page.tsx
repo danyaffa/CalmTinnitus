@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import Link from "next/link";
+import Footer from "../../components/Footer";
 
 export default function TermsPage() {
   const year = useMemo(() => new Date().getFullYear(), []);
@@ -86,15 +87,10 @@ export default function TermsPage() {
           </p>
         </section>
 
-        <footer className="terms-footer">
-          <p>
-            © {year} Leffler International Investments Pty Ltd. All rights
-            reserved.
-          </p>
-          <p>
-            <Link href="/">← Back to CalmTinnitus</Link>
-          </p>
-        </footer>
+        <p>
+          <Link href="/">← Back to CalmTinnitus</Link>
+        </p>
+        <Footer variant="minimal" />
       </div>
 
       <style jsx>{`
@@ -142,13 +138,6 @@ export default function TermsPage() {
           text-decoration: underline;
         }
 
-        .terms-footer {
-          margin-top: 3rem;
-          border-top: 1px solid #e5e7eb;
-          padding-top: 1.2rem;
-          font-size: 0.8rem;
-          color: #6b7280;
-        }
       `}</style>
     </main>
   );

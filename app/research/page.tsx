@@ -2,10 +2,9 @@
 "use client";
 
 import Link from "next/link";
+import Footer from "../../components/Footer";
 
 export default function ResearchPage() {
-  const year = new Date().getFullYear();
-
   return (
     <main className="nq-research">
       <header className="nq-research-header">
@@ -253,13 +252,7 @@ export default function ResearchPage() {
         </p>
       </section>
 
-      <footer className="nq-research-footer">
-        <p>
-          © {year} Leffler International Investments Pty Ltd. CalmTinnitus™ is
-          not a medical device and does not replace professional diagnosis or
-          treatment.
-        </p>
-      </footer>
+      <Footer variant="full" />
 
       {/* Styles */}
       <style jsx>{`
@@ -327,13 +320,6 @@ export default function ResearchPage() {
           padding: 1rem 1rem 1.1rem;
         }
 
-        .nq-research-footer {
-          margin-top: 2rem;
-          padding-top: 1rem;
-          border-top: 1px solid #e5e7eb;
-          font-size: 0.8rem;
-          color: #6b7280;
-        }
 
         @media (max-width: 768px) {
           .nq-research {

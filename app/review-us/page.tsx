@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import Footer from "../../components/Footer";
 
 export default function ReviewUsPage() {
   return (
@@ -25,6 +26,7 @@ export default function ReviewUsPage() {
         <p>
           <Link href="/">← Back to CalmTinnitus</Link>
         </p>
+        <Footer variant="minimal" />
       </div>
     </main>
   );

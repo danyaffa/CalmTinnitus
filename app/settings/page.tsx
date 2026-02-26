@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
+import Footer from "../../components/Footer";
 
 // ✅ Adjust these imports ONLY if your firebase exports differ.
 // Most CalmTinnitus builds use /lib/firebase.ts exporting `auth` and `db`.
@@ -215,6 +216,8 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      <Footer variant="minimal" />
 
       <style jsx>{`
         .settings-page {

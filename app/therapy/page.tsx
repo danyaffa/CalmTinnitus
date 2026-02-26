@@ -18,6 +18,7 @@ import { createSavedProfile } from "@/lib/therapyStorage";
 import { useAccess } from "@/hooks/useAccess";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Footer from "@/components/Footer";
 
 // --- CONSTANTS ---
 const SESSION_LOG_KEY = "calmtinnitus_session_logs_v1";
@@ -1105,12 +1106,7 @@ function TherapyInner() {
         )}
       </div>
 
-      <div className="nq-footer">
-        <p>
-          Medical Disclaimer: This is a wellness tool. Consult a doctor for
-          hearing health issues.
-        </p>
-      </div>
+      <Footer variant="full" />
 
       <Style />
     </main>
@@ -1466,12 +1462,6 @@ function Style() {
       }
       /* --- END NEW STYLES --- */
 
-      .nq-footer {
-        text-align: center;
-        margin-top: 3rem;
-        font-size: 0.8rem;
-        color: var(--text-dim);
-      }
       .nq-status-text {
         font-size: 0.9rem;
         opacity: 0.9;

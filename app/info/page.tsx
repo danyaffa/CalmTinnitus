@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import Footer from "../../components/Footer";
 
 export default function InfoSafetyPage() {
   return (
@@ -138,6 +139,8 @@ export default function InfoSafetyPage() {
       <p className="back-link">
         <Link href="/therapy">← Back to therapy screen</Link>
       </p>
+
+      <Footer variant="minimal" />
 
       {/* --- STYLES --- */}
       <style jsx>{`

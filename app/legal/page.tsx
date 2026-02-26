@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import Footer from "../../components/Footer";
 
 export default function LegalPage() {
   const lastUpdated = "13 Dec 2025";
@@ -132,6 +133,7 @@ export default function LegalPage() {
         <p style={{ marginTop: "1.25rem" }}>
           <Link href="/">← Back to CalmTinnitus</Link>
         </p>
+        <Footer variant="minimal" />
       </div>
     </main>
   );

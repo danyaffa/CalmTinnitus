@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Footer from "../../components/Footer";
 
 // ✔ FIXED IMPORTS (these were breaking your build)
 import { db } from "@/lib/firebase";
@@ -291,6 +292,8 @@ export default function GrowthDashboard() {
             feedbackEndpoint="/api/review-feedback"
           />
         </div>
+
+        <Footer variant="minimal" />
       </div>
     </div>
   );

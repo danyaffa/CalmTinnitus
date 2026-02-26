@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Metadata } from "next";
+import Footer from "../../components/Footer";
 
 const APP_URL = "https://calmtinnitus.com";
 
@@ -86,6 +87,8 @@ export default function AppStoreLandingPage() {
           Open CalmTinnitus in your browser
         </Link>
       </p>
+
+      <Footer variant="minimal" />
     </main>
   );
 }

@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Footer from "../../components/Footer";
 
 import {
   createUserWithEmailAndPassword,
@@ -764,9 +765,7 @@ export default function RegisterPage() {
         </div>
       </main>
 
-      <footer style={styles.footer}>
-        &copy; {year} Leffler International Investments Pty Ltd
-      </footer>
+      <Footer variant="minimal" />
     </div>
   );
 }
@@ -901,13 +900,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#64748b",
     fontSize: 12,
     textAlign: "center" as const,
-  },
-  footer: {
-    maxWidth: 980,
-    margin: "40px auto 0",
-    color: "#64748b",
-    fontSize: 13,
-    textAlign: "center",
   },
   promoSection: {
     marginTop: 20,
