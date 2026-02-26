@@ -87,7 +87,11 @@ export default function HomePage() {
                 <button
                   onClick={toggleLowStim}
                   className="nq-low-stim-btn"
-                  title={lowStim ? "Disable Low Stimulation Mode" : "Enable Low Stimulation Mode"}
+                  title={
+                    lowStim
+                      ? "Disable Low Stimulation Mode"
+                      : "Enable Low Stimulation Mode"
+                  }
                 >
                   {lowStim ? "Standard Mode" : "Low Stimulation"}
                 </button>
@@ -219,6 +223,7 @@ export default function HomePage() {
             <Link href="/program">7–30 Day Program</Link>
             <Link href="/terms">Terms</Link>
             <Link href="/disclaimers">Disclaimers</Link>
+            <Link href="/privacy">Privacy</Link>
             <Link href="/company-policy">Company Policy</Link>
           </div>
           <p className="nq-footer-note">
