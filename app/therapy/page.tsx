@@ -134,10 +134,21 @@ function useTinnitusAudio() {
         masterGain.connect(newCtx.destination);
         masterGain.gain.value = 0.8;
         masterGainRef.current = masterGain;
+
+        // Mobile unlock: play a short silent buffer to unlock audio on iOS/Android
+        try {
+          const silentBuffer = newCtx.createBuffer(1, 1, newCtx.sampleRate);
+          const silentSource = newCtx.createBufferSource();
+          silentSource.buffer = silentBuffer;
+          silentSource.connect(newCtx.destination);
+          silentSource.start(0);
+        } catch (_) {}
       }
 
       if (ctx && ctx.state === "suspended") {
-        ctx.resume().catch((err: any) => {
+        ctx.resume().then(() => {
+          // Context is now running - audio will play
+        }).catch((err: any) => {
           console.error("AudioContext resume failed:", err);
         });
       }
@@ -317,29 +328,53 @@ function useTinnitusAudio() {
 
   const playNoise = useCallback(
     (id: string, volume: number) => {
-      const ctx = initAudio();
-      if (!ctx || !masterGainRef.current) return;
-
+      // Stop any existing noise first
       if (noiseNodeRef.current) {
         try {
           noiseNodeRef.current.stop();
         } catch {}
+        noiseNodeRef.current = null;
       }
-      const buffer = generateNoiseBuffer(ctx, id);
-      const source = ctx.createBufferSource();
-      const gain = ctx.createGain();
-      source.buffer = buffer;
-      source.loop = true;
+      if (noiseGainRef.current) {
+        try {
+          noiseGainRef.current.disconnect();
+        } catch {}
+        noiseGainRef.current = null;
+      }
 
-      const effectiveNoise = Math.min(1.2, volume * 1.5);
-      gain.gain.value = 0;
-      gain.gain.setTargetAtTime(effectiveNoise, ctx.currentTime, 0.1);
+      // "none" means no background sound
+      if (id === "none") return;
 
-      source.connect(gain);
-      gain.connect(masterGainRef.current);
-      source.start();
-      noiseNodeRef.current = source;
-      noiseGainRef.current = gain;
+      const ctx = initAudio();
+      if (!ctx || !masterGainRef.current) return;
+
+      const startNoise = () => {
+        if (!masterGainRef.current) return;
+        const buffer = generateNoiseBuffer(ctx, id);
+        const source = ctx.createBufferSource();
+        const gain = ctx.createGain();
+        source.buffer = buffer;
+        source.loop = true;
+
+        const effectiveNoise = Math.min(1.2, volume * 1.5);
+        gain.gain.value = 0;
+        gain.gain.setTargetAtTime(effectiveNoise, ctx.currentTime, 0.1);
+
+        source.connect(gain);
+        gain.connect(masterGainRef.current);
+        source.start();
+        noiseNodeRef.current = source;
+        noiseGainRef.current = gain;
+      };
+
+      // If context is suspended (mobile), wait for resume before starting
+      if (ctx.state === "suspended") {
+        ctx.resume().then(startNoise).catch((err: any) => {
+          console.error("AudioContext resume failed:", err);
+        });
+      } else {
+        startNoise();
+      }
     },
     [initAudio]
   );
@@ -353,18 +388,38 @@ function useTinnitusAudio() {
         try {
           toneOscRef.current.stop();
         } catch {}
+        toneOscRef.current = null;
       }
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gain.gain.value = 0;
-      gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
-      osc.connect(gain);
-      gain.connect(masterGainRef.current);
-      osc.start();
-      toneOscRef.current = osc;
-      toneGainRef.current = gain;
+      if (toneGainRef.current) {
+        try {
+          toneGainRef.current.disconnect();
+        } catch {}
+        toneGainRef.current = null;
+      }
+
+      const startOsc = () => {
+        if (!masterGainRef.current) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.value = 0;
+        gain.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
+        osc.connect(gain);
+        gain.connect(masterGainRef.current);
+        osc.start();
+        toneOscRef.current = osc;
+        toneGainRef.current = gain;
+      };
+
+      // If context is suspended (mobile), wait for resume before starting
+      if (ctx.state === "suspended") {
+        ctx.resume().then(startOsc).catch((err: any) => {
+          console.error("AudioContext resume failed:", err);
+        });
+      } else {
+        startOsc();
+      }
     },
     [initAudio]
   );
@@ -376,41 +431,54 @@ function useTinnitusAudio() {
       hardStopAll();
 
       latestToneVolRef.current = volume;
-      const freqs = [0.9, 1.0, 1.1, 1.2].map((m) => baseFreq * m);
-      const oscillators: OscillatorNode[] = [];
-      const gains: GainNode[] = [];
 
-      freqs.forEach((f) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = f;
-        gain.gain.value = 0;
-        osc.connect(gain);
-        gain.connect(masterGainRef.current!);
-        osc.start();
-        oscillators.push(osc);
-        gains.push(gain);
-      });
+      const startCR = () => {
+        if (!masterGainRef.current) return;
+        const freqs = [0.9, 1.0, 1.1, 1.2].map((m) => baseFreq * m);
+        const oscillators: OscillatorNode[] = [];
+        const gains: GainNode[] = [];
 
-      crOscillatorsRef.current = oscillators;
-      crGainsRef.current = gains;
+        freqs.forEach((f) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = f;
+          gain.gain.value = 0;
+          osc.connect(gain);
+          gain.connect(masterGainRef.current!);
+          osc.start();
+          oscillators.push(osc);
+          gains.push(gain);
+        });
 
-      let idx = 0;
-      crIntervalRef.current = setInterval(() => {
-        try {
-          if (!ctx) return;
-          const now = ctx.currentTime;
-          const currentVol = latestToneVolRef.current;
-          gains.forEach((g, i) => {
-            const target = i === idx ? currentVol : 0;
-            g.gain.setTargetAtTime(target, now, 0.02);
-          });
-          idx = (idx + 1) % gains.length;
-        } catch (err) {
-          console.error("CR interval tick failed:", err);
-        }
-      }, 250);
+        crOscillatorsRef.current = oscillators;
+        crGainsRef.current = gains;
+
+        let idx = 0;
+        crIntervalRef.current = setInterval(() => {
+          try {
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            const currentVol = latestToneVolRef.current;
+            gains.forEach((g, i) => {
+              const target = i === idx ? currentVol : 0;
+              g.gain.setTargetAtTime(target, now, 0.02);
+            });
+            idx = (idx + 1) % gains.length;
+          } catch (err) {
+            console.error("CR interval tick failed:", err);
+          }
+        }, 250);
+      };
+
+      // If context is suspended (mobile), wait for resume before starting
+      if (ctx.state === "suspended") {
+        ctx.resume().then(startCR).catch((err: any) => {
+          console.error("AudioContext resume failed:", err);
+        });
+      } else {
+        startCR();
+      }
     },
     [initAudio, hardStopAll]
   );
@@ -519,11 +587,11 @@ function TherapyInner() {
   const [saveBtnText, setSaveBtnText] = useState("Save Profile");
   const [saveBtnClass, setSaveBtnClass] = useState("nq-btn-save");
 
-  const MAX_TONE_VOL = 0.4;
+  const MAX_TONE_VOL = 1.0;
   const clampTone = (val: number) => Math.min(val, MAX_TONE_VOL);
 
   const [masterVol, setMasterVol] = useState(0.8);
-  const [noiseVol, setNoiseVol] = useState(0); // start with NO background noise
+  const [noiseVol, setNoiseVol] = useState(0.3); // default audible background
   const [toneVol, setToneVol] = useState(0.3);
 
   const [isPlayingTest, setIsPlayingTest] = useState(false);
