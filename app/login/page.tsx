@@ -47,6 +47,16 @@ export default function LoginPage() {
     return email.trim().length > 3 && password.length >= 6;
   }, [email, password]);
 
+  const firebaseDebug = useMemo(() => {
+    // Helps diagnose: “Register says exists but Login says none”.
+    const projectId = (auth as any)?.app?.options?.projectId || "";
+    const authDomain = (auth as any)?.app?.options?.authDomain || "";
+    const apiKeyTail = String((auth as any)?.app?.options?.apiKey || "").slice(
+      -6
+    );
+    return { projectId, authDomain, apiKeyTail };
+  }, []);
+
   async function onLoginEmail(e: React.FormEvent) {
     e.preventDefault();
     setMsg("");
@@ -55,7 +65,31 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email.trim(), password);
       window.location.href = "/therapy";
     } catch (err: any) {
-      setMsg(`Firebase: ${friendlyAuthError(err?.code || err?.message)}`);
+      // If the email exists but ONLY via Google, explain clearly.
+      const em = email.trim().toLowerCase();
+      const codeOrMsg = String(err?.code || err?.message || "");
+      if (
+        codeOrMsg.includes("auth/user-not-found") ||
+        codeOrMsg.includes("auth/invalid-credential")
+      ) {
+        try {
+          const methods = await fetchSignInMethodsForEmail(auth, em);
+          if (
+            methods?.length &&
+            !methods.includes("password") &&
+            methods.includes("google.com")
+          ) {
+            setMsg(
+              "This email is registered with Google sign-in. Please click “Continue with Google”."
+            );
+            return;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      setMsg(`Firebase: ${friendlyAuthError(codeOrMsg)}`);
     } finally {
       setBusy(false);
     }
@@ -86,14 +120,32 @@ export default function LoginPage() {
 
     setBusy(true);
     try {
-      // Helpful check: if the email is not registered, say it clearly
-      const methods = await fetchSignInMethodsForEmail(auth, em);
+      const emNorm = em.toLowerCase();
+      const methods = await fetchSignInMethodsForEmail(auth, emNorm);
+
       if (!methods || methods.length === 0) {
-        setMsg("No account found for this email. Please register.");
+        setMsg(
+          `No account found for this email in this Firebase project. (Project: ${
+            firebaseDebug.projectId || "unknown"
+          }). If you are sure the account exists, your deployment is pointing to a different Firebase project (env vars).`
+        );
         return;
       }
 
-      await sendPasswordResetEmail(auth, em);
+      if (!methods.includes("password")) {
+        if (methods.includes("google.com")) {
+          setMsg(
+            "This email uses Google sign-in (no password). Please click “Continue with Google”."
+          );
+          return;
+        }
+        setMsg(
+          "This email does not have a password login method. Please use the sign-in method you originally used."
+        );
+        return;
+      }
+
+      await sendPasswordResetEmail(auth, emNorm);
       setMsg("Password reset email sent. Check your inbox (and spam).");
     } catch (err: any) {
       setMsg(`Firebase: ${friendlyAuthError(err?.code || err?.message)}`);
@@ -162,6 +214,11 @@ export default function LoginPage() {
 
           <p className="small">
             Don’t have an account? <Link href="/register">Register</Link>
+          </p>
+
+          <p className="tiny">
+            Firebase project:{" "}
+            <strong>{firebaseDebug.projectId || "unknown"}</strong>
           </p>
         </form>
       </div>
@@ -243,6 +300,11 @@ export default function LoginPage() {
           margin: 0.5rem 0 0;
           color: #475569;
           font-size: 0.92rem;
+        }
+        .tiny {
+          margin: 0.1rem 0 0;
+          color: #94a3b8;
+          font-size: 0.78rem;
         }
       `}</style>
     </main>
