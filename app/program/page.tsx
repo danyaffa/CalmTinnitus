@@ -15,6 +15,7 @@ import {
   getCheckInHistory,
   DailyCheckIn as DailyCheckInType,
 } from "@/lib/program";
+import Footer from "@/components/Footer";
 
 // DELETE: Chart.js imports and registration have been removed to fix Vercel build.
 // (Replaced with Pure SVG solution below)
@@ -932,6 +933,7 @@ export default function ProgramPage() {
         <h1 className="nq-brand">Program Dashboard</h1>
       </header>
       <ProgramView />
+      <Footer variant="full" />
       <Style />
     </main>
   );

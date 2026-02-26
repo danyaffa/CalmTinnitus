@@ -3,6 +3,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Footer from "../../components/Footer";
 
 export default function FeedbackPage() {
   const [message, setMessage] = useState("");
@@ -47,6 +48,7 @@ export default function FeedbackPage() {
         <p>
           <Link href="/">← Back to CalmTinnitus</Link>
         </p>
+        <Footer variant="minimal" />
       </div>
     </main>
   );

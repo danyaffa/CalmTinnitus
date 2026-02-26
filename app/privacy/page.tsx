@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import Footer from "../../components/Footer";
 
 export default function PrivacyPage() {
   return (
@@ -51,6 +52,7 @@ export default function PrivacyPage() {
         <p style={{ marginTop: 18 }}>
           <Link href="/">← Back to Home</Link>
         </p>
+        <Footer variant="minimal" />
       </div>
 
       <style jsx>{`

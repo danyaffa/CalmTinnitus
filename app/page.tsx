@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import React, { useEffect, useMemo, useState } from "react";
+import Footer from "../components/Footer";
 
 // ✅ Load ReviewWidget only on the client, and only after hydration
 const ReviewWidget = dynamic(
@@ -209,35 +210,7 @@ export default function HomePage() {
         </section>
 
         {/* FOOTER */}
-        <footer className="nq-footer">
-          <div className="nq-footer-main">
-            <span>
-              © {year} Leffler International Investments Pty Ltd. All rights
-              reserved.
-            </span>
-            <span>CalmTinnitus™ – Tinnitus Relief Companion.</span>
-          </div>
-
-          <div className="nq-footer-links">
-            <Link href="/about">About</Link>
-            <Link href="/research">Research</Link>
-            <Link href="/program">7–30 Day Program</Link>
-            <Link href="/terms">Terms</Link>
-            <Link href="/disclaimers">Disclaimers</Link>
-
-            {/* ✅ Added */}
-            <Link href="/privacy">Privacy</Link>
-            <Link href="/settings">Account Settings</Link>
-
-            <Link href="/company-policy">Company Policy</Link>
-          </div>
-
-          <p className="nq-footer-note">
-            CalmTinnitus™ is a trade mark of Leffler International Investments
-            Pty Ltd. This app does not diagnose, treat, cure, or prevent
-            disease. Always consult a qualified clinician for medical advice.
-          </p>
-        </footer>
+        <Footer variant="full" />
 
         {/* STYLES */}
         <style jsx>{`
@@ -527,39 +500,7 @@ export default function HomePage() {
             color: #64748b;
           }
 
-          .nq-footer {
-            border-top: 1px solid #e5e7eb;
-            padding-top: 1.4rem;
-            font-size: 0.8rem;
-            color: #6b7280;
-          }
 
-          .nq-footer-main {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-            margin-bottom: 0.75rem;
-          }
-
-          .nq-footer-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            margin-bottom: 0.6rem;
-          }
-
-          .nq-footer-links a {
-            color: #4b5563;
-            text-decoration: none;
-          }
-
-          .nq-footer-links a:hover {
-            text-decoration: underline;
-          }
-
-          .nq-footer-note {
-            margin: 0;
-          }
 
           @media (max-width: 768px) {
             .nq-landing {

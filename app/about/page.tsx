@@ -3,9 +3,9 @@
 
 import Head from "next/head";
 import Link from "next/link";
+import Footer from "../../components/Footer";
 
 export default function AboutPage() {
-  const year = new Date().getFullYear();
   const siteUrl = "https://calmtinnitus.com";
 
   return (
@@ -80,12 +80,7 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <footer className="nq-about-footer">
-          <p>
-            © {year} Leffler International Investments Pty Ltd.  
-            CalmTinnitus™ — Silence Starts Now.
-          </p>
-        </footer>
+        <Footer variant="full" />
 
         <style jsx>{`
           .nq-about {
@@ -143,13 +138,6 @@ export default function AboutPage() {
             padding: 1rem;
           }
 
-          .nq-about-footer {
-            margin-top: 2rem;
-            padding-top: 1rem;
-            border-top: 1px solid #e5e7eb;
-            font-size: 0.8rem;
-            color: #6b7280;
-          }
 
           @media (max-width: 768px) {
             .nq-about {

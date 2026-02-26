@@ -2,10 +2,9 @@
 "use client";
 
 import React from "react";
+import Footer from "../../components/Footer";
 
 export default function QaPage() {
-  const year = new Date().getFullYear();
-
   const faqs = [
     {
       q: "Does CalmTinnitus cure tinnitus?",
@@ -133,28 +132,8 @@ export default function QaPage() {
         </section>
       </div>
 
-      {/* FOOTER (MATCH STYLE) */}
-      <footer className="nq-qa-footer">
-        <div className="nq-qa-footer-main">
-          <span>
-            © {year} Leffler International Investments Pty Ltd. All rights
-            reserved.
-          </span>
-          <span>CalmTinnitus™ – Tinnitus Relief Companion.</span>
-        </div>
-        <div className="nq-qa-footer-links">
-          <a href="/about">About</a>
-          <a href="/research">Research</a>
-          <a href="/legal">Legal</a>
-          <a href="/disclaimers">Disclaimers</a>
-          <a href="/company-policy">Company Policy</a>
-        </div>
-        <p className="nq-qa-footer-note">
-          CalmTinnitus™ is a wellness sound tool and does not diagnose, treat,
-          cure, or prevent disease. Always follow the advice of your healthcare
-          professionals.
-        </p>
-      </footer>
+      {/* FOOTER */}
+      <Footer variant="full" />
 
       <style jsx>{`
         .nq-qa-root {
@@ -321,39 +300,6 @@ export default function QaPage() {
           color: #6b7280;
         }
 
-        .nq-qa-footer {
-          border-top: 1px solid #e5e7eb;
-          padding-top: 1.1rem;
-          font-size: 0.8rem;
-          color: #6b7280;
-        }
-
-        .nq-qa-footer-main {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-          margin-bottom: 0.75rem;
-        }
-
-        .nq-qa-footer-links {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.75rem;
-          margin-bottom: 0.6rem;
-        }
-
-        .nq-qa-footer-links a {
-          color: #4b5563;
-          text-decoration: none;
-        }
-
-        .nq-qa-footer-links a:hover {
-          text-decoration: underline;
-        }
-
-        .nq-qa-footer-note {
-          margin: 0;
-        }
 
         @media (max-width: 768px) {
           .nq-qa-root {

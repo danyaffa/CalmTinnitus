@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import React, { useMemo, useState } from "react";
+import Footer from "../../components/Footer";
 import {
   GoogleAuthProvider,
   signInWithEmailAndPassword,
@@ -297,6 +298,8 @@ export default function LoginPage() {
           </p>
         </form>
       </div>
+
+      <Footer variant="minimal" />
 
       <style jsx>{`
         .auth-page {

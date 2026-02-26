@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import Footer from "../../components/Footer";
 
 export default function CompanyPolicyPage() {
   return (
@@ -31,6 +32,7 @@ export default function CompanyPolicyPage() {
         <p>
           <Link href="/">← Back to CalmTinnitus</Link>
         </p>
+        <Footer variant="minimal" />
       </div>
     </main>
   );
