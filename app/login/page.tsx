@@ -10,7 +10,10 @@ import {
   sendPasswordResetEmail,
   fetchSignInMethodsForEmail,
 } from "firebase/auth";
-import { auth } from "../../lib/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db, firebaseReady } from "../../lib/firebase";
+
+const PROMO_CODE = process.env.NEXT_PUBLIC_PROMO_CODE || "";
 
 function friendlyAuthError(codeOrMsg: string) {
   const s = (codeOrMsg || "").toLowerCase();
@@ -40,8 +43,11 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const [promoCode, setPromoCode] = useState("");
+
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string>("");
+  const [successMsg, setSuccessMsg] = useState<string>("");
 
   const canSubmit = useMemo(() => {
     return email.trim().length > 3 && password.length >= 6;
@@ -57,12 +63,54 @@ export default function LoginPage() {
     return { projectId, authDomain, apiKeyTail };
   }, []);
 
+  async function activatePromo(uid: string): Promise<boolean> {
+    const code = promoCode.trim();
+    if (!code) return false;
+    if (!PROMO_CODE) {
+      setMsg("Promo codes are not enabled right now.");
+      return false;
+    }
+    if (code.toUpperCase() !== PROMO_CODE.trim().toUpperCase()) {
+      setMsg("Invalid promo code. Please check and try again.");
+      return false;
+    }
+    if (firebaseReady && db) {
+      const ref = doc(db, "users", uid);
+      await setDoc(
+        ref,
+        {
+          uid,
+          subscriptionStatus: "active",
+          accessType: "promo",
+          promoCodeUsed: code.toUpperCase(),
+          promoActivatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
+    return true;
+  }
+
   async function onLoginEmail(e: React.FormEvent) {
     e.preventDefault();
     setMsg("");
+    setSuccessMsg("");
     setBusy(true);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+
+      // If promo code was entered, validate and activate before redirecting
+      if (promoCode.trim()) {
+        const ok = await activatePromo(cred.user.uid);
+        if (!ok) {
+          setBusy(false);
+          return; // error message already set by activatePromo
+        }
+        setSuccessMsg("Promo code activated! Redirecting...");
+        setTimeout(() => { window.location.href = "/therapy"; }, 1200);
+        return;
+      }
+
       window.location.href = "/therapy";
     } catch (err: any) {
       // If the email exists but ONLY via Google, explain clearly.
@@ -97,11 +145,25 @@ export default function LoginPage() {
 
   async function onLoginGoogle() {
     setMsg("");
+    setSuccessMsg("");
     setBusy(true);
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithPopup(auth, provider);
+      const cred = await signInWithPopup(auth, provider);
+
+      // If promo code was entered, validate and activate before redirecting
+      if (promoCode.trim()) {
+        const ok = await activatePromo(cred.user.uid);
+        if (!ok) {
+          setBusy(false);
+          return;
+        }
+        setSuccessMsg("Promo code activated! Redirecting...");
+        setTimeout(() => { window.location.href = "/therapy"; }, 1200);
+        return;
+      }
+
       window.location.href = "/therapy";
     } catch (err: any) {
       setMsg(`Firebase: ${friendlyAuthError(err?.code || err?.message)}`);
@@ -164,6 +226,7 @@ export default function LoginPage() {
         </p>
 
         {msg ? <div className="alert">{msg}</div> : null}
+        {successMsg ? <div className="success">{successMsg}</div> : null}
 
         <form onSubmit={onLoginEmail} className="form">
           <label className="label">
@@ -187,6 +250,18 @@ export default function LoginPage() {
               placeholder="Your password"
               type="password"
               autoComplete="current-password"
+            />
+          </label>
+
+          <label className="label">
+            Promo Code <span className="optional">(optional)</span>
+            <input
+              className="input promo-input"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              placeholder="Enter promo code for full access"
+              maxLength={30}
+              autoComplete="off"
             />
           </label>
 
@@ -257,6 +332,16 @@ export default function LoginPage() {
           margin-bottom: 1rem;
           font-weight: 600;
         }
+        .success {
+          background: #f0fdf4;
+          border: 1px solid #86efac;
+          color: #166534;
+          padding: 0.75rem;
+          border-radius: 0.9rem;
+          margin-bottom: 1rem;
+          font-weight: 700;
+          text-align: center;
+        }
         .form {
           display: grid;
           gap: 0.85rem;
@@ -273,6 +358,15 @@ export default function LoginPage() {
           border: 1px solid #cbd5e1;
           outline: none;
           font-size: 1rem;
+        }
+        .promo-input {
+          letter-spacing: 1px;
+          text-transform: uppercase;
+        }
+        .optional {
+          font-weight: 400;
+          color: #94a3b8;
+          font-size: 0.85rem;
         }
         .btn {
           padding: 0.65rem 0.9rem;
