@@ -15,7 +15,9 @@ import {
   signInAnonymously,
 } from "@/lib/firebase";
 import { createSavedProfile } from "@/lib/therapyStorage";
-import Link from "next/link"; 
+import { useAccess } from "@/hooks/useAccess";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // --- CONSTANTS ---
 const SESSION_LOG_KEY = "calmtinnitus_session_logs_v1";
@@ -479,6 +481,7 @@ class ErrorBoundary extends React.Component<
 
 // --- MAIN CONTENT ---
 function TherapyInner() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
@@ -496,6 +499,11 @@ function TherapyInner() {
 
     return () => unsub();
   }, []);
+
+  // Access protection — check subscription status
+  const { hasAccess, loading: accessLoading } = useAccess(
+    user && !user.isAnonymous ? user.uid : null
+  );
 
   const [tinnitusPitch, setTinnitusPitch] = useState(8000);
   const [selectedSound, setSelectedSound] = useState(SOUND_PROFILES[0]);
@@ -761,6 +769,24 @@ function TherapyInner() {
     const sec = Math.round((m - min) * 60);
     return `${min}:${sec.toString().padStart(2, "0")}`;
   };
+
+  // Access gate — redirect non-subscribers (after all hooks)
+  if (user && !user.isAnonymous && !accessLoading && !hasAccess) {
+    router.push("/register");
+    return (
+      <div style={{ padding: "3rem", textAlign: "center", color: "#64748b" }}>
+        Redirecting to subscribe...
+      </div>
+    );
+  }
+
+  if (user && !user.isAnonymous && accessLoading) {
+    return (
+      <div style={{ padding: "3rem", textAlign: "center", color: "#64748b" }}>
+        Checking your access...
+      </div>
+    );
+  }
 
   return (
     <main className="nq-container">

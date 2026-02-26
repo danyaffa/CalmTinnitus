@@ -16,10 +16,9 @@ import { auth, googleProvider, db, firebaseReady } from "../../lib/firebase";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import { Capacitor } from "@capacitor/core";
 
-// PayPal subscription plan ID — replace with your real PayPal plan ID
-const PAYPAL_PLAN_ID = "P-XXXXXXXXXXXXXXXXXXXXXXXX";
-// PayPal client ID — replace with your real PayPal client ID
-const PAYPAL_CLIENT_ID = "YOUR_PAYPAL_CLIENT_ID";
+// PayPal config from env vars
+const PAYPAL_PLAN_ID = process.env.NEXT_PUBLIC_PAYPAL_PLAN_ID || "";
+const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
 declare global {
   interface Window {
@@ -48,8 +47,35 @@ export default function RegisterPage() {
   const paypalContainerRef = useRef<HTMLDivElement>(null);
   const paypalScriptLoaded = useRef(false);
 
+  // Promo code state
+  const [showPromo, setShowPromo] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState("");
+  const [promoSuccess, setPromoSuccess] = useState(false);
+
+  // Intake capture state
+  const [familyHistory, setFamilyHistory] = useState(false);
+  const [sleepImpact, setSleepImpact] = useState(5);
+  const [triggers, setTriggers] = useState<string[]>([]);
+
+  const TRIGGER_OPTIONS = [
+    "Loud noise exposure",
+    "Stress or anxiety",
+    "Lack of sleep",
+    "Caffeine",
+    "Medication side effects",
+    "Jaw or neck tension",
+  ];
+
+  const toggleTrigger = (t: string) => {
+    setTriggers((prev) =>
+      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
+    );
+  };
+
   const ensureUserDoc = async (user: User, payload: any) => {
-    if (!firebaseReady) return;
+    if (!firebaseReady || !db) return;
 
     const ref = doc(db, "users", user.uid);
     await setDoc(
@@ -64,19 +90,37 @@ export default function RegisterPage() {
     );
   };
 
+  const saveIntakeData = async (user: User) => {
+    if (!firebaseReady || !db) return;
+
+    const ref = doc(db, "users", user.uid);
+    await setDoc(
+      ref,
+      {
+        intake: {
+          familyHistoryOfTinnitus: familyHistory,
+          sleepImpactScore: sleepImpact,
+          triggers,
+          capturedAt: serverTimestamp(),
+        },
+      },
+      { merge: true }
+    );
+  };
+
   const activateSubscription = async (
     user: User,
     subscriptionId: string
   ) => {
-    if (!firebaseReady) return;
+    if (!firebaseReady || !db) return;
 
     const ref = doc(db, "users", user.uid);
     await setDoc(
       ref,
       {
         subscriptionStatus: "active",
+        accessType: "paypal",
         paypalSubscriptionId: subscriptionId,
-        paymentProvider: "paypal",
         subscribedAt: serverTimestamp(),
       },
       { merge: true }
@@ -87,10 +131,11 @@ export default function RegisterPage() {
   useEffect(() => {
     if (step !== "pay" || !paypalContainerRef.current || !registeredUser) return;
 
+    if (!PAYPAL_CLIENT_ID || !PAYPAL_PLAN_ID) return;
+
     const renderPayPalButton = () => {
       if (!window.paypal || !paypalContainerRef.current) return;
 
-      // Clear any existing buttons
       paypalContainerRef.current.innerHTML = "";
 
       window.paypal
@@ -142,6 +187,41 @@ export default function RegisterPage() {
     }
   }, [step, registeredUser, router]);
 
+  // Handle promo code submission
+  const handlePromoSubmit = async () => {
+    if (!registeredUser || !promoCode.trim()) return;
+
+    setPromoError("");
+    setPromoLoading(true);
+
+    try {
+      const res = await fetch("/api/promo/validate/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: promoCode.trim(),
+          uid: registeredUser.uid,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPromoError(data.error || "Invalid promo code.");
+        return;
+      }
+
+      setPromoSuccess(true);
+      setTimeout(() => {
+        router.push("/therapy");
+      }, 1500);
+    } catch (err) {
+      setPromoError("Network error. Please try again.");
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -156,8 +236,7 @@ export default function RegisterPage() {
       return setError("Password must be at least 6 characters.");
     if (password !== confirm) return setError("Passwords do not match.");
 
-    const authInstance = auth;
-    if (!authInstance) {
+    if (!auth) {
       return setError(
         "Authentication is not ready yet. Please refresh and try again."
       );
@@ -166,11 +245,7 @@ export default function RegisterPage() {
     try {
       setLoading(true);
 
-      const cred = await createUserWithEmailAndPassword(
-        authInstance,
-        em,
-        password
-      );
+      const cred = await createUserWithEmailAndPassword(auth, em, password);
       await updateProfile(cred.user, { displayName: `${fn} ${ln}` });
       await ensureUserDoc(cred.user, {
         email: em,
@@ -179,6 +254,7 @@ export default function RegisterPage() {
         displayName: `${fn} ${ln}`,
         provider: "email",
       });
+      await saveIntakeData(cred.user);
 
       setRegisteredUser(cred.user);
       setStep("pay");
@@ -193,8 +269,7 @@ export default function RegisterPage() {
   async function handleGoogleSubmit() {
     setError("");
 
-    const authInstance = auth;
-    if (!authInstance) {
+    if (!auth || !googleProvider) {
       return setError(
         "Authentication is not ready yet. Please refresh and try again."
       );
@@ -208,7 +283,7 @@ export default function RegisterPage() {
         const result = await FirebaseAuthentication.signInWithGoogle();
         user = result.user;
       } else {
-        const cred = await signInWithPopup(authInstance, googleProvider);
+        const cred = await signInWithPopup(auth, googleProvider);
         user = cred.user;
       }
 
@@ -226,6 +301,7 @@ export default function RegisterPage() {
           displayName: displayName || `${fn} ${ln}`.trim() || null,
           provider: "google",
         });
+        await saveIntakeData(user as User);
 
         setRegisteredUser(user as User);
         setStep("pay");
@@ -269,8 +345,8 @@ export default function RegisterPage() {
             <>
               <h1 style={styles.h1}>Create your account</h1>
               <p style={styles.p}>
-                Step 1: Register. Step 2: Subscribe via PayPal. After payment,
-                you can log in anytime.
+                Step 1: Register. Step 2: Subscribe via PayPal or use a promo
+                code. After that, you can log in anytime.
               </p>
 
               {error ? <div style={styles.error}>{error}</div> : null}
@@ -345,8 +421,76 @@ export default function RegisterPage() {
                   {showPassword ? "Hide password" : "See password"}
                 </button>
 
+                {/* Intake capture */}
+                <div style={styles.intakeSection}>
+                  <p style={styles.intakeTitle}>
+                    Help us personalise your experience (optional)
+                  </p>
+
+                  <label style={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={familyHistory}
+                      onChange={(e) => setFamilyHistory(e.target.checked)}
+                      style={styles.checkbox}
+                    />
+                    Family history of tinnitus
+                  </label>
+
+                  <div style={styles.field}>
+                    <label style={styles.label}>
+                      How much does tinnitus affect your sleep? ({sleepImpact}
+                      /10)
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="10"
+                      value={sleepImpact}
+                      onChange={(e) => setSleepImpact(Number(e.target.value))}
+                      style={{ width: "100%" }}
+                    />
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 11,
+                        color: "#64748b",
+                      }}
+                    >
+                      <span>No impact</span>
+                      <span>Severe</span>
+                    </div>
+                  </div>
+
+                  <div style={styles.field}>
+                    <label style={styles.label}>
+                      Common triggers (select any that apply)
+                    </label>
+                    <div style={styles.triggerGrid}>
+                      {TRIGGER_OPTIONS.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => toggleTrigger(t)}
+                          style={{
+                            ...styles.triggerChip,
+                            ...(triggers.includes(t)
+                              ? styles.triggerChipActive
+                              : {}),
+                          }}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
                 <button style={styles.button} disabled={loading}>
-                  {loading ? "Creating account..." : "Register & Continue to Payment"}
+                  {loading
+                    ? "Creating account..."
+                    : "Register & Continue to Payment"}
                 </button>
 
                 <button
@@ -367,8 +511,8 @@ export default function RegisterPage() {
             <>
               <h1 style={styles.h1}>Subscribe to CalmTinnitus</h1>
               <p style={styles.p}>
-                Account created! Complete your subscription below via PayPal to
-                get full access.
+                Account created! Complete your subscription below via PayPal, or
+                enter a promo code to get access.
               </p>
 
               <div style={styles.priceBox}>
@@ -378,15 +522,73 @@ export default function RegisterPage() {
 
               {error ? <div style={styles.error}>{error}</div> : null}
 
-              <div
-                ref={paypalContainerRef}
-                id="paypal-button-container"
-                style={{ minHeight: 55, marginTop: 16 }}
-              />
+              {/* PayPal button */}
+              {PAYPAL_CLIENT_ID && PAYPAL_PLAN_ID ? (
+                <div
+                  ref={paypalContainerRef}
+                  id="paypal-button-container"
+                  style={{ minHeight: 55, marginTop: 16 }}
+                />
+              ) : (
+                <div style={styles.paypalMissing}>
+                  PayPal is not configured yet. Please use a promo code below or
+                  contact support.
+                </div>
+              )}
+
+              {/* Promo code section */}
+              <div style={styles.promoSection}>
+                {!showPromo ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowPromo(true)}
+                    style={styles.promoToggle}
+                  >
+                    Have a promo code?
+                  </button>
+                ) : promoSuccess ? (
+                  <div style={styles.promoSuccessBox}>
+                    Access activated! Redirecting to therapy...
+                  </div>
+                ) : (
+                  <div style={styles.promoForm}>
+                    <label style={styles.label}>Promo Code</label>
+                    <div style={styles.promoInputRow}>
+                      <input
+                        style={styles.promoInput}
+                        value={promoCode}
+                        onChange={(e) =>
+                          setPromoCode(e.target.value.toUpperCase())
+                        }
+                        placeholder="Enter code"
+                        disabled={promoLoading}
+                        maxLength={30}
+                      />
+                      <button
+                        type="button"
+                        onClick={handlePromoSubmit}
+                        disabled={promoLoading || !promoCode.trim()}
+                        style={styles.promoApplyBtn}
+                      >
+                        {promoLoading ? "Checking..." : "Apply"}
+                      </button>
+                    </div>
+                    {promoError ? (
+                      <div style={styles.promoError}>{promoError}</div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
 
               <p style={styles.smallMuted}>
                 Payments are processed securely by PayPal. You can cancel your
                 subscription anytime from your PayPal account settings.
+              </p>
+
+              <p style={styles.disclaimer}>
+                CalmTinnitus is a self-help sound tool and does not replace
+                medical care. For sudden hearing changes or medical concerns,
+                please seek professional help.
               </p>
             </>
           )}
@@ -420,7 +622,12 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 10,
   },
   brand: { display: "flex", alignItems: "center", gap: 10 },
-  nav: { display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" as const },
+  nav: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    flexWrap: "wrap" as const,
+  },
   link: { textDecoration: "none", color: "#0f172a", fontWeight: 600 },
   activePill: {
     background: "#0f172a",
@@ -519,12 +726,145 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#64748b",
   },
   small: { marginTop: 6, color: "#475569", fontSize: 13 },
-  smallMuted: { marginTop: 12, color: "#64748b", fontSize: 12, textAlign: "center" as const },
+  smallMuted: {
+    marginTop: 12,
+    color: "#64748b",
+    fontSize: 12,
+    textAlign: "center" as const,
+  },
   footer: {
     maxWidth: 980,
     margin: "40px auto 0",
     color: "#64748b",
     fontSize: 13,
     textAlign: "center",
+  },
+  // Promo code styles
+  promoSection: {
+    marginTop: 20,
+    borderTop: "1px solid rgba(15, 23, 42, 0.08)",
+    paddingTop: 16,
+  },
+  promoToggle: {
+    background: "none",
+    border: "none",
+    color: "#0369a1",
+    fontWeight: 700,
+    cursor: "pointer",
+    fontSize: 14,
+    padding: 0,
+    textDecoration: "underline",
+  },
+  promoForm: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 8,
+  },
+  promoInputRow: {
+    display: "flex",
+    gap: 8,
+  },
+  promoInput: {
+    flex: 1,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(15, 23, 42, 0.15)",
+    outline: "none",
+    fontSize: 14,
+    letterSpacing: 1,
+    textTransform: "uppercase" as const,
+  },
+  promoApplyBtn: {
+    padding: "10px 20px",
+    borderRadius: 12,
+    border: "none",
+    background: "#0f172a",
+    color: "white",
+    fontWeight: 800,
+    cursor: "pointer",
+    fontSize: 14,
+    whiteSpace: "nowrap" as const,
+  },
+  promoError: {
+    color: "#9f1239",
+    fontSize: 13,
+    fontWeight: 600,
+  },
+  promoSuccessBox: {
+    background: "#f0fdf4",
+    border: "1px solid #86efac",
+    color: "#166534",
+    padding: "12px 14px",
+    borderRadius: 12,
+    fontWeight: 700,
+    textAlign: "center" as const,
+  },
+  paypalMissing: {
+    marginTop: 16,
+    padding: "12px 14px",
+    borderRadius: 12,
+    background: "#fffbeb",
+    border: "1px solid #fcd34d",
+    color: "#92400e",
+    fontSize: 13,
+    textAlign: "center" as const,
+  },
+  disclaimer: {
+    marginTop: 16,
+    padding: "10px 12px",
+    background: "#f8fafc",
+    borderRadius: 10,
+    fontSize: 11,
+    color: "#64748b",
+    lineHeight: 1.5,
+    textAlign: "center" as const,
+  },
+  // Intake styles
+  intakeSection: {
+    borderTop: "1px solid rgba(15, 23, 42, 0.08)",
+    paddingTop: 14,
+    marginTop: 4,
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 10,
+  },
+  intakeTitle: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#334155",
+    margin: 0,
+  },
+  checkboxLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: 14,
+    color: "#0f172a",
+    cursor: "pointer",
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    accentColor: "#0369a1",
+  },
+  triggerGrid: {
+    display: "flex",
+    flexWrap: "wrap" as const,
+    gap: 6,
+  },
+  triggerChip: {
+    padding: "6px 12px",
+    borderRadius: 999,
+    border: "1px solid #cbd5e1",
+    background: "#f8fafc",
+    color: "#334155",
+    fontSize: 12,
+    cursor: "pointer",
+    fontWeight: 500,
+  },
+  triggerChipActive: {
+    background: "#0369a1",
+    color: "white",
+    borderColor: "#0369a1",
   },
 };

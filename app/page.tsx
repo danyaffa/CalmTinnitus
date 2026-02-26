@@ -29,6 +29,31 @@ export default function HomePage() {
     setMounted(true);
   }, []);
 
+  // Low stimulation mode
+  const [lowStim, setLowStim] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("calmtinnitus_low_stim");
+    if (saved === "true") {
+      setLowStim(true);
+      document.documentElement.classList.add("low-stimulation");
+    }
+  }, []);
+
+  const toggleLowStim = () => {
+    const next = !lowStim;
+    setLowStim(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("calmtinnitus_low_stim", String(next));
+      if (next) {
+        document.documentElement.classList.add("low-stimulation");
+      } else {
+        document.documentElement.classList.remove("low-stimulation");
+      }
+    }
+  };
+
   return (
     <>
       <main className="nq-landing">
@@ -59,6 +84,13 @@ export default function HomePage() {
                 <Link href="/register" className="nq-header-btn">
                   Register
                 </Link>
+                <button
+                  onClick={toggleLowStim}
+                  className="nq-low-stim-btn"
+                  title={lowStim ? "Disable Low Stimulation Mode" : "Enable Low Stimulation Mode"}
+                >
+                  {lowStim ? "Standard Mode" : "Low Stimulation"}
+                </button>
                 {mounted && <InstallAppButton />}
               </nav>
             </header>
@@ -98,6 +130,9 @@ export default function HomePage() {
 
                   <Link href="/register" className="nq-primary-cta">
                     Start training now
+                  </Link>
+                  <Link href="/therapy" className="nq-quick-relief">
+                    Quick Relief — start a calming session now
                   </Link>
                   <div className="nq-install-row">
                     {mounted && <InstallAppButton />}
@@ -189,7 +224,7 @@ export default function HomePage() {
           <p className="nq-footer-note">
             CalmTinnitus™ is a trade mark of Leffler International Investments
             Pty Ltd. This app does not diagnose, treat, cure, or prevent
-            disease.
+            disease. Always consult a qualified clinician for medical advice.
           </p>
         </footer>
 
@@ -340,6 +375,39 @@ export default function HomePage() {
 
           .nq-primary-cta:hover {
             filter: brightness(1.03);
+          }
+
+          .nq-quick-relief {
+            display: inline-flex;
+            margin-top: 0.65rem;
+            padding: 0.5rem 1.3rem;
+            border-radius: 999px;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            color: #166534;
+            font-weight: 600;
+            font-size: 0.88rem;
+            text-decoration: none;
+          }
+
+          .nq-quick-relief:hover {
+            background: #dcfce7;
+          }
+
+          .nq-low-stim-btn {
+            padding: 0.3rem 0.7rem;
+            border-radius: 999px;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: #475569;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+          }
+
+          .nq-low-stim-btn:hover {
+            background: #e2e8f0;
           }
 
           .nq-install-row {

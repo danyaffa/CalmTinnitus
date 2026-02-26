@@ -1,59 +1,91 @@
 // FILE: /app/app-store/page.tsx
 
-import Head from "next/head";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 const APP_URL = "https://calmtinnitus.com";
 
-// Placeholder store links
 const PLAY_STORE_URL =
   "https://play.google.com/store/apps/details?id=app.placeholder.calmtinnitus";
-const APP_STORE_URL =
-  "https://apps.apple.com/app/id1000000002";
+const APP_STORE_URL = "https://apps.apple.com/app/id1000000002";
+
+export const metadata: Metadata = {
+  title: "Download CalmTinnitus – Android & iOS",
+  description:
+    "Install the CalmTinnitus app on Android or iOS to access personalised tinnitus sound therapy and relaxation tools.",
+  alternates: {
+    canonical: `${APP_URL}/app-store`,
+  },
+};
 
 export default function AppStoreLandingPage() {
-  const title = "Download CalmTinnitus – Android & iOS";
-  const description =
-    "Install the CalmTinnitus app on Android or iOS to access personalised tinnitus sound therapy and relaxation tools.";
-
   return (
-    <>
-      <Head>
-        <title>{title}</title>
-        <meta name="description" content={description} />
-        <link rel="canonical" href={`${APP_URL}/app-store`} />
-      </Head>
+    <main
+      style={{
+        maxWidth: 560,
+        margin: "0 auto",
+        textAlign: "center",
+        padding: "2.5rem 1rem",
+        fontFamily: "system-ui, sans-serif",
+      }}
+    >
+      <h1 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: 16 }}>
+        Download CalmTinnitus
+      </h1>
+      <p style={{ color: "#475569", marginBottom: 32 }}>
+        Access sound therapy, relaxation, and tinnitus tracking on your phone.
+      </p>
 
-      <main className="mx-auto max-w-xl text-center px-4 py-10">
-        <h1 className="text-3xl font-semibold mb-4">Download CalmTinnitus</h1>
-        <p className="text-slate-600 mb-8">
-          Access sound therapy, relaxation, and tinnitus tracking on your phone.
-        </p>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          maxWidth: 320,
+          margin: "0 auto",
+        }}
+      >
+        <a
+          href={PLAY_STORE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            border: "1px solid #cbd5e1",
+            padding: "12px 24px",
+            borderRadius: 8,
+            fontWeight: 600,
+            textDecoration: "none",
+            color: "#0f172a",
+            display: "block",
+          }}
+        >
+          Get it on Google Play
+        </a>
 
-        <div className="flex flex-col gap-4 sm:flex-row justify-center">
-          <a
-            href={PLAY_STORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="border px-6 py-3 rounded-md font-medium"
-          >
-            Get it on Google Play
-          </a>
+        <a
+          href={APP_STORE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            border: "1px solid #cbd5e1",
+            padding: "12px 24px",
+            borderRadius: 8,
+            fontWeight: 600,
+            textDecoration: "none",
+            color: "#0f172a",
+            display: "block",
+          }}
+        >
+          Download on the App Store
+        </a>
+      </div>
 
-          <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="border px-6 py-3 rounded-md font-medium"
-          >
-            Download on the App Store
-          </a>
-        </div>
-
-        <p className="mt-8 text-sm text-slate-500">
-          Prefer the web version? <Link href="/">Open CalmTinnitus in your browser</Link>
-        </p>
-      </main>
-    </>
+      <p style={{ marginTop: 32, fontSize: "0.85rem", color: "#64748b" }}>
+        Prefer the web version?{" "}
+        <Link href="/" style={{ color: "#0369a1" }}>
+          Open CalmTinnitus in your browser
+        </Link>
+      </p>
+    </main>
   );
 }
