@@ -206,51 +206,129 @@ export default function ResearchPage() {
         </ul>
       </section>
 
-      {/* 6. What this means for CalmTinnitus */}
+      {/* 6. Stochastic Resonance */}
+      <section className="nq-research-section">
+        <h2>6. Stochastic resonance &amp; near-threshold noise</h2>
+        <p>
+          Stochastic resonance (SR) is a phenomenon where adding a small amount
+          of noise to a system can actually improve signal detection. In the
+          context of tinnitus, the brain may upregulate internal neural noise to
+          compensate for hearing loss &mdash; and this upregulated noise may be
+          perceived as tinnitus.
+        </p>
+        <ul>
+          <li>
+            Providing external acoustic noise spectrally shaped to the
+            individual&apos;s hearing loss profile at near-threshold levels may
+            substitute for internally generated noise, reducing tinnitus
+            perception
+            <a href="https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2022.831581/full" target="_blank" rel="noreferrer"> (Tziridis et al., 2022)</a>.
+          </li>
+          <li>
+            In proof-of-concept testing, <strong>21 of 24 patients</strong> experienced
+            tinnitus loudness attenuation, with 6 reporting complete silencing during stimulation.
+          </li>
+          <li>
+            A 2025 blinded crossover trial using cross-frequency de-correlating sound
+            modulation found statistically significant tinnitus loudness reduction
+            <a href="https://pubmed.ncbi.nlm.nih.gov/40505169/" target="_blank" rel="noreferrer"> (Yukhnovich &amp; Sedley et al., 2025)</a>.
+          </li>
+        </ul>
+      </section>
+
+      {/* 7. MBCT */}
+      <section className="nq-research-section">
+        <h2>7. Mindfulness-Based Cognitive Therapy (MBCT) for tinnitus</h2>
+        <p>
+          MBCT adapts mindfulness meditation techniques specifically for people
+          with tinnitus, teaching non-reactive awareness and reducing emotional distress.
+        </p>
+        <ul>
+          <li>
+            A systematic review of 7 studies (425 patients) found statistically
+            significant reductions in tinnitus distress in multiple RCTs
+            <a href="https://www.frontiersin.org/journals/neurology/articles/10.3389/fneur.2019.01135/full" target="_blank" rel="noreferrer"> (Rademaker et al., 2019)</a>.
+          </li>
+          <li>
+            The key RCT (McKenna et al., 2017) found MBCT produced <strong>significantly
+            greater tinnitus severity reduction</strong> than relaxation training alone.
+          </li>
+          <li>
+            MBCT&apos;s acceptance-based approach is complementary to CBT and can be
+            delivered effectively via digital apps.
+          </li>
+        </ul>
+      </section>
+
+      {/* 8. PTM */}
+      <section className="nq-research-section">
+        <h2>8. Progressive Tinnitus Management (PTM)</h2>
+        <p>
+          PTM is a stepped-care model developed by the VA, combining education,
+          sound therapy guidance, and coping skills at levels matched to severity.
+        </p>
+        <ul>
+          <li>
+            Two RCTs validated PTM, with a telehealth trial (n=205) achieving
+            <strong> large effect sizes (d=1.06&ndash;1.20)</strong> at 3&ndash;6 months
+            <a href="https://pubmed.ncbi.nlm.nih.gov/29847413/" target="_blank" rel="noreferrer"> (Henry et al., 2019)</a>.
+          </li>
+          <li>
+            PTM emphasises that <strong>education is the most powerful ingredient</strong>
+            in tinnitus management.
+          </li>
+        </ul>
+      </section>
+
+      {/* 9. App trials */}
+      <section className="nq-research-section">
+        <h2>9. App-based tinnitus therapy: 2024&ndash;2025 clinical trials</h2>
+        <p>
+          Multiple recent RCTs have validated smartphone-based delivery of tinnitus interventions.
+        </p>
+        <ul>
+          <li>
+            The Kalmeda app RCT (n=187) reported <strong>d=1.38</strong> at 9 months
+            <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11888023/" target="_blank" rel="noreferrer"> (Walter et al., 2025)</a>.
+          </li>
+          <li>
+            The UNITI multicentre trial (n=461) found combination treatments outperformed single treatments
+            <a href="https://www.nature.com/articles/s41467-025-66165-1" target="_blank" rel="noreferrer"> (Schoisswohl et al., 2025)</a>.
+          </li>
+          <li>
+            These trials confirm that <strong>consistent daily app use over months</strong> is the key
+            predictor of improvement.
+          </li>
+        </ul>
+      </section>
+
+      {/* What this means for CalmTinnitus */}
       <section className="nq-research-section nq-research-note">
         <h2>What this means for CalmTinnitus</h2>
         <p>
           CalmTinnitus is inspired by these neuromodulation approaches. The app
           first helps you <strong>match your tinnitus pitch</strong> using a
-          guided calibration with octave-check and loudness matching. That
-          stored frequency is then used to drive the sound modes.
+          guided calibration. That frequency then drives the sound modes.
         </p>
-        <p>
-          The core modes in CalmTinnitus are designed to line up with the
-          research above:
-        </p>
+        <p>The therapy modes in CalmTinnitus are designed to align with the research above:</p>
         <ul>
-          <li>
-            <strong>Brown Noise Masking (for immediate calm)</strong> – deep,
-            coloured-noise masking designed to support residual inhibition and
-            provide fast relief for many users.
-          </li>
-          <li>
-            <strong>Notch-style & CR-style neuromodulation</strong> – sound
-            patterns that reduce energy around your matched tinnitus frequency
-            and introduce gentle 10&nbsp;Hz amplitude modulation to encourage
-            healthier brain rhythms.
-          </li>
-          <li>
-            <strong>Stress-reduction (CBT micro-calm)</strong> – short
-            in-app exercises that apply CBT-style and mindfulness principles to
-            help reduce anxiety and re-train attention away from the sound.
-          </li>
-          <li>
-            <strong>“Play your own audio” support</strong> – many people prefer
-            relaxing music, podcasts or nature sounds. CalmTinnitus is designed
-            so that you can combine its sound strategies with the audio content
-            that feels most comforting on your device, where supported.
-          </li>
+          <li><strong>Relief (CR) Therapy</strong> &mdash; coordinated reset patterns for neural desynchronisation and habituation.</li>
+          <li><strong>Standard Therapy (Comfort)</strong> &mdash; gentle background sound with coloured-noise masking for residual inhibition.</li>
+          <li><strong>Sleep Support</strong> &mdash; quieter profiles designed for overnight use.</li>
+          <li><strong>Stochastic Resonance (SR)</strong> &mdash; near-threshold noise shaped to your hearing profile (section 6).</li>
+          <li><strong>Mindfulness (MBCT) Program</strong> &mdash; 8-week guided mindfulness with tinnitus-specific exercises (section 7).</li>
+          <li><strong>Screening &amp; Education (PTM)</strong> &mdash; severity screening with stepped recommendations and educational modules (section 8).</li>
+          <li><strong>Play your own audio</strong> &mdash; combine therapy with your preferred music, podcasts or nature sounds.</li>
         </ul>
         <p>
           Research shows that <strong>regular, comfortable use over time</strong>{" "}
           is more important than any single session. Results vary between
-          individuals, and no sound app is a guaranteed cure — but for many
-          people, sound-based training plus stress-reduction tools are a helpful
-          part of long-term tinnitus management.
+          individuals, and no sound app is a guaranteed cure &mdash; but for many
+          people, sound-based training plus mindfulness and education tools are a
+          helpful part of long-term tinnitus management.
         </p>
       </section>
+
 
       <Footer variant="full" />
 
