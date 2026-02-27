@@ -360,13 +360,13 @@ function MBCTInner() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Track completed exercises
-  const [completed, setCompleted] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set();
+  const [completed, setCompleted] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
     try {
       const saved = window.localStorage.getItem("calmtinnitus_mbct_completed");
-      if (saved) return new Set(JSON.parse(saved));
+      if (saved) return JSON.parse(saved);
     } catch {}
-    return new Set();
+    return [];
   });
 
   useEffect(() => {
@@ -374,7 +374,7 @@ function MBCTInner() {
     try {
       window.localStorage.setItem(
         "calmtinnitus_mbct_completed",
-        JSON.stringify([...completed])
+        JSON.stringify(completed)
       );
     } catch {}
   }, [completed]);
@@ -402,9 +402,8 @@ function MBCTInner() {
           if (timerRef.current) clearInterval(timerRef.current);
           setIsPlaying(false);
           setCompleted((c) => {
-            const next = new Set(c);
-            next.add(exercise.id);
-            return next;
+            if (c.indexOf(exercise.id) === -1) return c.concat(exercise.id);
+            return c;
           });
           return 0;
         }
@@ -524,8 +523,8 @@ function MBCTInner() {
         <div style={{ display: "grid", gap: "0.75rem" }}>
           {MBCT_PROGRAM.map((w, idx) => {
             const weekExerciseIds = w.exercises.map((e) => e.id);
-            const weekDone = weekExerciseIds.every((id) => completed.has(id));
-            const weekPartial = weekExerciseIds.some((id) => completed.has(id));
+            const weekDone = weekExerciseIds.every((id) => completed.includes(id));
+            const weekPartial = weekExerciseIds.some((id) => completed.includes(id));
 
             return (
               <button
@@ -579,7 +578,7 @@ function MBCTInner() {
             textAlign: "center",
             marginTop: "0.5rem",
           }}>
-            <strong>{completed.size}</strong> of{" "}
+            <strong>{completed.length}</strong> of{" "}
             <strong>{MBCT_PROGRAM.reduce((a, w) => a + w.exercises.length, 0)}</strong>{" "}
             exercises completed
           </div>
@@ -616,8 +615,8 @@ function MBCTInner() {
                   <div
                     key={ex.id}
                     style={{
-                      background: completed.has(ex.id) ? "#f0fdf4" : "white",
-                      border: completed.has(ex.id) ? "2px solid #86efac" : "1px solid #e2e8f0",
+                      background: completed.includes(ex.id) ? "#f0fdf4" : "white",
+                      border: completed.includes(ex.id) ? "2px solid #86efac" : "1px solid #e2e8f0",
                       borderRadius: "0.75rem",
                       padding: "1rem",
                     }}
@@ -628,7 +627,7 @@ function MBCTInner() {
                           {typeIcons[ex.type]} {ex.type.replace("-", " ")} • {ex.duration}
                         </span>
                         <h3 style={{ margin: "0.25rem 0 0", fontSize: "1rem", color: "#0f172a" }}>
-                          {ex.title} {completed.has(ex.id) && "✅"}
+                          {ex.title} {completed.includes(ex.id) && "✅"}
                         </h3>
                       </div>
                       <button
