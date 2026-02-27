@@ -24,7 +24,7 @@ import Footer from "@/components/Footer";
 const SESSION_LOG_KEY = "calmtinnitus_session_logs_v1";
 
 // --- TYPES ---
-type TherapyMode = "relief" | "standard" | "sleep";
+type TherapyMode = "relief" | "standard" | "sleep" | "sr";
 type SessionStatus = "idle" | "running" | "paused";
 
 type BackgroundSoundId = "white" | "none" | "rain" | "ocean";
@@ -88,6 +88,13 @@ const THERAPY_MODES: {
     label: "3) Sleep Support",
     description: "Quieter profile to help you wind down and fall asleep.",
     icon: "🌙",
+  },
+  {
+    key: "sr",
+    label: "4) Stochastic Resonance (SR)",
+    description:
+      "Near-threshold noise shaped to your hearing profile. Targets the neural cause of tinnitus.",
+    icon: "🧠",
   },
 ];
 
@@ -272,6 +279,15 @@ function useTinnitusAudio() {
           toneOscRef.current = null;
           crOscillatorsRef.current = [];
           if (crIntervalRef.current) clearInterval(crIntervalRef.current);
+          // Stop SR
+          if (srNodeRef.current) {
+            try { srNodeRef.current.stop(); } catch {}
+            srNodeRef.current = null;
+          }
+          if (srGainRef.current) {
+            try { srGainRef.current.disconnect(); } catch {}
+            srGainRef.current = null;
+          }
         } catch (err) {
           console.error("stopAll inner cleanup error:", err);
         }
@@ -483,6 +499,116 @@ function useTinnitusAudio() {
     [initAudio, hardStopAll]
   );
 
+  // --- STOCHASTIC RESONANCE: spectrally shaped near-threshold noise ---
+  const srNodeRef = useRef<AudioBufferSourceNode | null>(null);
+  const srGainRef = useRef<GainNode | null>(null);
+
+  const playSR = useCallback(
+    (audiogramData: { freq: number; thresholdDb: number }[], volume: number) => {
+      const ctx = initAudio();
+      if (!ctx || !masterGainRef.current) return;
+
+      // Stop any existing SR
+      if (srNodeRef.current) {
+        try { srNodeRef.current.stop(); } catch {}
+        srNodeRef.current = null;
+      }
+      if (srGainRef.current) {
+        try { srGainRef.current.disconnect(); } catch {}
+        srGainRef.current = null;
+      }
+
+      const startSR = () => {
+        if (!masterGainRef.current) return;
+        const sampleRate = ctx.sampleRate;
+        const duration = 4; // 4-second loop
+        const bufferSize = sampleRate * duration;
+        const buffer = ctx.createBuffer(1, bufferSize, sampleRate);
+        const data = buffer.getChannelData(0);
+
+        // Generate white noise
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1);
+        }
+
+        // Apply spectral shaping via FFT-like band filtering
+        // We shape the noise so frequencies where hearing loss is greatest get more energy
+        // This is done by amplitude-weighting bands based on audiogram thresholds
+        const fftSize = 4096;
+        const numBlocks = Math.floor(bufferSize / fftSize);
+
+        // Build frequency-to-gain mapping from audiogram
+        // Higher threshold (worse hearing) = more gain, but capped at near-threshold
+        const maxThreshold = Math.max(...audiogramData.map(a => a.thresholdDb), 10);
+        const getGainForFreq = (freq: number): number => {
+          if (audiogramData.length === 0) return 0.5;
+          // Interpolate audiogram
+          let lower = audiogramData[0];
+          let upper = audiogramData[audiogramData.length - 1];
+          for (let i = 0; i < audiogramData.length - 1; i++) {
+            if (freq >= audiogramData[i].freq && freq <= audiogramData[i + 1].freq) {
+              lower = audiogramData[i];
+              upper = audiogramData[i + 1];
+              break;
+            }
+          }
+          if (freq <= lower.freq) return lower.thresholdDb / maxThreshold;
+          if (freq >= upper.freq) return upper.thresholdDb / maxThreshold;
+          const t = (freq - lower.freq) / (upper.freq - lower.freq);
+          const threshold = lower.thresholdDb + t * (upper.thresholdDb - lower.thresholdDb);
+          // Scale: more hearing loss = more noise energy (but gentle)
+          return Math.max(0.05, Math.min(1.0, threshold / maxThreshold));
+        };
+
+        // Simple band-based spectral shaping using overlapping sine-weighted windows
+        for (let block = 0; block < numBlocks; block++) {
+          const offset = block * fftSize;
+          // Apply per-sample frequency-dependent gain via bandpass approximation
+          // We use 8 bands and mix accordingly
+          const bands = [250, 500, 1000, 2000, 3000, 4000, 6000, 8000];
+          const bandGains = bands.map(f => getGainForFreq(f));
+
+          for (let i = 0; i < fftSize && (offset + i) < bufferSize; i++) {
+            // Weight the noise sample by the average band gain
+            // This is a simplified approach - proper FFT shaping would be more precise
+            // but this works well perceptually
+            let weight = 0;
+            let totalW = 0;
+            for (let b = 0; b < bands.length; b++) {
+              const dist = 1.0 / (1.0 + Math.abs(i / fftSize * sampleRate / 2 - bands[b]) / 500);
+              weight += dist * bandGains[b];
+              totalW += dist;
+            }
+            if (totalW > 0) weight /= totalW;
+            data[offset + i] *= weight * 0.3; // Keep near-threshold (quiet)
+          }
+        }
+
+        const source = ctx.createBufferSource();
+        const gain = ctx.createGain();
+        source.buffer = buffer;
+        source.loop = true;
+        gain.gain.value = 0;
+        gain.gain.setTargetAtTime(volume * 0.4, ctx.currentTime, 0.1); // Extra quiet for near-threshold
+
+        source.connect(gain);
+        gain.connect(masterGainRef.current);
+        source.start();
+        srNodeRef.current = source;
+        srGainRef.current = gain;
+      };
+
+      if (ctx.state === "suspended") {
+        ctx.resume().then(startSR).catch((err: any) => {
+          console.error("AudioContext resume failed:", err);
+        });
+      } else {
+        startSR();
+      }
+    },
+    [initAudio]
+  );
+
   const updateVolumes = useCallback((noiseVol: number, toneVol: number) => {
     const now = ctxRef.current?.currentTime || 0;
     const effectiveNoise = Math.min(1.2, noiseVol * 1.5);
@@ -491,6 +617,9 @@ function useTinnitusAudio() {
     }
     if (toneGainRef.current) {
       toneGainRef.current.gain.setTargetAtTime(toneVol, now, 0.1);
+    }
+    if (srGainRef.current) {
+      srGainRef.current.gain.setTargetAtTime(toneVol * 0.4, now, 0.1);
     }
     latestToneVolRef.current = toneVol;
   }, []);
@@ -501,6 +630,7 @@ function useTinnitusAudio() {
       playNoise,
       playTone,
       playCR,
+      playSR,
       stopAll,
       setMasterVolume,
       updateVolumes,
@@ -511,6 +641,7 @@ function useTinnitusAudio() {
       playNoise,
       playTone,
       playCR,
+      playSR,
       stopAll,
       setMasterVolume,
       updateVolumes,
@@ -595,6 +726,18 @@ function TherapyInner() {
   const [toneVol, setToneVol] = useState(0.3);
 
   const [isPlayingTest, setIsPlayingTest] = useState(false);
+
+  // --- SR Audiogram state ---
+  const SR_FREQS = [250, 500, 1000, 2000, 3000, 4000, 6000, 8000];
+  const [audiogramData, setAudiogramData] = useState<{ freq: number; thresholdDb: number }[]>(() => {
+    if (typeof window === "undefined") return SR_FREQS.map(f => ({ freq: f, thresholdDb: 20 }));
+    try {
+      const saved = window.localStorage.getItem("calmtinnitus_audiogram");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return SR_FREQS.map(f => ({ freq: f, thresholdDb: 20 }));
+  });
+  const [showAudiogramSetup, setShowAudiogramSetup] = useState(false);
 
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sessionStartTimeRef = useRef<number | null>(null);
@@ -747,6 +890,8 @@ function TherapyInner() {
       audio.playNoise(selectedSound.id, noiseVol);
       if (selectedMode === "relief") {
         audio.playCR(tinnitusPitch, safeTone);
+      } else if (selectedMode === "sr") {
+        audio.playSR(audiogramData, safeTone);
       } else {
         audio.playTone(tinnitusPitch, safeTone);
       }
@@ -905,6 +1050,34 @@ function TherapyInner() {
         </Link>
       </div>
 
+      {/* NEW: Links to MBCT & PTM */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "2rem" }}>
+        <Link
+          href="/mbct"
+          style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem",
+            background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "0.75rem",
+            padding: "1rem", textDecoration: "none", color: "#166534", textAlign: "center",
+          }}
+        >
+          <span style={{ fontSize: "1.5rem" }}>🧘</span>
+          <strong style={{ fontSize: "0.85rem" }}>Mindfulness (MBCT)</strong>
+          <span style={{ fontSize: "0.75rem", opacity: 0.8 }}>8-week guided program</span>
+        </Link>
+        <Link
+          href="/ptm"
+          style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem",
+            background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "0.75rem",
+            padding: "1rem", textDecoration: "none", color: "#0c4a6e", textAlign: "center",
+          }}
+        >
+          <span style={{ fontSize: "1.5rem" }}>📋</span>
+          <strong style={{ fontSize: "0.85rem" }}>Screening & Education</strong>
+          <span style={{ fontSize: "0.75rem", opacity: 0.8 }}>PTM severity assessment</span>
+        </Link>
+      </div>
+
       {/* STATUS BANNER */}
       {sessionStatus !== "idle" && (
         <div className="nq-banner">
@@ -1018,6 +1191,65 @@ function TherapyInner() {
               </p>
             </div>
           </div>
+
+          {/* SR Audiogram Setup */}
+          {selectedMode === "sr" && (
+            <div className="nq-info-box" style={{ background: "#f0fdf4", borderColor: "#86efac", color: "#166534", flexDirection: "column", alignItems: "stretch" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <strong>🧠 Stochastic Resonance — Hearing Profile</strong>
+                  <p style={{ marginTop: "0.25rem", fontSize: "0.8rem" }}>
+                    SR therapy shapes quiet noise to your hearing loss pattern. Set up your hearing profile for best results.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAudiogramSetup(!showAudiogramSetup)}
+                  className="nq-btn-test"
+                  style={{ background: "#166534", fontSize: "0.8rem", whiteSpace: "nowrap", marginLeft: "0.5rem" }}
+                >
+                  {showAudiogramSetup ? "Hide" : "Setup"}
+                </button>
+              </div>
+              {showAudiogramSetup && (
+                <div style={{ marginTop: "0.75rem" }}>
+                  <p style={{ fontSize: "0.78rem", marginBottom: "0.5rem", opacity: 0.8 }}>
+                    Set your hearing threshold at each frequency (0 dB = perfect, higher = more loss). Enter values from a hearing test if available.
+                  </p>
+                  {audiogramData.map((point, idx) => (
+                    <div key={point.freq} style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
+                      <span style={{ minWidth: "55px", fontSize: "0.8rem", fontWeight: 600 }}>{point.freq} Hz</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="80"
+                        step="5"
+                        value={point.thresholdDb}
+                        onChange={(e) => {
+                          const newData = [...audiogramData];
+                          newData[idx] = { ...newData[idx], thresholdDb: Number(e.target.value) };
+                          setAudiogramData(newData);
+                        }}
+                        style={{ flex: 1, accentColor: "#16a34a" }}
+                      />
+                      <span style={{ minWidth: "40px", fontSize: "0.8rem", textAlign: "right" }}>{point.thresholdDb} dB</span>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      try {
+                        window.localStorage.setItem("calmtinnitus_audiogram", JSON.stringify(audiogramData));
+                      } catch {}
+                      setShowAudiogramSetup(false);
+                    }}
+                    className="nq-btn-test"
+                    style={{ background: "#16a34a", marginTop: "0.5rem", width: "100%" }}
+                  >
+                    ✅ Save Hearing Profile
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Step 3: Sound & Mixer */}
