@@ -1002,7 +1002,7 @@ function TherapyInner() {
           <div className="nq-guide-steps">
             <span>1. Match your tinnitus pitch below & Save.</span>
             <span>2. Select a therapy mode.</span>
-            <span>3. Choose a background sound & start.</span>
+            <span>3. Choose a background sound — or play any music, watch videos, or even talk on the phone — &amp; start.</span>
           </div>
         </div>
         <div
