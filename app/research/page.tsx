@@ -315,7 +315,6 @@ export default function ResearchPage() {
           <li><strong>Relief (CR) Therapy</strong> &mdash; coordinated reset patterns for neural desynchronisation and habituation.</li>
           <li><strong>Standard Therapy (Comfort)</strong> &mdash; gentle background sound with coloured-noise masking for residual inhibition.</li>
           <li><strong>Sleep Support</strong> &mdash; quieter profiles designed for overnight use.</li>
-          <li><strong>Stochastic Resonance (SR)</strong> &mdash; near-threshold noise shaped to your hearing profile (section 6).</li>
           <li><strong>Mindfulness (MBCT) Program</strong> &mdash; 8-week guided mindfulness with tinnitus-specific exercises (section 7).</li>
           <li><strong>Screening &amp; Education (PTM)</strong> &mdash; severity screening with stepped recommendations and educational modules (section 8).</li>
           <li><strong>Play your own audio</strong> &mdash; combine therapy with your preferred music, podcasts or nature sounds.</li>
