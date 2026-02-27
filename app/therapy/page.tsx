@@ -24,7 +24,7 @@ import Footer from "@/components/Footer";
 const SESSION_LOG_KEY = "calmtinnitus_session_logs_v1";
 
 // --- TYPES ---
-type TherapyMode = "relief" | "standard" | "sleep" | "sr";
+type TherapyMode = "relief" | "standard" | "sleep";
 type SessionStatus = "idle" | "running" | "paused";
 
 type BackgroundSoundId = "white" | "none" | "rain" | "ocean";
@@ -88,13 +88,6 @@ const THERAPY_MODES: {
     label: "3) Sleep Support",
     description: "Quieter profile to help you wind down and fall asleep.",
     icon: "🌙",
-  },
-  {
-    key: "sr",
-    label: "4) Stochastic Resonance (SR)",
-    description:
-      "Near-threshold noise shaped to your hearing profile. Targets the neural cause of tinnitus.",
-    icon: "🧠",
   },
 ];
 
@@ -182,59 +175,179 @@ function useTinnitusAudio() {
   }, []);
 
   const generateNoiseBuffer = (ctx: AudioContext, id: string) => {
-    const bufferSize = ctx.sampleRate * 2;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
+    const sr = ctx.sampleRate;
+    const bufferSize = sr * 4; // 4 seconds for longer, more natural loops
+    const buffer = ctx.createBuffer(2, bufferSize, sr); // Stereo for spatial realism
+    const left = buffer.getChannelData(0);
+    const right = buffer.getChannelData(1);
 
     if (id === "white") {
+      // Clean white noise, slight stereo decorrelation for width
       for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * 0.7;
+        left[i] = (Math.random() * 2 - 1) * 0.6;
+        right[i] = (Math.random() * 2 - 1) * 0.6;
       }
     } else if (id === "rain") {
-      let b0 = 0,
-        b1 = 0,
-        b2 = 0,
-        b3 = 0;
-      let envelope = 0.6;
+      // Realistic rain: pink noise base + randomised droplet texture + slow intensity drift
+      // Uses multiple envelope layers for natural variation
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      let rb0 = 0, rb1 = 0, rb2 = 0, rb3 = 0, rb4 = 0, rb5 = 0, rb6 = 0;
+
+      // Slow intensity envelope (simulates rain getting heavier/lighter)
+      let slowEnv = 0.55;
+      let slowTarget = 0.55;
+      let slowRate = 0.00001;
+
+      // Medium "gust" envelope
+      let gustEnv = 0.5;
+      let gustTarget = 0.5;
+      let gustRate = 0.0001;
 
       for (let i = 0; i < bufferSize; i++) {
-        const w = Math.random() * 2 - 1;
-        b0 = 0.99886 * b0 + w * 0.0555179;
-        b1 = 0.99332 * b1 + w * 0.0750759;
-        b2 = 0.969 * b2 + w * 0.153852;
-        b3 = 0.8665 * b3 + w * 0.3104856;
-        let pink = (b0 + b1 + b2 + b3 + w * 0.5362) * 0.4;
-        if (i % 2000 === 0) {
-          envelope = 0.3 + Math.random() * 0.7;
+        // Update slow rain intensity every ~0.5s
+        if (i % Math.floor(sr * 0.5) === 0) {
+          slowTarget = 0.35 + Math.random() * 0.45;
+          slowRate = 0.000005 + Math.random() * 0.00002;
         }
-        data[i] = pink * envelope;
+        slowEnv += (slowTarget - slowEnv) * slowRate;
+
+        // Update gust envelope every ~0.08s
+        if (i % Math.floor(sr * 0.08) === 0) {
+          gustTarget = 0.3 + Math.random() * 0.7;
+          gustRate = 0.0001 + Math.random() * 0.0005;
+        }
+        gustEnv += (gustTarget - gustEnv) * gustRate;
+
+        var env = slowEnv * gustEnv;
+
+        // Pink noise (Voss-McCartney algorithm) for left
+        var wL = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + wL * 0.0555179;
+        b1 = 0.99332 * b1 + wL * 0.0750759;
+        b2 = 0.969 * b2 + wL * 0.153852;
+        b3 = 0.8665 * b3 + wL * 0.3104856;
+        b4 = 0.55 * b4 + wL * 0.5329522;
+        b5 = -0.7616 * b5 - wL * 0.016898;
+        var pinkL = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + wL * 0.5362) * 0.11;
+        b6 = wL * 0.115926;
+
+        // Separate pink noise for right channel (decorrelated)
+        var wR = Math.random() * 2 - 1;
+        rb0 = 0.99886 * rb0 + wR * 0.0555179;
+        rb1 = 0.99332 * rb1 + wR * 0.0750759;
+        rb2 = 0.969 * rb2 + wR * 0.153852;
+        rb3 = 0.8665 * rb3 + wR * 0.3104856;
+        rb4 = 0.55 * rb4 + wR * 0.5329522;
+        rb5 = -0.7616 * rb5 - wR * 0.016898;
+        var pinkR = (rb0 + rb1 + rb2 + rb3 + rb4 + rb5 + rb6 + wR * 0.5362) * 0.11;
+        rb6 = wR * 0.115926;
+
+        // Add occasional "droplet" clicks — very short transients
+        var droplet = 0;
+        if (Math.random() < 0.0003 * env) {
+          // A droplet: short burst of noise
+          var dropLen = Math.floor(sr * (0.001 + Math.random() * 0.004));
+          var dropAmp = 0.15 + Math.random() * 0.25;
+          for (var d = 0; d < dropLen && (i + d) < bufferSize; d++) {
+            var dFade = 1.0 - (d / dropLen);
+            var dNoise = (Math.random() * 2 - 1) * dropAmp * dFade * dFade;
+            left[i + d] = (left[i + d] || 0) + dNoise;
+            right[i + d] = (right[i + d] || 0) + dNoise * (0.5 + Math.random() * 0.5);
+          }
+        }
+
+        left[i] = (left[i] || 0) + pinkL * env;
+        right[i] = (right[i] || 0) + pinkR * env;
       }
     } else if (id === "ocean") {
-      let b0 = 0,
-        b1 = 0,
-        b2 = 0,
-        b3 = 0,
-        b4 = 0,
-        b5 = 0,
-        b6 = 0;
+      // Realistic ocean: deep brown noise base with slow rolling wave envelopes
+      // Each wave cycle is 6-12 seconds with a surge, crest, and retreat
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0;
+      let rb0 = 0, rb1 = 0, rb2 = 0, rb3 = 0;
+
+      // Wave state
+      var wavePhase = 0;
+      var wavePeriod = sr * (7 + Math.random() * 4); // 7-11 second wave cycle
+      var nextWavePeriod = wavePeriod;
+
+      // Secondary smaller wave (cross-rhythm for realism)
+      var wave2Phase = 0;
+      var wave2Period = sr * (3 + Math.random() * 3); // 3-6 second ripple
+
       for (let i = 0; i < bufferSize; i++) {
-        const w = Math.random() * 2 - 1;
-        b0 = 0.99886 * b0 + w * 0.0555179;
-        b1 = 0.99332 * b1 + w * 0.0750759;
-        b2 = 0.969 * b2 + w * 0.153852;
-        b3 = 0.8665 * b3 + w * 0.3104856;
-        b4 = 0.55 * b4 + w * 0.5329522;
-        b5 = -0.7616 * b5 - w * 0.016898;
-        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.5;
-        b6 = w * 0.115926;
+        // Primary wave envelope: smooth sine-like surge
+        wavePhase += 1;
+        if (wavePhase >= wavePeriod) {
+          wavePhase = 0;
+          nextWavePeriod = sr * (6 + Math.random() * 5);
+          wavePeriod = nextWavePeriod;
+        }
+        // Asymmetric wave shape: quick surge, slow retreat
+        var waveT = wavePhase / wavePeriod;
+        var waveEnv = 0;
+        if (waveT < 0.35) {
+          // Rising surge
+          var riseT = waveT / 0.35;
+          waveEnv = 0.3 + 0.7 * Math.sin(riseT * Math.PI * 0.5);
+        } else if (waveT < 0.5) {
+          // Crest with frothy peak
+          var crestT = (waveT - 0.35) / 0.15;
+          waveEnv = 1.0 - 0.1 * Math.sin(crestT * Math.PI);
+        } else {
+          // Long retreat
+          var retreatT = (waveT - 0.5) / 0.5;
+          waveEnv = 0.9 * (1.0 - retreatT * retreatT);
+        }
+
+        // Secondary ripple
+        wave2Phase += 1;
+        if (wave2Phase >= wave2Period) {
+          wave2Phase = 0;
+          wave2Period = sr * (3 + Math.random() * 3);
+        }
+        var ripple = 0.15 * Math.sin((wave2Phase / wave2Period) * Math.PI * 2);
+
+        var totalEnv = Math.max(0, Math.min(1, waveEnv * 0.75 + ripple + 0.2));
+
+        // Brown noise for deep ocean rumble (left)
+        var wL = Math.random() * 2 - 1;
+        b0 = (b0 + 0.02 * wL) / 1.02;
+        b1 = 0.99886 * b1 + wL * 0.0555179;
+        b2 = 0.99332 * b2 + wL * 0.0750759;
+        b3 = 0.969 * b3 + wL * 0.153852;
+        // Mix brown (deep) with pink (frothy) based on wave crest
+        var brownL = b0 * 3.5;
+        var pinkishL = (b1 + b2 + b3 + wL * 0.3) * 0.2;
+        var mixL = brownL * 0.7 + pinkishL * waveEnv * 0.5;
+
+        // Right channel (decorrelated)
+        var wR = Math.random() * 2 - 1;
+        rb0 = (rb0 + 0.02 * wR) / 1.02;
+        rb1 = 0.99886 * rb1 + wR * 0.0555179;
+        rb2 = 0.99332 * rb2 + wR * 0.0750759;
+        rb3 = 0.969 * rb3 + wR * 0.153852;
+        var brownR = rb0 * 3.5;
+        var pinkishR = (rb1 + rb2 + rb3 + wR * 0.3) * 0.2;
+        var mixR = brownR * 0.7 + pinkishR * waveEnv * 0.5;
+
+        // Add "foam" crackle at wave crests
+        if (waveEnv > 0.75 && Math.random() < 0.01 * waveEnv) {
+          var crackle = (Math.random() * 2 - 1) * 0.08 * waveEnv;
+          mixL += crackle;
+          mixR += crackle * (0.6 + Math.random() * 0.4);
+        }
+
+        left[i] = mixL * totalEnv;
+        right[i] = mixR * totalEnv;
       }
     } else {
+      // Fallback: brown noise (for "none" or any unknown id)
       let lastOut = 0;
       for (let i = 0; i < bufferSize; i++) {
-        const w = Math.random() * 2 - 1;
-        data[i] = (lastOut + 0.02 * w) / 1.02;
-        lastOut = data[i];
-        data[i] *= 1.0;
+        var w = Math.random() * 2 - 1;
+        left[i] = (lastOut + 0.02 * w) / 1.02;
+        lastOut = left[i];
+        right[i] = left[i];
       }
     }
     return buffer;
@@ -279,15 +392,6 @@ function useTinnitusAudio() {
           toneOscRef.current = null;
           crOscillatorsRef.current = [];
           if (crIntervalRef.current) clearInterval(crIntervalRef.current);
-          // Stop SR
-          if (srNodeRef.current) {
-            try { srNodeRef.current.stop(); } catch {}
-            srNodeRef.current = null;
-          }
-          if (srGainRef.current) {
-            try { srGainRef.current.disconnect(); } catch {}
-            srGainRef.current = null;
-          }
         } catch (err) {
           console.error("stopAll inner cleanup error:", err);
         }
@@ -499,116 +603,6 @@ function useTinnitusAudio() {
     [initAudio, hardStopAll]
   );
 
-  // --- STOCHASTIC RESONANCE: spectrally shaped near-threshold noise ---
-  const srNodeRef = useRef<AudioBufferSourceNode | null>(null);
-  const srGainRef = useRef<GainNode | null>(null);
-
-  const playSR = useCallback(
-    (audiogramData: { freq: number; thresholdDb: number }[], volume: number) => {
-      const ctx = initAudio();
-      if (!ctx || !masterGainRef.current) return;
-
-      // Stop any existing SR
-      if (srNodeRef.current) {
-        try { srNodeRef.current.stop(); } catch {}
-        srNodeRef.current = null;
-      }
-      if (srGainRef.current) {
-        try { srGainRef.current.disconnect(); } catch {}
-        srGainRef.current = null;
-      }
-
-      const startSR = () => {
-        if (!masterGainRef.current) return;
-        const sampleRate = ctx.sampleRate;
-        const duration = 4; // 4-second loop
-        const bufferSize = sampleRate * duration;
-        const buffer = ctx.createBuffer(1, bufferSize, sampleRate);
-        const data = buffer.getChannelData(0);
-
-        // Generate white noise
-        for (let i = 0; i < bufferSize; i++) {
-          data[i] = (Math.random() * 2 - 1);
-        }
-
-        // Apply spectral shaping via FFT-like band filtering
-        // We shape the noise so frequencies where hearing loss is greatest get more energy
-        // This is done by amplitude-weighting bands based on audiogram thresholds
-        const fftSize = 4096;
-        const numBlocks = Math.floor(bufferSize / fftSize);
-
-        // Build frequency-to-gain mapping from audiogram
-        // Higher threshold (worse hearing) = more gain, but capped at near-threshold
-        const maxThreshold = Math.max(...audiogramData.map(a => a.thresholdDb), 10);
-        const getGainForFreq = (freq: number): number => {
-          if (audiogramData.length === 0) return 0.5;
-          // Interpolate audiogram
-          let lower = audiogramData[0];
-          let upper = audiogramData[audiogramData.length - 1];
-          for (let i = 0; i < audiogramData.length - 1; i++) {
-            if (freq >= audiogramData[i].freq && freq <= audiogramData[i + 1].freq) {
-              lower = audiogramData[i];
-              upper = audiogramData[i + 1];
-              break;
-            }
-          }
-          if (freq <= lower.freq) return lower.thresholdDb / maxThreshold;
-          if (freq >= upper.freq) return upper.thresholdDb / maxThreshold;
-          const t = (freq - lower.freq) / (upper.freq - lower.freq);
-          const threshold = lower.thresholdDb + t * (upper.thresholdDb - lower.thresholdDb);
-          // Scale: more hearing loss = more noise energy (but gentle)
-          return Math.max(0.05, Math.min(1.0, threshold / maxThreshold));
-        };
-
-        // Simple band-based spectral shaping using overlapping sine-weighted windows
-        for (let block = 0; block < numBlocks; block++) {
-          const offset = block * fftSize;
-          // Apply per-sample frequency-dependent gain via bandpass approximation
-          // We use 8 bands and mix accordingly
-          const bands = [250, 500, 1000, 2000, 3000, 4000, 6000, 8000];
-          const bandGains = bands.map(f => getGainForFreq(f));
-
-          for (let i = 0; i < fftSize && (offset + i) < bufferSize; i++) {
-            // Weight the noise sample by the average band gain
-            // This is a simplified approach - proper FFT shaping would be more precise
-            // but this works well perceptually
-            let weight = 0;
-            let totalW = 0;
-            for (let b = 0; b < bands.length; b++) {
-              const dist = 1.0 / (1.0 + Math.abs(i / fftSize * sampleRate / 2 - bands[b]) / 500);
-              weight += dist * bandGains[b];
-              totalW += dist;
-            }
-            if (totalW > 0) weight /= totalW;
-            data[offset + i] *= weight * 0.3; // Keep near-threshold (quiet)
-          }
-        }
-
-        const source = ctx.createBufferSource();
-        const gain = ctx.createGain();
-        source.buffer = buffer;
-        source.loop = true;
-        gain.gain.value = 0;
-        gain.gain.setTargetAtTime(volume * 0.4, ctx.currentTime, 0.1); // Extra quiet for near-threshold
-
-        source.connect(gain);
-        gain.connect(masterGainRef.current);
-        source.start();
-        srNodeRef.current = source;
-        srGainRef.current = gain;
-      };
-
-      if (ctx.state === "suspended") {
-        ctx.resume().then(startSR).catch((err: any) => {
-          console.error("AudioContext resume failed:", err);
-        });
-      } else {
-        startSR();
-      }
-    },
-    [initAudio]
-  );
-
   const updateVolumes = useCallback((noiseVol: number, toneVol: number) => {
     const now = ctxRef.current?.currentTime || 0;
     const effectiveNoise = Math.min(1.2, noiseVol * 1.5);
@@ -617,9 +611,6 @@ function useTinnitusAudio() {
     }
     if (toneGainRef.current) {
       toneGainRef.current.gain.setTargetAtTime(toneVol, now, 0.1);
-    }
-    if (srGainRef.current) {
-      srGainRef.current.gain.setTargetAtTime(toneVol * 0.4, now, 0.1);
     }
     latestToneVolRef.current = toneVol;
   }, []);
@@ -630,7 +621,6 @@ function useTinnitusAudio() {
       playNoise,
       playTone,
       playCR,
-      playSR,
       stopAll,
       setMasterVolume,
       updateVolumes,
@@ -641,7 +631,6 @@ function useTinnitusAudio() {
       playNoise,
       playTone,
       playCR,
-      playSR,
       stopAll,
       setMasterVolume,
       updateVolumes,
@@ -728,17 +717,6 @@ function TherapyInner() {
   const [isPlayingTest, setIsPlayingTest] = useState(false);
 
   // --- SR Audiogram state ---
-  const SR_FREQS = [250, 500, 1000, 2000, 3000, 4000, 6000, 8000];
-  const [audiogramData, setAudiogramData] = useState<{ freq: number; thresholdDb: number }[]>(() => {
-    if (typeof window === "undefined") return SR_FREQS.map(f => ({ freq: f, thresholdDb: 20 }));
-    try {
-      const saved = window.localStorage.getItem("calmtinnitus_audiogram");
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return SR_FREQS.map(f => ({ freq: f, thresholdDb: 20 }));
-  });
-  const [showAudiogramSetup, setShowAudiogramSetup] = useState(false);
-
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sessionStartTimeRef = useRef<number | null>(null);
   const audio = useTinnitusAudio();
@@ -890,8 +868,6 @@ function TherapyInner() {
       audio.playNoise(selectedSound.id, noiseVol);
       if (selectedMode === "relief") {
         audio.playCR(tinnitusPitch, safeTone);
-      } else if (selectedMode === "sr") {
-        audio.playSR(audiogramData, safeTone);
       } else {
         audio.playTone(tinnitusPitch, safeTone);
       }
@@ -1163,65 +1139,6 @@ function TherapyInner() {
               </p>
             </div>
           </div>
-
-          {/* SR Audiogram Setup */}
-          {selectedMode === "sr" && (
-            <div className="nq-info-box" style={{ background: "#f0fdf4", borderColor: "#86efac", color: "#166534", flexDirection: "column", alignItems: "stretch" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <strong>🧠 Stochastic Resonance — Hearing Profile</strong>
-                  <p style={{ marginTop: "0.25rem", fontSize: "0.8rem" }}>
-                    SR therapy shapes quiet noise to your hearing loss pattern. Set up your hearing profile for best results.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowAudiogramSetup(!showAudiogramSetup)}
-                  className="nq-btn-test"
-                  style={{ background: "#166534", fontSize: "0.8rem", whiteSpace: "nowrap", marginLeft: "0.5rem" }}
-                >
-                  {showAudiogramSetup ? "Hide" : "Setup"}
-                </button>
-              </div>
-              {showAudiogramSetup && (
-                <div style={{ marginTop: "0.75rem" }}>
-                  <p style={{ fontSize: "0.78rem", marginBottom: "0.5rem", opacity: 0.8 }}>
-                    Set your hearing threshold at each frequency (0 dB = perfect, higher = more loss). Enter values from a hearing test if available.
-                  </p>
-                  {audiogramData.map((point, idx) => (
-                    <div key={point.freq} style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
-                      <span style={{ minWidth: "55px", fontSize: "0.8rem", fontWeight: 600 }}>{point.freq} Hz</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="80"
-                        step="5"
-                        value={point.thresholdDb}
-                        onChange={(e) => {
-                          const newData = [...audiogramData];
-                          newData[idx] = { ...newData[idx], thresholdDb: Number(e.target.value) };
-                          setAudiogramData(newData);
-                        }}
-                        style={{ flex: 1, accentColor: "#16a34a" }}
-                      />
-                      <span style={{ minWidth: "40px", fontSize: "0.8rem", textAlign: "right" }}>{point.thresholdDb} dB</span>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => {
-                      try {
-                        window.localStorage.setItem("calmtinnitus_audiogram", JSON.stringify(audiogramData));
-                      } catch {}
-                      setShowAudiogramSetup(false);
-                    }}
-                    className="nq-btn-test"
-                    style={{ background: "#16a34a", marginTop: "0.5rem", width: "100%" }}
-                  >
-                    ✅ Save Hearing Profile
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* MBCT & Education — inside Step 2 panel */}
           <div style={{ marginTop: "1.25rem", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "0.75rem", padding: "0.9rem" }}>
