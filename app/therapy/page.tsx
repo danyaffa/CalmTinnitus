@@ -1055,26 +1055,30 @@ function TherapyInner() {
         <Link
           href="/mbct"
           style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: "0.35rem",
             background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "0.75rem",
-            padding: "1rem", textDecoration: "none", color: "#166534", textAlign: "center",
+            padding: "1rem 0.75rem", textDecoration: "none", color: "#166534", textAlign: "center",
           }}
         >
           <span style={{ fontSize: "1.5rem" }}>🧘</span>
-          <strong style={{ fontSize: "0.85rem" }}>Mindfulness (MBCT)</strong>
-          <span style={{ fontSize: "0.75rem", opacity: 0.8 }}>8-week guided program</span>
+          <strong style={{ fontSize: "0.9rem" }}>Mindfulness (MBCT)</strong>
+          <span style={{ fontSize: "0.78rem", opacity: 0.85, lineHeight: 1.4 }}>
+            Clinically proven 8-week program to reduce tinnitus distress through guided mindfulness exercises
+          </span>
         </Link>
         <Link
           href="/ptm"
           style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: "0.35rem",
             background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "0.75rem",
-            padding: "1rem", textDecoration: "none", color: "#0c4a6e", textAlign: "center",
+            padding: "1rem 0.75rem", textDecoration: "none", color: "#0c4a6e", textAlign: "center",
           }}
         >
           <span style={{ fontSize: "1.5rem" }}>📋</span>
-          <strong style={{ fontSize: "0.85rem" }}>Screening & Education</strong>
-          <span style={{ fontSize: "0.75rem", opacity: 0.8 }}>PTM severity assessment</span>
+          <strong style={{ fontSize: "0.9rem" }}>Screening & Education</strong>
+          <span style={{ fontSize: "0.78rem", opacity: 0.85, lineHeight: 1.4 }}>
+            Assess your tinnitus severity, get personalised recommendations, and learn about habituation
+          </span>
         </Link>
       </div>
 
