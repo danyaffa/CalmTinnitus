@@ -68,7 +68,7 @@ const PTM_LEVELS: PTMLevel[] = [
     recommendations: [
       "Consider a hearing evaluation with an audiologist if you haven't recently",
       "Use daily sound therapy sessions (30 min, 2x/day) with CalmTinnitus",
-      "Try the SR (Stochastic Resonance) mode if you have any hearing loss",
+      "Try different therapy modes — Relief (CR), Standard, or Sleep — to find what works best for you",
       "Start the MBCT mindfulness program for tinnitus distress reduction",
       "Track your progress using the program tracker",
     ],
@@ -189,7 +189,7 @@ const EDUCATION_MODULES: EducationModule[] = [
       "Sound therapy works by providing your brain with alternative auditory input, reducing the prominence of tinnitus. There are several approaches, and CalmTinnitus offers multiple modes.",
       "The 'mixing point' principle: Set your therapy sound just loud enough that your tinnitus blends with it but is still faintly audible. This promotes habituation better than full masking.",
       "Consistency matters more than duration. Two 30-minute sessions daily is a good starting point. Some people prefer longer sessions or continuous background sound.",
-      "Relief (CR) mode plays tones in a pattern designed to desynchronise overactive brain networks. The clicks and gaps are intentional. Stochastic Resonance (SR) mode shapes noise to your hearing profile at very quiet levels.",
+      "Relief (CR) mode plays tones in a pattern designed to desynchronise overactive brain networks. The clicks and gaps are intentional. Standard mode provides gentle continuous sound for masking and comfort. Sleep mode uses a quieter profile for overnight use.",
       "You can use sound therapy while doing other activities — working, reading, watching TV. It doesn't require your full attention. In fact, passive listening is exactly the right approach.",
       "Results typically develop gradually over weeks to months. Most clinical trials show significant improvement at 3–6 months of regular use.",
     ],
