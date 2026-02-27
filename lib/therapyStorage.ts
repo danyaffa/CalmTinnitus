@@ -25,7 +25,7 @@ export type TherapySession = {
   id?: string;
   userId: string;
   profileId?: string | null; // optional – may run without profile
-  mode: "standard" | "relief" | "sleep" | "sr";
+  mode: "standard" | "relief" | "sleep";
   backgroundSound: "white" | "rain" | "ocean" | "none";
   durationMinutes: number;
   perceivedLoudnessBefore?: number; // 0–10 self-rating
