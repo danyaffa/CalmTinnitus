@@ -103,11 +103,8 @@ export default function HomePage() {
             {/* HERO */}
             <section className="nq-hero">
               <div className="nq-hero-text">
-                <Link href="/program" className="nq-research-link">
-                  7–30 Day Relief Program + Tracking
-                </Link>
                 <Link href="/research" className="nq-research-link">
-                  Based on tinnitus neuromodulation research
+                  Therapy is based on tinnitus neuromodulation research
                 </Link>
 
                 <h1>Train your brain toward quieter days.</h1>
