@@ -1050,38 +1050,6 @@ function TherapyInner() {
         </Link>
       </div>
 
-      {/* NEW: Links to MBCT & PTM */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "2rem" }}>
-        <Link
-          href="/mbct"
-          style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: "0.35rem",
-            background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "0.75rem",
-            padding: "1rem 0.75rem", textDecoration: "none", color: "#166534", textAlign: "center",
-          }}
-        >
-          <span style={{ fontSize: "1.5rem" }}>🧘</span>
-          <strong style={{ fontSize: "0.9rem" }}>Mindfulness (MBCT)</strong>
-          <span style={{ fontSize: "0.78rem", opacity: 0.85, lineHeight: 1.4 }}>
-            Clinically proven 8-week program to reduce tinnitus distress through guided mindfulness exercises
-          </span>
-        </Link>
-        <Link
-          href="/ptm"
-          style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: "0.35rem",
-            background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "0.75rem",
-            padding: "1rem 0.75rem", textDecoration: "none", color: "#0c4a6e", textAlign: "center",
-          }}
-        >
-          <span style={{ fontSize: "1.5rem" }}>📋</span>
-          <strong style={{ fontSize: "0.9rem" }}>Screening & Education</strong>
-          <span style={{ fontSize: "0.78rem", opacity: 0.85, lineHeight: 1.4 }}>
-            Assess your tinnitus severity, get personalised recommendations, and learn about habituation
-          </span>
-        </Link>
-      </div>
-
       {/* STATUS BANNER */}
       {sessionStatus !== "idle" && (
         <div className="nq-banner">
@@ -1254,6 +1222,47 @@ function TherapyInner() {
               )}
             </div>
           )}
+
+          {/* MBCT & Education — inside Step 2 panel */}
+          <div style={{ marginTop: "1.25rem", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "0.75rem", padding: "0.9rem" }}>
+            <p style={{ margin: "0 0 0.6rem", fontSize: "0.85rem", color: "#166534", lineHeight: 1.5 }}>
+              <strong>💡 Best results:</strong> After completing your sound therapy session, follow up with a short mindfulness exercise. Clinical trials show that combining sound therapy with mindfulness-based techniques produces significantly better outcomes than either approach alone.
+            </p>
+            <div style={{ display: "grid", gap: "0.5rem" }}>
+              <Link
+                href="/mbct"
+                style={{
+                  display: "flex", alignItems: "center", gap: "0.75rem",
+                  background: "white", border: "1px solid #86efac", borderRadius: "0.6rem",
+                  padding: "0.75rem", textDecoration: "none", color: "#166534",
+                }}
+              >
+                <span style={{ fontSize: "1.3rem" }}>🧘</span>
+                <div>
+                  <strong style={{ fontSize: "0.88rem" }}>Mindfulness (MBCT) Program</strong>
+                  <p style={{ margin: "0.15rem 0 0", fontSize: "0.78rem", opacity: 0.85 }}>
+                    8-week guided program — clinically proven to reduce tinnitus distress
+                  </p>
+                </div>
+              </Link>
+              <Link
+                href="/ptm"
+                style={{
+                  display: "flex", alignItems: "center", gap: "0.75rem",
+                  background: "white", border: "1px solid #86efac", borderRadius: "0.6rem",
+                  padding: "0.75rem", textDecoration: "none", color: "#166534",
+                }}
+              >
+                <span style={{ fontSize: "1.3rem" }}>📖</span>
+                <div>
+                  <strong style={{ fontSize: "0.88rem" }}>Education Library</strong>
+                  <p style={{ margin: "0.15rem 0 0", fontSize: "0.78rem", opacity: 0.85 }}>
+                    Learn about habituation, sound therapy, stress management &amp; sleep
+                  </p>
+                </div>
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Step 3: Sound & Mixer */}
