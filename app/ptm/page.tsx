@@ -281,98 +281,32 @@ function PTMInner() {
           ← Back to Therapy
         </Link>
         <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#0f172a", margin: "0.5rem 0 0.25rem" }}>
-          Tinnitus Management Hub
+          Education Library
         </h1>
         <p style={{ color: "#64748b", fontSize: "0.9rem", margin: 0 }}>
-          Screening, education & personalised guidance based on PTM
+          Understanding tinnitus, habituation, sound therapy &amp; sleep
         </p>
       </div>
 
-      {/* MENU VIEW */}
+      {/* MENU VIEW — Education only */}
       {view === "menu" && (
         <div style={{ display: "grid", gap: "0.75rem" }}>
-          {previousScore !== null && (
-            <div style={{
-              background: getLevel(previousScore).color + "15",
-              border: `1px solid ${getLevel(previousScore).color}50`,
-              borderRadius: "0.75rem",
-              padding: "1rem",
-              fontSize: "0.9rem",
-            }}>
-              <strong>Your last screening score:</strong> {previousScore}/100 — {getLevel(previousScore).severity}
-              <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "0.25rem" }}>
-                Retake periodically to track changes
-              </div>
-            </div>
-          )}
-
           <button
-            onClick={() => { setView("screening"); setCurrentQ(0); setAnswers({}); }}
+            onClick={() => setView("education")}
             style={{
               display: "flex", alignItems: "center", gap: "1rem", textAlign: "left", width: "100%",
               background: "linear-gradient(135deg, #0ea5e9, #0891b2)", color: "white",
               border: "none", padding: "1.25rem", borderRadius: "0.75rem", cursor: "pointer",
             }}
           >
-            <span style={{ fontSize: "1.8rem" }}>📋</span>
-            <div>
-              <strong style={{ fontSize: "1.05rem" }}>Tinnitus Severity Screening</strong>
-              <p style={{ margin: "0.2rem 0 0", fontSize: "0.85rem", opacity: 0.9 }}>
-                Quick 8-question assessment with personalised recommendations
-              </p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setView("education")}
-            style={{
-              display: "flex", alignItems: "center", gap: "1rem", textAlign: "left", width: "100%",
-              background: "white", border: "1px solid #e2e8f0",
-              padding: "1.25rem", borderRadius: "0.75rem", cursor: "pointer",
-            }}
-          >
             <span style={{ fontSize: "1.8rem" }}>📖</span>
             <div>
-              <strong style={{ fontSize: "1.05rem", color: "#0f172a" }}>Education Library</strong>
-              <p style={{ margin: "0.2rem 0 0", fontSize: "0.85rem", color: "#64748b" }}>
-                Understanding tinnitus, habituation, sound therapy & sleep
+              <strong style={{ fontSize: "1.05rem" }}>Browse Education Topics</strong>
+              <p style={{ margin: "0.2rem 0 0", fontSize: "0.85rem", opacity: 0.9 }}>
+                Learn about tinnitus, habituation, sound therapy, stress and sleep strategies
               </p>
             </div>
           </button>
-
-          <Link
-            href="/mbct"
-            style={{
-              display: "flex", alignItems: "center", gap: "1rem", textAlign: "left", width: "100%",
-              background: "white", border: "1px solid #e2e8f0",
-              padding: "1.25rem", borderRadius: "0.75rem", textDecoration: "none", color: "inherit",
-            }}
-          >
-            <span style={{ fontSize: "1.8rem" }}>🧘</span>
-            <div>
-              <strong style={{ fontSize: "1.05rem", color: "#0f172a" }}>MBCT Mindfulness Program</strong>
-              <p style={{ margin: "0.2rem 0 0", fontSize: "0.85rem", color: "#64748b" }}>
-                8-week guided mindfulness-based cognitive therapy for tinnitus
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/therapy"
-            style={{
-              display: "flex", alignItems: "center", gap: "1rem", textAlign: "left", width: "100%",
-              background: "white", border: "1px solid #e2e8f0",
-              padding: "1.25rem", borderRadius: "0.75rem", textDecoration: "none", color: "inherit",
-            }}
-          >
-            <span style={{ fontSize: "1.8rem" }}>🎧</span>
-            <div>
-              <strong style={{ fontSize: "1.05rem", color: "#0f172a" }}>Sound Therapy</strong>
-              <p style={{ margin: "0.2rem 0 0", fontSize: "0.85rem", color: "#64748b" }}>
-                CR, SR, Standard & Sleep sound modes
-              </p>
-            </div>
-          </Link>
         </div>
       )}
 
