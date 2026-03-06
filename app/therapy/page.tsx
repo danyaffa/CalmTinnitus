@@ -692,7 +692,7 @@ function TherapyInner() {
   }, []);
 
   // Access protection — check subscription status
-  const { hasAccess, loading: accessLoading } = useAccess(
+  const { hasAccess, loading: accessLoading, accessType, trialDaysLeft } = useAccess(
     user && !user.isAnonymous ? user.uid : null
   );
 
@@ -983,6 +983,30 @@ function TherapyInner() {
 
   return (
     <main className="nq-container">
+      {/* TRIAL BANNER */}
+      {accessType === "trial" && trialDaysLeft !== null && (
+        <div style={{
+          background: "linear-gradient(135deg, #fef3c7, #fde68a)",
+          border: "1px solid #f59e0b",
+          borderRadius: 12,
+          padding: "10px 16px",
+          marginBottom: 12,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap" as const,
+          gap: 8,
+          fontSize: "0.88rem",
+          color: "#92400e",
+          fontWeight: 600,
+        }}>
+          <span>Free trial: {trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""} remaining</span>
+          <a href="/register" style={{ color: "#0369a1", fontWeight: 700, textDecoration: "underline" }}>
+            Subscribe to continue after trial
+          </a>
+        </div>
+      )}
+
       {/* HEADER */}
       <div className="nq-header">
         <div>
@@ -1131,7 +1155,7 @@ function TherapyInner() {
               </strong>
               <p style={{ marginTop: "0.35rem" }}>
                 In <strong>Relief (CR) Therapy</strong> you will hear gentle
-                “knocks”, “ticks”, or tiny gaps in the sound.{" "}
+                &ldquo;knocks&rdquo;, &ldquo;ticks&rdquo;, or tiny gaps in the sound.{" "}
                 <strong>
                   This is intentional – nothing is wrong with your speakers or
                   phone.
@@ -1197,7 +1221,7 @@ function TherapyInner() {
               Relief (CR) mode should be <strong>soft but noticeable</strong>.
               Best rule:{" "}
               <strong>
-                “Just loud enough to hear it, but soft enough to ignore it.”
+                &ldquo;Just loud enough to hear it, but soft enough to ignore it.&rdquo;
               </strong>
             </p>
             <p style={{ marginTop: "0.35rem" }}>

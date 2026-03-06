@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
 
   description:
-    "CalmTinnitus is an AI-guided tinnitus relief and neuromodulation app that helps you match your tinnitus pitch, create sound therapy, and relax with masking sounds like white noise, rain, and ocean waves.",
+    "CalmTinnitus is a tinnitus relief and neuromodulation app with 14-day free trial. Match your tinnitus pitch, use CR therapy, standard masking, and sleep support modes with white noise, rain, and ocean waves. Built by a 50-year tinnitus veteran.",
 
   keywords: [
     "tinnitus",
@@ -47,6 +47,14 @@ export const metadata: Metadata = {
     "tinnitus matching tool",
     "hyperacusis relief",
     "hearing health app",
+    "tinnitus management app",
+    "tinnitus sleep support",
+    "tinnitus free trial",
+    "tinnitus web app",
+    "tinnitus relief app free trial",
+    "best tinnitus app",
+    "tinnitus retraining therapy",
+    "tinnitus pitch matching",
   ],
 
   // ✅ FIX: canonical must match indexed URL
@@ -101,8 +109,9 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="author" content="CalmTinnitus" />
-        <meta name="publisher" content="CalmTinnitus" />
+        <meta name="author" content="Leffler International Investments Pty Ltd" />
+        <meta name="publisher" content="Leffler International Investments Pty Ltd" />
+        <meta name="copyright" content="Leffler International Investments Pty Ltd" />
         <meta
           name="medical-disclaimer"
           content="CalmTinnitus does not provide medical diagnosis or emergency care. Always consult a qualified clinician for medical advice."

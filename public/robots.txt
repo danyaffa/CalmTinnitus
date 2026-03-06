@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://calmtinnitus.com/sitemap.xml
+Sitemap: https://www.calmtinnitus.com/sitemap.xml
