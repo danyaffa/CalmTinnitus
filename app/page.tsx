@@ -26,7 +26,7 @@ export default function HomePage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Ensures Android WebView doesn’t execute widget code before hydration
+    // Ensures Android WebView doesn't execute widget code before hydration
     setMounted(true);
   }, []);
 
@@ -118,11 +118,14 @@ export default function HomePage() {
                 </p>
 
                 <div className="nq-plan-group">
+                  <p className="nq-trial-badge">
+                    14-day free trial — no payment required to start
+                  </p>
                   <p className="nq-plan">
                     <span className="nq-plan-price">$19.80 / month</span>
                     <span className="nq-plan-detail">
                       {" "}
-                      — cancel anytime, link is in the Terms
+                      — after trial, cancel anytime
                     </span>
                   </p>
                   <p className="nq-plan-sub">
@@ -131,7 +134,7 @@ export default function HomePage() {
                   </p>
 
                   <Link href="/register" className="nq-primary-cta">
-                    Start training now
+                    Start your free trial
                   </Link>
                   <Link href="/therapy" className="nq-quick-relief">
                     Quick Relief — start a calming session now
@@ -185,18 +188,61 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* CORE PLATFORM FEATURES */}
+        <section className="nq-section">
+          <h2>Core Platform Features</h2>
+          <div className="nq-features-grid">
+            <div className="nq-feature-item">
+              <h3>Precision Pitch Matching</h3>
+              <p>Identify your unique tinnitus frequency with our built-in tone matcher for personalised therapy.</p>
+            </div>
+            <div className="nq-feature-item">
+              <h3>3 Therapy Modes</h3>
+              <p>Relief (CR neuromodulation), Standard masking, and Sleep Support — choose based on how you feel today.</p>
+            </div>
+            <div className="nq-feature-item">
+              <h3>Background Sound Library</h3>
+              <p>White noise, soft rain, and ocean waves to complement your therapy or use as standalone masking.</p>
+            </div>
+            <div className="nq-feature-item">
+              <h3>Session Tracking</h3>
+              <p>Log your sessions, track loudness and stress levels, and see your training consistency over time.</p>
+            </div>
+            <div className="nq-feature-item">
+              <h3>14-Day Free Trial</h3>
+              <p>Full access for 14 days with no payment required. After the trial, continue for just $19.80/month.</p>
+            </div>
+            <div className="nq-feature-item">
+              <h3>Works Everywhere</h3>
+              <p>Use on any device — web, Android, or install as a progressive web app on your phone or tablet.</p>
+            </div>
+            <div className="nq-feature-item">
+              <h3>AI-Powered FAQ</h3>
+              <p>Get instant answers about tinnitus, therapy modes, and how to get the most from CalmTinnitus.</p>
+            </div>
+            <div className="nq-feature-item">
+              <h3>Privacy First</h3>
+              <p>Minimal data collection. No therapy content stored on servers. Full account deletion at any time.</p>
+            </div>
+          </div>
+        </section>
+
         {/* BENEFITS */}
         <section className="nq-section nq-section-dark">
           <div className="nq-card-dark">
             <h2>Designed by a long-term tinnitus sufferer.</h2>
             <ul>
               <li>Built for headphones or mobile earpods at safe volume.</li>
-              <li>Quick “reset” sessions when tinnitus spikes.</li>
+              <li>Quick &ldquo;reset&rdquo; sessions when tinnitus spikes.</li>
               <li>Longer calming sessions before bed to support sleep.</li>
               <li>
-                Session history so you can see how often you’re training over
+                Session history so you can see how often you&apos;re training over
                 time.
               </li>
+              <li>Progressive training programs (7–30 days) to build consistency.</li>
+              <li>Low stimulation mode for sensitive days.</li>
+              <li>Guided mindfulness techniques (MBCT) for tinnitus management.</li>
+              <li>Safe, evidence-informed approach based on neuromodulation research.</li>
             </ul>
             <p className="nq-note">
               CalmTinnitus is a self-help sound tool and does not replace
@@ -497,6 +543,45 @@ export default function HomePage() {
             color: #64748b;
           }
 
+          .nq-trial-badge {
+            display: inline-block;
+            margin: 0 0 0.6rem;
+            padding: 0.35rem 0.9rem;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            box-shadow: 0 6px 18px rgba(34, 197, 94, 0.35);
+          }
+
+          .nq-features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+          }
+
+          .nq-feature-item {
+            background: #ffffff;
+            border-radius: 1rem;
+            padding: 1rem 1.1rem;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+            border: 1px solid #e5e7eb;
+          }
+
+          .nq-feature-item h3 {
+            margin: 0 0 0.35rem;
+            font-size: 0.98rem;
+            color: #0369a1;
+          }
+
+          .nq-feature-item p {
+            margin: 0;
+            font-size: 0.88rem;
+            color: #4b5563;
+            line-height: 1.5;
+          }
+
 
 
           @media (max-width: 768px) {
@@ -544,9 +629,19 @@ export default function HomePage() {
             }
           }
 
+          @media (max-width: 600px) {
+            .nq-features-grid {
+              grid-template-columns: 1fr;
+            }
+          }
+
           @media (min-width: 900px) {
             .nq-cards {
               grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .nq-features-grid {
+              grid-template-columns: repeat(4, 1fr);
             }
           }
         `}</style>

@@ -46,10 +46,10 @@ function friendlyFirebaseError(err: any) {
     return "This email is already registered. Please click Log in (top right). If you forgot your password, use Forgot Password on the login page.";
   }
   if (code === "auth/operation-not-allowed") {
-    return "Google sign-in is not enabled. Please contact support.";
+    return "Google sign-in is not enabled. Please check our FAQ page for help.";
   }
   if (code === "auth/unauthorized-domain") {
-    return "Google sign-in is blocked for this domain. Please contact support.";
+    return "Google sign-in is blocked for this domain. Please check our FAQ page for help.";
   }
   if (code === "auth/popup-closed-by-user") {
     return "Sign-in window was closed before completion. Please try again.";
@@ -216,7 +216,7 @@ export default function RegisterPage() {
             } catch (err) {
               console.error("Failed to activate subscription:", err);
               setError(
-                "Payment received but account activation failed. Please contact support."
+                "Payment received but account activation failed. Please try logging in again or visit our FAQ page."
               );
             }
           },
@@ -480,10 +480,25 @@ export default function RegisterPage() {
           {step === "register" ? (
             <>
               <h1 style={styles.h1}>Create your account</h1>
+              <div style={styles.trialBadge}>
+                14-day free trial — full access, no payment required
+              </div>
               <p style={styles.p}>
-                Step 1: Register. Step 2: Subscribe via PayPal or use a promo
-                code. After that, you can log in anytime.
+                Start your free trial instantly. After 14 days, subscribe via PayPal ($19.80/month)
+                or use a promo code to continue. Cancel anytime.
               </p>
+
+              <div style={styles.featuresBox}>
+                <p style={styles.featuresTitle}>What you get:</p>
+                <ul style={styles.featuresList}>
+                  <li>Precision tinnitus pitch matching</li>
+                  <li>3 therapy modes: Relief (CR), Standard, Sleep Support</li>
+                  <li>Background sounds: white noise, rain, ocean</li>
+                  <li>Session tracking and progress history</li>
+                  <li>AI-powered FAQ and support</li>
+                  <li>Works on web, mobile, and as an installable app</li>
+                </ul>
+              </div>
 
               {error ? <div style={styles.error}>{error}</div> : null}
               {promoSuccess ? (
@@ -702,7 +717,7 @@ export default function RegisterPage() {
               ) : (
                 <div style={styles.paypalMissing}>
                   PayPal is not configured yet. Please use a promo code below or
-                  contact support.
+                  visit our FAQ page for assistance.
                 </div>
               )}
 
@@ -1026,5 +1041,37 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#0369a1",
     color: "white",
     borderColor: "#0369a1",
+  },
+  trialBadge: {
+    display: "inline-block",
+    marginTop: 10,
+    marginBottom: 6,
+    padding: "8px 16px",
+    background: "linear-gradient(135deg, #22c55e, #16a34a)",
+    color: "white",
+    borderRadius: 999,
+    fontWeight: 700,
+    fontSize: 14,
+    boxShadow: "0 6px 18px rgba(34, 197, 94, 0.35)",
+  },
+  featuresBox: {
+    background: "#f0f9ff",
+    border: "1px solid #bae6fd",
+    borderRadius: 12,
+    padding: "12px 16px",
+    marginBottom: 8,
+  },
+  featuresTitle: {
+    margin: "0 0 6px",
+    fontWeight: 700,
+    fontSize: 13,
+    color: "#0369a1",
+  },
+  featuresList: {
+    margin: 0,
+    paddingLeft: 18,
+    fontSize: 13,
+    color: "#334155",
+    lineHeight: 1.7,
   },
 };

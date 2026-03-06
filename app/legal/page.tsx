@@ -120,14 +120,15 @@ export default function LegalPage() {
           after updates means you accept the revised Legal Notice.
         </p>
 
-        <h2>9) Who we are &amp; contact</h2>
+        <h2>9) Who we are</h2>
         <p>
           CalmTinnitus is operated by <strong>Leffler International Investments Pty Ltd</strong>{" "}
           (Australia).
         </p>
         <p>
-          Contact:{" "}
-          <a href="mailto:leffleryd@gmail.com">leffleryd@gmail.com</a>
+          For questions about CalmTinnitus, please visit our{" "}
+          <Link href="/qa">FAQ page</Link> or manage your account from{" "}
+          <Link href="/settings">Account Settings</Link>.
         </p>
 
         <p style={{ marginTop: "1.25rem" }}>

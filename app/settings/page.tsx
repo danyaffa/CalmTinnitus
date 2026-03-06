@@ -5,11 +5,9 @@ import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
 import Footer from "../../components/Footer";
 
-// ✅ Adjust these imports ONLY if your firebase exports differ.
-// Most CalmTinnitus builds use /lib/firebase.ts exporting `auth` and `db`.
 import { auth, db } from "../../lib/firebase";
 import { onAuthStateChanged, signOut, deleteUser, User } from "firebase/auth";
-import { deleteDoc, doc, getDoc } from "firebase/firestore";
+import { deleteDoc, doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -55,13 +53,15 @@ export default function SettingsPage() {
       try {
         if (typeof window !== "undefined") {
           window.localStorage.removeItem("calmtinnitus_low_stim");
+          window.localStorage.removeItem("calmtinnitus_session_logs_v1");
         }
       } catch {
         // ignore
       }
 
-      // 2) Delete Firestore user doc FIRST (while user is still authenticated)
       const uid = user.uid;
+
+      // 2) Delete Firestore user doc
       try {
         const userRef = doc(db, "users", uid);
         const snap = await getDoc(userRef);
@@ -72,11 +72,32 @@ export default function SettingsPage() {
         // ignore — Firestore doc may not exist
       }
 
-      // 3) Delete the Firebase Auth account
-      // Note: Firebase may require "recent login". If so, user must re-login then try again.
+      // 3) Delete session logs from Firestore
+      try {
+        const sessionsRef = collection(db, "sessions");
+        const q = query(sessionsRef, where("userId", "==", uid));
+        const sessionsSnap = await getDocs(q);
+        const deletePromises = sessionsSnap.docs.map((d) => deleteDoc(d.ref));
+        await Promise.all(deletePromises);
+      } catch {
+        // ignore
+      }
+
+      // 4) Delete reviews from Firestore
+      try {
+        const reviewsRef = collection(db, "reviews");
+        const q = query(reviewsRef, where("userId", "==", uid));
+        const reviewsSnap = await getDocs(q);
+        const deletePromises = reviewsSnap.docs.map((d) => deleteDoc(d.ref));
+        await Promise.all(deletePromises);
+      } catch {
+        // ignore
+      }
+
+      // 5) Delete the Firebase Auth account
       await deleteUser(user);
 
-      // 4) Redirect to home
+      // 6) Redirect to home
       window.location.href = "/";
     } catch (e: any) {
       const message = String(e?.message || "");
@@ -125,7 +146,7 @@ export default function SettingsPage() {
               <p className="muted">
                 CalmTinnitus is designed not to store personal therapy/session
                 data. If you want to remove your access and any associated
-                records completely, use Delete below.
+                records completely, use the options below.
               </p>
               <p className="muted">
                 Read: <Link href="/privacy">Privacy Policy</Link>
@@ -133,15 +154,16 @@ export default function SettingsPage() {
             </div>
 
             <div className="section danger">
-              <h2>Delete my data</h2>
-              <p className="muted">
-                By deleting your data, all access to your account will be
-                removed. Any associated records (if they exist) will be deleted.
-                This action is permanent and cannot be undone.
-              </p>
+              <h2>Stop / Delete My Account</h2>
+              <div className="danger-warning">
+                <strong>Warning:</strong> Stopping your account will permanently
+                remove all your data, notes, session history, and account access.
+                This action cannot be undone. Your subscription (if any) will be
+                cancelled and you will lose access to CalmTinnitus immediately.
+              </div>
 
               <button className="dangerBtn" onClick={() => setOpen(true)}>
-                Delete my data
+                Disconnect / Stop My Account
               </button>
             </div>
 
@@ -163,11 +185,13 @@ export default function SettingsPage() {
       {open && (
         <div className="modalOverlay" role="dialog" aria-modal="true">
           <div className="modal">
-            <h3>Confirm deletion</h3>
-            <p className="muted">
-              This will permanently delete your account access and remove any
-              associated records (if any exist). You will be signed out.
-            </p>
+            <h3>Confirm Account Deletion</h3>
+
+            <div className="danger-warning">
+              <strong>This is permanent.</strong> All your data, session notes,
+              therapy history, and account access will be permanently removed
+              from CalmTinnitus. You will not be able to recover your account.
+            </div>
 
             <label className="checkRow">
               <input
@@ -210,7 +234,7 @@ export default function SettingsPage() {
                 disabled={!canDelete || busy}
                 title={!canDelete ? "Tick the box and type DELETE" : undefined}
               >
-                {busy ? "Deleting…" : "Confirm delete"}
+                {busy ? "Deleting…" : "Permanently Delete My Account"}
               </button>
             </div>
           </div>
@@ -259,6 +283,17 @@ export default function SettingsPage() {
 
         .danger {
           border-top: 1px solid #fee2e2;
+        }
+
+        .danger-warning {
+          background: #fef2f2;
+          border: 1px solid #fca5a5;
+          color: #991b1b;
+          padding: 0.85rem 1rem;
+          border-radius: 0.75rem;
+          font-size: 0.9rem;
+          line-height: 1.55;
+          margin-bottom: 1rem;
         }
 
         .row {

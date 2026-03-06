@@ -1,40 +1,41 @@
 // FILE: hooks/useAccess.ts
-// Reusable hook to check if a user has active subscription or promo access
+// Reusable hook to check if a user has active subscription, promo, or free trial access
 
 import { useEffect, useRef, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db, firebaseReady } from "@/lib/firebase";
 
+const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+
 type AccessResult = {
   hasAccess: boolean;
   loading: boolean;
-  accessType: "paypal" | "promo" | null;
+  accessType: "paypal" | "promo" | "trial" | null;
+  trialDaysLeft: number | null;
 };
 
 export function useAccess(uid: string | null): AccessResult {
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [accessType, setAccessType] = useState<"paypal" | "promo" | null>(null);
+  const [accessType, setAccessType] = useState<"paypal" | "promo" | "trial" | null>(null);
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
 
-  // Track which uid was last resolved so we can detect when uid changes
-  // before the useEffect has run. This prevents a race condition where
-  // the therapy page gate sees stale loading=false between uid changing
-  // and the new Firestore fetch starting.
   const resolvedUidRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!uid || !firebaseReady || !db) {
       setHasAccess(false);
       setAccessType(null);
+      setTrialDaysLeft(null);
       setLoading(false);
       resolvedUidRef.current = uid;
       return;
     }
 
-    // Reset state when checking a new uid
     setLoading(true);
     setHasAccess(false);
     setAccessType(null);
+    setTrialDaysLeft(null);
 
     let cancelled = false;
 
@@ -45,9 +46,28 @@ export function useAccess(uid: string | null): AccessResult {
 
         if (snap.exists()) {
           const data = snap.data();
+
+          // Active paid or promo subscription
           if (data.subscriptionStatus === "active") {
             setHasAccess(true);
             setAccessType((data.accessType as "paypal" | "promo") || "paypal");
+            return;
+          }
+
+          // Check free trial: 14 days from account creation
+          const createdAt = data.createdAt;
+          if (createdAt) {
+            const createdMs = createdAt.toDate ? createdAt.toDate().getTime() : new Date(createdAt).getTime();
+            const now = Date.now();
+            const elapsed = now - createdMs;
+
+            if (elapsed < TRIAL_DURATION_MS) {
+              const daysLeft = Math.ceil((TRIAL_DURATION_MS - elapsed) / (24 * 60 * 60 * 1000));
+              setHasAccess(true);
+              setAccessType("trial");
+              setTrialDaysLeft(daysLeft);
+              return;
+            }
           }
         }
       } catch (err) {
@@ -67,9 +87,7 @@ export function useAccess(uid: string | null): AccessResult {
     };
   }, [uid]);
 
-  // If uid changed but the effect hasn't resolved yet, report as loading
-  // to prevent premature redirect decisions.
   const isLoading = loading || (uid !== null && uid !== resolvedUidRef.current);
 
-  return { hasAccess, loading: isLoading, accessType };
+  return { hasAccess, loading: isLoading, accessType, trialDaysLeft };
 }

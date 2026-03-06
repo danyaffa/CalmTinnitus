@@ -19,9 +19,9 @@ export default function ReviewUsPage() {
           <li>Mention if there were any side-effects or issues.</li>
         </ul>
         <p>
-          For now, you can{" "}
-          <a href="mailto:support@neuroquiet.app">email your review</a> or share
-          it with the person who invited you to test CalmTinnitus.
+          You can share your review on our{" "}
+          <Link href="/feedback">feedback page</Link>, or share
+          it with the person who invited you to try CalmTinnitus.
         </p>
         <p>
           <Link href="/">← Back to CalmTinnitus</Link>
