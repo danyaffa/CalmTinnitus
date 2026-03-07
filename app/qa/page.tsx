@@ -81,12 +81,12 @@ const ALL_FAQS = [
   {
     category: "Account & Billing",
     q: "How does the 14-day free trial work?",
-    a: "When you register, you get full access to all CalmTinnitus features for 14 days with no payment required. After the trial, you can subscribe for $19.80/month via PayPal to continue using the app.",
+    a: "When you register, you get full access to all CalmTinnitus features for 14 days with no payment required. After the trial, you can subscribe for $8/month via PayPal to continue using the app.",
   },
   {
     category: "Account & Billing",
     q: "How does billing work and can I cancel?",
-    a: "CalmTinnitus is offered as a simple monthly subscription at $19.80/month after the 14-day free trial. You can cancel any time from your PayPal account. Your access will continue until the end of the current billing period.",
+    a: "CalmTinnitus is offered as a simple monthly subscription at $8/month after the 14-day free trial. You can cancel any time from your PayPal account. Your access will continue until the end of the current billing period.",
   },
   {
     category: "Account & Billing",
