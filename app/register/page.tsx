@@ -484,7 +484,7 @@ export default function RegisterPage() {
                 14-day free trial — full access, no payment required
               </div>
               <p style={styles.p}>
-                Start your free trial instantly. After 14 days, subscribe via PayPal ($19.80/month)
+                Start your free trial instantly. After 14 days, subscribe via PayPal ($8/month)
                 or use a promo code to continue. Cancel anytime.
               </p>
 
@@ -701,7 +701,7 @@ export default function RegisterPage() {
               </p>
 
               <div style={styles.priceBox}>
-                <span style={styles.priceAmount}>$19.80 / month</span>
+                <span style={styles.priceAmount}>$8 / month</span>
                 <span style={styles.priceDetail}>Cancel anytime</span>
               </div>
 

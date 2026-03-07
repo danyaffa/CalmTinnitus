@@ -122,7 +122,7 @@ export default function HomePage() {
                     14-day free trial — no payment required to start
                   </p>
                   <p className="nq-plan">
-                    <span className="nq-plan-price">$19.80 / month</span>
+                    <span className="nq-plan-price">$8 / month</span>
                     <span className="nq-plan-detail">
                       {" "}
                       — after trial, cancel anytime
@@ -210,7 +210,7 @@ export default function HomePage() {
             </div>
             <div className="nq-feature-item">
               <h3>14-Day Free Trial</h3>
-              <p>Full access for 14 days with no payment required. After the trial, continue for just $19.80/month.</p>
+              <p>Full access for 14 days with no payment required. After the trial, continue for just $8/month.</p>
             </div>
             <div className="nq-feature-item">
               <h3>Works Everywhere</h3>

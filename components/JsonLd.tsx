@@ -36,7 +36,7 @@ export default function JsonLd() {
     ],
     offers: {
       "@type": "Offer",
-      price: "19.80",
+      price: "8",
       priceCurrency: "USD",
       priceValidUntil: "2027-12-31",
       availability: "https://schema.org/InStock",
@@ -79,7 +79,7 @@ export default function JsonLd() {
         name: "How does the 14-day free trial work?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "When you register, you get full access to all CalmTinnitus features for 14 days with no payment required. After the trial, you can subscribe for $19.80/month via PayPal to continue using the app.",
+          text: "When you register, you get full access to all CalmTinnitus features for 14 days with no payment required. After the trial, you can subscribe for $8/month via PayPal to continue using the app.",
         },
       },
       {
