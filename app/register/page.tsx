@@ -19,9 +19,9 @@ import { auth, googleProvider, db, firebaseReady } from "../../lib/firebase";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import { Capacitor } from "@capacitor/core"; // ✅ FIX: was "@capacitor-core"
 
-// PayPal config from env vars
-const PAYPAL_PLAN_ID = process.env.NEXT_PUBLIC_PAYPAL_PLAN_ID || "";
-const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
+// PayPal config — build-time fallback; overridden at runtime by /api/paypal-config
+const PAYPAL_PLAN_ID_BUILD = process.env.NEXT_PUBLIC_PAYPAL_PLAN_ID || "";
+const PAYPAL_CLIENT_ID_BUILD = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
 // Promo code from env var
 const PROMO_CODE = process.env.NEXT_PUBLIC_PROMO_CODE || "";
@@ -84,6 +84,20 @@ export default function RegisterPage() {
   const [registeredUser, setRegisteredUser] = useState<User | null>(null);
   const paypalContainerRef = useRef<HTMLDivElement>(null);
   const paypalScriptLoaded = useRef(false);
+
+  // PayPal config: prefer runtime values from API, fall back to build-time env
+  const [paypalClientId, setPaypalClientId] = useState(PAYPAL_CLIENT_ID_BUILD);
+  const [paypalPlanId, setPaypalPlanId] = useState(PAYPAL_PLAN_ID_BUILD);
+
+  useEffect(() => {
+    fetch("/api/paypal-config")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.clientId) setPaypalClientId(data.clientId);
+        if (data.planId) setPaypalPlanId(data.planId);
+      })
+      .catch(() => {});
+  }, []);
 
   // Promo code state (step 2 - payment page)
   const [showPromo, setShowPromo] = useState(false);
@@ -189,7 +203,7 @@ export default function RegisterPage() {
   useEffect(() => {
     if (step !== "pay" || !paypalContainerRef.current || !registeredUser) return;
 
-    if (!PAYPAL_CLIENT_ID || !PAYPAL_PLAN_ID) return;
+    if (!paypalClientId || !paypalPlanId) return;
 
     const renderPayPalButton = () => {
       if (!window.paypal || !paypalContainerRef.current) return;
@@ -206,7 +220,7 @@ export default function RegisterPage() {
           },
           createSubscription: (_data: any, actions: any) => {
             return actions.subscription.create({
-              plan_id: PAYPAL_PLAN_ID,
+              plan_id: paypalPlanId,
             });
           },
           onApprove: async (data: any) => {
@@ -236,14 +250,14 @@ export default function RegisterPage() {
     if (!paypalScriptLoaded.current) {
       paypalScriptLoaded.current = true;
       const script = document.createElement("script");
-      script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&vault=true&intent=subscription`;
+      script.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&vault=true&intent=subscription`;
       script.setAttribute("data-sdk-integration-source", "button-factory");
       script.onload = renderPayPalButton;
       script.onerror = () =>
         setError("Failed to load PayPal. Please refresh and try again.");
       document.body.appendChild(script);
     }
-  }, [step, registeredUser, router]);
+  }, [step, registeredUser, router, paypalClientId, paypalPlanId]);
 
   // Handle promo code
   const handlePromoSubmit = async () => {
@@ -708,7 +722,7 @@ export default function RegisterPage() {
               {error ? <div style={styles.error}>{error}</div> : null}
 
               {/* PayPal button */}
-              {PAYPAL_CLIENT_ID && PAYPAL_PLAN_ID ? (
+              {paypalClientId && paypalPlanId ? (
                 <div
                   ref={paypalContainerRef}
                   id="paypal-button-container"
